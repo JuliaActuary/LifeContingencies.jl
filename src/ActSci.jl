@@ -1,6 +1,6 @@
 module ActSci
 
-export testMort, 
+export maleMort, femaleMort, 
         MortalityTable,
         qx,px, tpx, tqx,
         ω,w, lx, dx, ex,

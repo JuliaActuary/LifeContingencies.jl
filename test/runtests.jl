@@ -3,7 +3,7 @@ using Base.Test
 using Distributions
 
 # assumes embedded 'testMort' table
-t = MortalityTable(testMort)
+t = MortalityTable(maleMort)
 
 @test 0.00699 ≈ qx(t,0)
 @test 0.000447 ≈ qx(t,1)
