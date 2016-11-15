@@ -18,12 +18,7 @@ using Plots
 plotlyjs()
 using Distributions
 ```
-
-
-
-
-
- ## Mortality
+## Mortality
 
 
 ```julia
