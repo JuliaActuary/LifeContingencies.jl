@@ -99,12 +99,14 @@ ins = LifeInsurance(t,i)
 # calculating the net premium for a whole life policy for males and females
 # using a random interest rate on
 
-# (Plotted logarithmically)
 
 plot([map((x->1000000*Ax(insM,x)/äx(insM,x)),0:100),map((x->1000000*Ax(insF,x)/äx(insF,x)),0:100)],xlabel="Age",ylabel="Yearly Cost",yscale = :log10)
 ```
+#### The annual net premium for a whole life policy, by age, with a random discount rate. 
+
 ![plot of insurance premiums](http://i.imgur.com/0QcGgan.png)
 
+*This is different than what you'd actually pay for a policy, which is called a "gross premium"*  
 
 
 
