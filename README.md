@@ -1,7 +1,7 @@
 # ActSci -  v0.0.1
 ## A new actuarial modeling library
 
-#### Code Review: [![Build Status](https://travis-ci.org/alecloudenback/ActSci.jl.svg?branch=master)](https://travis-ci.org/alecloudenback/ActSci.jl) [![Coverage Status](https://coveralls.io/repos/alecloudenback/ActSci.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/alecloudenback/ActSci.jl?branch=master) [![Coverage Status](https://coveralls.io/repos/github/alecloudenback/ActSci.jl/badge.svg?branch=master)](https://coveralls.io/github/alecloudenback/ActSci.jl?branch=master)
+#### Code Review: [![Build Status](https://travis-ci.org/alecloudenback/ActSci.jl.svg?branch=master)](https://travis-ci.org/alecloudenback/ActSci.jl) [![Coverage Status](https://coveralls.io/repos/github/alecloudenback/ActSci.jl/badge.svg?branch=master)](https://coveralls.io/github/alecloudenback/ActSci.jl?branch=master) [![codecov.io](http://codecov.io/github/alecloudenback/ActSci.jl/coverage.svg?branch=master)](http://codecov.io/github/alecloudenback/ActSci.jl?branch=master)
 
 A library to bring actuarial science to Julia.
 
