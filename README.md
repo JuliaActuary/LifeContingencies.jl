@@ -1,10 +1,7 @@
-# ActSci
+# ActSci -  v0.0.1
+## A new actuarial modeling library
 
-[![Build Status](https://travis-ci.org/alecloudenback/ActSci.jl.svg?branch=master)](https://travis-ci.org/alecloudenback/ActSci.jl)
-
-[![Coverage Status](https://coveralls.io/repos/alecloudenback/ActSci.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/alecloudenback/ActSci.jl?branch=master)
-
-[![codecov.io](http://codecov.io/github/alecloudenback/ActSci.jl/coverage.svg?branch=master)](http://codecov.io/github/alecloudenback/ActSci.jl?branch=master)
+#### Code Review: [![Build Status](https://travis-ci.org/alecloudenback/ActSci.jl.svg?branch=master)](https://travis-ci.org/alecloudenback/ActSci.jl) [![Coverage Status](https://coveralls.io/repos/alecloudenback/ActSci.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/alecloudenback/ActSci.jl?branch=master) [![codecov.io](http://codecov.io/github/alecloudenback/ActSci.jl/coverage.svg?branch=master)](http://codecov.io/github/alecloudenback/ActSci.jl?branch=master)
 
 A library to bring actuarial science to Julia.
 
@@ -125,4 +122,4 @@ Sources for help with the commutation functions (since I have long since taken M
 - www.macs.hw.ac.uk/~angus/papers/eas_offprints/commfunc.pdf
 
 ## Disclaimer
-I provide no warranty or guarantees. This is an open source project and I encourage you to submit feedback or pull requests. It's my first foray into the promising language of Juilia, so I encourage constructive feedback about the package desgin and code architecture.
+I provide no warranty or guarantees. This is an open source project and I encourage you to submit feedback or pull requests. It's my first foray into the promising language of Juilia, so I encourage feedback about the package desgin and code architecture.
