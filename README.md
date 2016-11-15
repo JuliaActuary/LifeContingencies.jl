@@ -118,5 +118,9 @@ Sources for help with the commutation functions (since I have long since taken M
 - www.math.umd.edu/~evs/s470/BookChaps/Chp6.pdf
 - www.macs.hw.ac.uk/~angus/papers/eas_offprints/commfunc.pdf
 
+Shout out to a similar Python project, whose Readme I one day hope to live up to and provided inspiration, including some of the function syntax.
+
+ - https://github.com/franciscogarate/pyliferisk 
+
 ## Disclaimer
 I provide no warranty or guarantees. This is an open source project and I encourage you to submit feedback or pull requests. It's my first foray into the promising language of Juilia, so I encourage feedback about the package desgin and code architecture.
