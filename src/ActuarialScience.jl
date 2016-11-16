@@ -1,4 +1,4 @@
-module ActSci
+module ActuarialScience
 
 export maleMort, femaleMort, 
         MortalityTable,

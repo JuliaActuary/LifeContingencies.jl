@@ -1,7 +1,7 @@
-# ActSci -  v0.0.1
+# ActuarialScience -  v0.0.1
 ## A new actuarial modeling library
 
-#### Code Review: [![Build Status](https://travis-ci.org/alecloudenback/ActSci.jl.svg?branch=master)](https://travis-ci.org/alecloudenback/ActSci.jl) [![Coverage Status](https://coveralls.io/repos/github/alecloudenback/ActSci.jl/badge.svg?branch=master)](https://coveralls.io/github/alecloudenback/ActSci.jl?branch=master) [![codecov.io](http://codecov.io/github/alecloudenback/ActSci.jl/coverage.svg?branch=master)](http://codecov.io/github/alecloudenback/ActSci.jl?branch=master)
+#### Code Review: [![Build Status](https://travis-ci.org/alecloudenback/ActuarialScience.jl.svg?branch=master)](https://travis-ci.org/alecloudenback/ActuarialScience.jl) [![Coverage Status](https://coveralls.io/repos/github/alecloudenback/ActuarialScience.jl/badge.svg?branch=master)](https://coveralls.io/github/alecloudenback/ActuarialScience.jl?branch=master) [![codecov.io](http://codecov.io/github/alecloudenback/ActuarialScience.jl/coverage.svg?branch=master)](http://codecov.io/github/alecloudenback/ActuarialScience.jl?branch=master)
 
 A library to bring actuarial science to Julia.
 
@@ -13,7 +13,7 @@ The goal is ultimately to build out a modeling package, capable of doing much mo
 
 
 ```julia
-using ActSci
+using ActuarialScience
 using Plots
 plotlyjs()
 using Distributions
@@ -22,7 +22,7 @@ using Distributions
 
 
 ```julia
-# ActSci will have a number of mortality tables built into the package
+# ActuarialScience will have a number of mortality tables built into the package
 # for now, there are two Social Security tables built in, maleMort and femaleMort
 # e.g. femaleMort = femaleMort = [0.005728,0.000373,0.000241,...]
 
@@ -58,11 +58,11 @@ t = MortalityTable(maleMort)
 
 
 ```julia
-# ActSci provides an easy way to specify interest rates:
+# ActuarialScience provides an easy way to specify interest rates:
 
 i = InterestRate(.05) # you can pass interest rate a decimal value, a vector, or a function that returns a value 
 
-# ActSci currently lets you use a basic stochastic interest rate form
+# ActuarialScience currently lets you use a basic stochastic interest rate form
 # however, serial correllation does not work yet
 
 i = InterestRate((x -> rand(Normal(.05,.01))))  # anonymous function provides an easy way to add a stochastic interest rate

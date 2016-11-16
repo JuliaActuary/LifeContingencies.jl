@@ -1,4 +1,4 @@
-using ActSci
+using ActuarialScience
 using Base.Test
 using Distributions
 
