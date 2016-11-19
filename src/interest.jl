@@ -19,14 +19,22 @@ type InterestRate <: Decrement
     function InterestRate(f)
         new(Float64[],f)
     end
+    # constructor with (any) argument assumes a function that will produce an interest rate
+    # and provided rates for the first n... time periods
+    function InterestRate(f, x...)
+        new(collect(x),f)
+    end
 end
 
 
-# the interst at time x
+# the interst during time x
 function i(iv::InterestRate,x)
-    if length(iv.ix) == 0
-        return iv.ifx(x)
-    else
+    if x < 0 # looking for nth item from end of vector
+        return iv.ix[end + Int(x) + 1]
+    elseif length(iv.ix) < x
+        append!(iv.ix, iv.ifx(length(iv.ix)+1))
+        return i(iv,x)
+    else   
         return iv.ix[Int(x)]
     end
 end
@@ -40,7 +48,7 @@ function tvx(iv::InterestRate,t,x, v=1.0)
     end
 end
 
-# ω (omega), the ultimate age of the given table 
+# ω (omega), the ultimate end of the given table 
 function ω(i::InterestRate)
     if length(i.ix) == 0
         return Inf

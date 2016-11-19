@@ -30,6 +30,7 @@ i1 = InterestRate((x -> .05))
 @test 1/(1.05) == v(i1)
 @test 1/(1.05) == vx(i1,1)
 @test 1/(1.05^2) == tvx(i1,2,1)
+@test .05 == i(i1,1)
 
 ## vector interest rate
 
@@ -41,15 +42,20 @@ i2 = InterestRate([.05,.05,.05])
 ## real interest rate
 
 i3 = InterestRate(.05)
+
 @test 1/(1.05) == v(i3)
 @test 1/(1.05) == vx(i3,1)
 @test 1/(1.05^2) == tvx(i3,2,1)
-@test 1/(1.05^120) ≈ tvx(i3,120,0)
+@test 1/(1.05^120) ≈ tvx(i3,120,1)
 
 ## Stochastic interest rate
 i4 = InterestRate((x -> rand(Normal(0.05,0.01))))
-@test v(i4) > 0
+i5 = InterestRate((x -> rand(Normal(i(i5,-1),0.01))), .05)
 
+@test v(i4) > 0
+@test v(i5) > 0
+@test tvx(i4,120,1) > 0
+@test tvx(i5,120,1) > 0
 
 ## Insurance
 ins = LifeInsurance(t,i3)

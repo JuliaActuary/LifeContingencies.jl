@@ -37,9 +37,9 @@ end
 ## COMMUTATIONS ###
 ###################
 
-Dx(ah::ActuarialHelper,x) = tvx(ah.int,x,0) * lx(ah.mort,x)
+Dx(ah::ActuarialHelper,x) = tvx(ah.int,x,1) * lx(ah.mort,x)
 
-preMx(ah::ActuarialHelper,x) = tvx(ah.int,x+1,0) * dx(ah.mort,x)
+preMx(ah::ActuarialHelper,x) = tvx(ah.int,x+1,1) * dx(ah.mort,x)
 
 function Nx(ah::ActuarialHelper,x)
 range =x:min(ω(ah.mort),ω(ah.int))
