@@ -1,2 +1,2 @@
 # type for mortality, lapse, etc
-abstract Decrement
+abstract type Decrement end

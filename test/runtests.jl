@@ -1,5 +1,5 @@
 using ActuarialScience
-using Base.Test
+using Test
 using Distributions
 
 # assumes embedded 'testMort' table

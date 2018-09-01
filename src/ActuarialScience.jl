@@ -18,14 +18,14 @@ include("mortality.jl")
 
 
 # 'actuarial objects' that combine multiple forms of decrements (lapse, interest, death, etc)
-abstract AbstractActuarial
+abstract type AbstractActuarial end
 
-type ActuarialHelper
+mutable struct ActuarialHelper
     mort::MortalityTable
     int::InterestRate
 end
 
-type LifeInsurance <: AbstractActuarial
+mutable struct LifeInsurance <: AbstractActuarial
     ah::ActuarialHelper
 
     function LifeInsurance(mt::MortalityTable,int::InterestRate)

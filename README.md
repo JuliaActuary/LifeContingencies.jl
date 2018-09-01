@@ -1,4 +1,4 @@
-# ActuarialScience -  v0.0.3
+# ActuarialScience -  v0.0.4
 ## A new actuarial modeling library
 
 #### Code Review: [![Build Status](https://travis-ci.org/alecloudenback/ActuarialScience.jl.svg?branch=master)](https://travis-ci.org/alecloudenback/ActuarialScience.jl) [![Coverage Status](https://coveralls.io/repos/github/alecloudenback/ActuarialScience.jl/badge.svg?branch=master)](https://coveralls.io/github/alecloudenback/ActuarialScience.jl?branch=master) [![codecov.io](http://codecov.io/github/alecloudenback/ActuarialScience.jl/coverage.svg?branch=master)](http://codecov.io/github/alecloudenback/ActuarialScience.jl?branch=master)

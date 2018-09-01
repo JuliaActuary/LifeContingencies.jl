@@ -1,8 +1,8 @@
 include("decrement.jl")
 
-typealias ixVector Vector{Float64}
+const ixVector = Vector{Float64}
 
-type InterestRate <: Decrement
+mutable struct InterestRate <: Decrement
     ix::Vector{Float64}
     ifx
     # constructor with a predefined vector
