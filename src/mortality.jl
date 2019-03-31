@@ -62,7 +62,7 @@ end
 
 # the probability of surviving one year from age x
 function px(mt::MortalityTable,x)
-    return 1 - px(mt,x)
+    return 1 - qx(mt,x)
 end
 
 # the probability of surviving for t  years from age x
