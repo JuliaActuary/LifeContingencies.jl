@@ -88,8 +88,8 @@ i3 = InterestRate((x -> rand(Normal(i(i3,-1),0.01))), .05)
 
 
 ```julia
-## the assumptiosn are joined with a "LifeInsurance" Object
-insM = LifeInsurance(m,i2) 
+## the assumptions are joined with a "LifeInsurance" Object
+insM = LifeInsurance(m,i2)
 insF = LifeInsurance(f,i2)
 
 ## from there, you can calculate a number of actuarial commutations:
