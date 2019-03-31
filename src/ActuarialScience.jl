@@ -1,8 +1,9 @@
 module ActuarialScience
 
-export maleMort, femaleMort, 
+export maleMort, femaleMort,
         MortalityTable,
         qx,px, tpx, tqx,
+        tqxy,tpxy, tqx̅y̅, tpx̅y̅, 
         ω,w, lx, dx, ex,
         ixVector,
         InterestRate,
@@ -63,10 +64,10 @@ Axn(ins::LifeInsurance,x,n) = (Mx(ins.ah,x) - Mx(ins.ah,x + n) ) / Dx(ins.ah,x)
 # whole life insurance
 Ax(ins::LifeInsurance,x) = Mx(ins.ah,x) / Dx(ins.ah,x)
 
-# life annuity due 
+# life annuity due
 äx(ins::LifeInsurance,x) = Nx(ins.ah,x) / Dx(ins.ah,x)
 
-# finite duration life annuity due 
+# finite duration life annuity due
 äxn(ins::LifeInsurance,x,n) = (Nx(ins.ah,x) - Nx(ins.ah,x+n) )/ Dx(ins.ah,x)
 
 Dx(ins::LifeInsurance,x) = Dx(ins.ah,x)

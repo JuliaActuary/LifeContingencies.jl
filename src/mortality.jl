@@ -81,3 +81,20 @@ function ex(mt::MortalityTable,x)
     catch; return 0.0
     end
 end
+
+# the probability of at least one life surviving t years from ages x,y
+function tpxy(mtx::MortalityTable,mty::MortalityTable,x,y,t)
+    return tpx(mtx,x,t) + tpx(mty,y,t) - tpx(mtx,x,t) * tpx(mty,y,t)
+end
+
+# the probability that x or y is alive at time t
+function tqxy(mtx::MortalityTable,mty::MortalityTable,x,y,t)
+    if t == zero(t)
+        return 1 - tpxy(mtx,mty,x,y,t)
+    else
+        return 1 - tpxy(mtx,mty,x,y,t) / tpxy(mtx,mty,x,y,t - 1)
+    end
+end
+
+tqx̅y̅ = tqxy
+tpx̅y̅ = tpxy
