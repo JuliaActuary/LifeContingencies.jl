@@ -43,22 +43,25 @@ t = MortalityTable(maleMort)
 
 ## Examples ##
 
-# 0.00699 ≈ qx(t,0)
-# 0.000447 ≈ qx(t,1)
-# 1000.0 == lx(t,0)  # the convention is that lx is based on 1000 lives
-# 993.010 ≈ lx(t,1) 
-# 1000.0-1000*qx(t,0) ≈ lx(t,1)
-# 992.5661245 ≈ lx(t,2)
-# 120 == w(t)
-# 0 == dx(t,150)
-# 6.99 ≈ dx(t,0)
-# 76.8982069 ≈ ex(t,0)
-# tpx(t,15,3) >= tpx(t,15,4)
-# tqx(t,16,2) >= tqx(t,15,2)
-# 0 <= ex(t,15)
-# 0.003664839851 ≈ tpx(t,22,80)
+0.00699 ≈ qx(t,0)
+0.000447 ≈ qx(t,1)
+1000.0 == lx(t,0)  # the convention is that lx is based on 1000 lives
+993.010 ≈ lx(t,1)
+1000.0-1000*qx(t,0) ≈ lx(t,1)
+992.5661245 ≈ lx(t,2)
+120 == w(t)
+0 == dx(t,150)
+6.99 ≈ dx(t,0)
+76.8982069 ≈ ex(t,0)
+tpx(t,15,3) >= tpx(t,15,4)
+tqx(t,16,2) >= tqx(t,15,2)
+0 <= ex(t,15)
+0.003664839851 ≈ tpx(t,22,80)
 
-
+# also supports joint last survivor
+tqxy(table, table, age_x, age_y,time), e.g.
+tqxy(t,t,0,0,1) ≈ 0.0000488601000
+tqx̅y̅(t,t,0,0,1) ≈ 0.0000488601000 #overbar notation is an option
 ```
 
 ## Interest
