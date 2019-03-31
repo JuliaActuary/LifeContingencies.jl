@@ -7,6 +7,7 @@ t = MortalityTable(maleMort)
 @testset "mortality" begin
     @testset "single life" begin
         @test 0.00699 ≈ qx(t,0)
+        @test qx(t,0) ≈ 1 - px(t,0)
         @test 0.000447 ≈ qx(t,1)
         @test 1000.0 == lx(t,0)
         @test 993.010 ≈ lx(t,1)
