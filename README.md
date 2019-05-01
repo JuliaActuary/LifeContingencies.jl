@@ -2,6 +2,7 @@
 ## A new actuarial modeling library
 
 #### Code Review: [![Build Status](https://travis-ci.org/alecloudenback/ActuarialScience.jl.svg?branch=master)](https://travis-ci.org/alecloudenback/ActuarialScience.jl) [![Coverage Status](https://coveralls.io/repos/github/alecloudenback/ActuarialScience.jl/badge.svg?branch=master)](https://coveralls.io/github/alecloudenback/ActuarialScience.jl?branch=master) [![codecov.io](http://codecov.io/github/alecloudenback/ActuarialScience.jl/coverage.svg?branch=master)](http://codecov.io/github/alecloudenback/ActuarialScience.jl?branch=master)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Falecloudenback%2FActuarialScience.jl.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Falecloudenback%2FActuarialScience.jl?ref=badge_shield)
 
 A library to bring actuarial science to Julia.
 
@@ -141,3 +142,7 @@ Shout out to a similar Python project, whose Readme I one day hope to live up to
 
 ## Disclaimer
 I provide no warranty or guarantees. This is an open source project and I encourage you to submit feedback or pull requests. It's my first foray into the promising language of Juilia, so I encourage feedback about the package desgin and code architecture.
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Falecloudenback%2FActuarialScience.jl.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Falecloudenback%2FActuarialScience.jl?ref=badge_large)
