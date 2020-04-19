@@ -2,28 +2,29 @@ include("decrement.jl")
 
 const ixVector = Vector{Float64}
 
-mutable struct InterestRate <: Decrement
-    ix::Vector{Float64}
-    ifx
-    # constructor with a predefined vector
-    function InterestRate(v::ixVector)
-        new(v,(x -> v[x]))
-    end
+mutable struct InterestRate{F} <: Decrement
+    ix::Array{Float64,1}
+    ifx::F
+end
 
-    # constructor with a real number argument converts to a function that will produce an interest rate
-    function InterestRate(i::Real)
-        new(Float64[],(x -> i))
-    end
+# constructor with a predefined vector
+function InterestRate(v::ixVector)
+    new(v,(x -> v[x]))
+end
 
-    # constructor with (any) argument assumes a function that will produce an interest rate
-    function InterestRate(f)
-        new(Float64[],f)
-    end
-    # constructor with (any) argument assumes a function that will produce an interest rate
-    # and provided rates for the first n... time periods
-    function InterestRate(f, x...)
-        new(collect(x),f)
-    end
+# constructor with a real number argument converts to a function that will produce an interest rate
+function InterestRate(i::Real)
+    new(Vector{Float64}(undef, 0),(x -> i))
+end
+
+# constructor with (any) argument assumes a function that will produce an interest rate
+function InterestRate(f)
+    new(Vector{Float64}(undef, 0),f)
+end
+# constructor with (any) argument assumes a function that will produce an interest rate
+# and provided rates for the first n... time periods
+function InterestRate(f, x...)
+    new(collect(x),f)
 end
 
 
