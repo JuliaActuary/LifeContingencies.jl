@@ -1,7 +1,7 @@
-# ActuarialScience -  v0.1.1
+# LifeContingencies -  v0.1.1
 ## A new actuarial modeling library
 
-#### Code Review: [![Build Status](https://travis-ci.org/JuliaActuary/ActuarialScience.jl.svg?branch=master)](https://travis-ci.org/JuliaActuary/ActuarialScience.jl) [![Coverage Status](https://coveralls.io/repos/github/JuliaActuary/ActuarialScience.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaActuary/ActuarialScience.jl?branch=master) [![codecov.io](http://codecov.io/github/JuliaActuary/ActuarialScience.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaActuary/ActuarialScience.jl?branch=master)
+#### Code Review: [![Build Status](https://travis-ci.org/JuliaActuary/LifeContingencies.jl.svg?branch=master)](https://travis-ci.org/JuliaActuary/LifeContingencies.jl) [![Coverage Status](https://coveralls.io/repos/github/JuliaActuary/LifeContingencies.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaActuary/LifeContingencies.jl?branch=master) [![codecov.io](http://codecov.io/github/JuliaActuary/LifeContingencies.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaActuary/LifeContingencies.jl?branch=master)
 
 A library to bring actuarial science to Julia.
 
@@ -10,17 +10,17 @@ The goal is ultimately to build out a modeling package, capable of doing much mo
 
 ## New in this version
  - Refine interest rate periods:
-   - Period `0` now is meaningless, period `1` now refers to the time period `(0,1]` 
+   - Period `0` now is meaningless, period `1` now refers to the time period `(0,1]`
  - Add ability to use serial correlation to interest rates (see interest rate section for example)
  - Add memory of functional interest rates
-    - Prior calls to interest rates record the interst rate, so each call to a stochastic interest rate function don't generate an entirely new stream of interest rates, even if it's the same interest rate object 
+    - Prior calls to interest rates record the interst rate, so each call to a stochastic interest rate function don't generate an entirely new stream of interest rates, even if it's the same interest rate object
 
 ## Usage
 
 
 
 ```julia
-using ActuarialScience
+using LifeContingencies
 using Plots
 plotlyjs()
 using Distributions
@@ -29,7 +29,7 @@ using Distributions
 
 
 ```julia
-# ActuarialScience will have a number of mortality tables built into the package
+# LifeContingencies will have a number of mortality tables built into the package
 # for now, there are two Social Security tables built in, maleMort and femaleMort
 # e.g. femaleMort = femaleMort = [0.005728,0.000373,0.000241,...]
 
@@ -68,11 +68,11 @@ tqx̅y̅(t,t,0,0,1) ≈ 0.0000488601000 #overbar notation is an option
 
 
 ```julia
-# ActuarialScience provides an easy way to specify interest rates:
+# LifeContingencies provides an easy way to specify interest rates:
 
-i = InterestRate(.05) # you can pass interest rate a decimal value, a vector, or a function that returns a value 
+i = InterestRate(.05) # you can pass interest rate a decimal value, a vector, or a function that returns a value
 
-# ActuarialScience currently lets you use a basic stochastic interest rate form
+# LifeContingencies currently lets you use a basic stochastic interest rate form
 
 i2 = InterestRate((x -> rand(Normal(.05,.01))))  # anonymous function provides an easy way to add a stochastic interest rate
 
@@ -111,7 +111,7 @@ ins = LifeInsurance(t,i)
 
 plot([map((x->1000000*Ax(insM,x)/äx(insM,x)),0:100),map((x->1000000*Ax(insF,x)/äx(insF,x)),0:100)],xlabel="Age",ylabel="Yearly Cost",yscale = :log10)
 ```
-#### The annual net premium for a whole life policy, by age, with a random discount rate. 
+#### The annual net premium for a whole life policy, by age, with a random discount rate.
 
 ![plot of insurance premiums](http://i.imgur.com/UbjrWci.png)
 
@@ -137,7 +137,7 @@ Sources for help with the commutation functions (since I have long since taken M
 
 Shout out to a similar Python project, whose Readme I one day hope to live up to and provided inspiration, including some of the function syntax.
 
- - https://github.com/franciscogarate/pyliferisk 
+ - https://github.com/franciscogarate/pyliferisk
 
 ## Disclaimer
 I provide no warranty or guarantees. This is an open source project and I encourage you to submit feedback or pull requests. It's my first foray into the promising language of Juilia, so I encourage feedback about the package desgin and code architecture.

@@ -1,4 +1,4 @@
-ActuarialScience.jl
+LifeContingencies.jl
 ====================
 
 Copyright (c) 2018-2020 Alec Loudenback
@@ -23,5 +23,5 @@ SOFTWARE.
 
 SOA.org Mortality Table Data
 =============================
-This package contains tables downloaded from [mort.SOA.org](https://mort.soa.org). 
+This package contains tables downloaded from [mort.SOA.org](https://mort.soa.org).
 By using this package, you also agree to [their Terms of Use](https://mort.soa.org/TermsOfUse.aspx).

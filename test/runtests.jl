@@ -1,4 +1,4 @@
-using ActuarialScience
+using LifeContingencies
 using Test
 import Distributions: Normal
 using MortalityTables

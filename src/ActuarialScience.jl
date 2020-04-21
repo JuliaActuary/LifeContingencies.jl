@@ -1,4 +1,4 @@
-module ActuarialScience
+module LifeContingencies
 using MortalityTables
 using Transducers
 
