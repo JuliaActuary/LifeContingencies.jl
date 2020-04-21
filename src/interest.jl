@@ -33,11 +33,11 @@ function InterestRate(f)
 end
 
 # the interst during time x
-function i(i::ConstantInterestRate,time)
+function rate(i::ConstantInterestRate,time)
     return i.rate
 end
 
-function i(i::FunctionalInterestRate{F},time) where {F}
+function rate(i::FunctionalInterestRate{F},time) where {F}
     if time <= lastindex(i.rate_vector)
         return i.rate_vector[time]
     else
@@ -47,7 +47,7 @@ function i(i::FunctionalInterestRate{F},time) where {F}
     end
 end
 
-function i(i::VectorInterestRate,time)
+function rate(i::VectorInterestRate,time)
     return i.rate_vector[time]
 end
 
@@ -57,7 +57,7 @@ discount factor of `1.0`. Currentlu only supports whole years.
 """
 function tvx(iv::InterestRate,time1,time2, init=1.0)
     if time1 > 0
-        return tvx(iv, time1 - 1, time2 + 1, init / (1 + i(iv, time2)))
+        return tvx(iv, time1 - 1, time2 + 1, init / (1 + rate(iv, time2)))
     else
         return init
     end

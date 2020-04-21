@@ -43,7 +43,7 @@ end
         @test 1/(1.05) == v(i1)
         @test 1/(1.05) == vx(i1,1)
         @test 1/(1.05^2) == tvx(i1,2,1)
-        @test .05 == i(i1,1)
+        @test .05 == rate(i1,1)
     end
 
     ## vector interest rate
@@ -69,7 +69,10 @@ end
         i4 = InterestRate((x -> rand(Normal(0.05,0.01))))
         # auto-correlated interest rate
         i5 = InterestRate(
-                time -> time <= 1 ? 0.05 : rand( Normal(last(i5.rate_vector),0.01))
+                time -> time <= 1 ? 0.05 : rand( Normal(
+                                                last(i5.rate_vector),
+                                                0.01)
+                                                )
             )
 
         @test v(i4) > 0
