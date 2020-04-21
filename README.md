@@ -1,7 +1,6 @@
 # ActuarialScience -  v0.1.1
 ## A new actuarial modeling library
 
-#### Code Review: [![Build Status](https://travis-ci.org/alecloudenback/ActuarialScience.jl.svg?branch=master)](https://travis-ci.org/alecloudenback/ActuarialScience.jl) [![Coverage Status](https://coveralls.io/repos/github/alecloudenback/ActuarialScience.jl/badge.svg?branch=master)](https://coveralls.io/github/alecloudenback/ActuarialScience.jl?branch=master) [![codecov.io](http://codecov.io/github/alecloudenback/ActuarialScience.jl/coverage.svg?branch=master)](http://codecov.io/github/alecloudenback/ActuarialScience.jl?branch=master)
 #### Code Review: [![Build Status](https://travis-ci.org/JuliaActuary/ActuarialScience.jl.svg?branch=master)](https://travis-ci.org/JuliaActuary/ActuarialScience.jl) [![Coverage Status](https://coveralls.io/repos/github/JuliaActuary/ActuarialScience.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaActuary/ActuarialScience.jl?branch=master) [![codecov.io](http://codecov.io/github/JuliaActuary/ActuarialScience.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaActuary/ActuarialScience.jl?branch=master)
 
 A library to bring actuarial science to Julia.
