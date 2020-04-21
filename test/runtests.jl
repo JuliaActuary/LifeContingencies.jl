@@ -1,35 +1,10 @@
 using ActuarialScience
 using Test
-using Distributions
+import Distributions: Normal
+using MortalityTables
 
-# assumes embedded 'testMort' table
-t = MortalityTable(maleMort)
-@testset "mortality" begin
-    @testset "single life" begin
-        @test 0.00699 ≈ qx(t,0)
-        @test qx(t,0) ≈ 1 - px(t,0)
-        @test 0.000447 ≈ qx(t,1)
-        @test 1000.0 == lx(t,0)
-        @test 993.010 ≈ lx(t,1)
-        @test 1000.0-1000*qx(t,0) ≈ lx(t,1)
-        @test 992.5661245 ≈ lx(t,2)
-        @test 120 == w(t)
-        @test 0 == dx(t,150)
-        @test 6.99 ≈ dx(t,0)
-        @test 76.8982069 ≈ ex(t,0)
-        @test tpx(t,15,3) >= tpx(t,15,4)
-        @test tqx(t,16,2) >= tqx(t,15,2)
-        @test 0 <= ex(t,15)
-        @test 0.003664839851 ≈ tpx(t,22,80)
-    end
-
-    @testset "joint life" begin
-        @test tqxy(t,t,0,0,1) ≈ 0.0000488601000
-        @test tqxy(t,t,0,0,2) ≈ 0.0000064027173
-        @test tqxy(t,t,0,1,1) ≈ 0.0000031245300
-        @test tqx̅y̅(t,t,0,0,1) ≈ 0.0000488601000
-    end
-end
+# assumes embedded 'testMort' table in combination with MortalityTables
+t = UltimateMortality(maleMort)
 
 ################
 # Interest Rates
@@ -85,7 +60,28 @@ end
 ## Insurance
 @testset "Insurance" begin
     i = InterestRate(.05)
-    ins = LifeInsurance(t,i)
+    ins = LifeContingency(t,i,0)
+
+    @test lx(ins,0) ≈ 1.0
+    @test lx(ins,1) ≈ 0.993010000000000
+    @test lx(ins,2) ≈ 0.992566124530000
+
+    @test Dx(ins,0) ≈ 1.0
+    @test Dx(ins,1) ≈ 0.945723809523809
+    @test Dx(ins,2) ≈ 0.900286734267574
+
+    @test Nx(ins,0) ≈ 20.113017073119200
+    @test Nx(ins,1) ≈ 19.113017073119200
+    @test Nx(ins,2) ≈ 18.167293263595400
+
+    @test Cx(ins,0) ≈ 0.006657142857142910
+    @test Cx(ins,1) ≈ 0.000402608136054441
+    @test Cx(ins,2) ≈ 0.000258082197156658
+
+    @test Mx(ins,0) ≈ 0.0422372822324182
+    @test Mx(ins,1) ≈ 0.0355801393752753
+    @test Mx(ins,2) ≈ 0.0351775312392208
+
     @test  Ax(ins,0) ≈ 0.04223728223
 
     @test  Axn(ins,26,1) ≈ 0.001299047619
