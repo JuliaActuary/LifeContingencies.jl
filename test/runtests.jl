@@ -38,7 +38,7 @@ end
 
     ## functional interest rate
     @testset "functional interest rate" begin
-        i1 = InterestRate((x -> .05))
+        i1 = InterestRate(time -> .05)
 
         @test 1/(1.05) == v(i1)
         @test 1/(1.05) == vx(i1,1)
@@ -67,7 +67,10 @@ end
     ## Stochastic interest rate
     @testset "stochastic interest rate" begin
         i4 = InterestRate((x -> rand(Normal(0.05,0.01))))
-        i5 = InterestRate((x -> rand(Normal(i(i5,-1),0.01))), .05)
+        # auto-correlated interest rate
+        i5 = InterestRate(
+                time -> time <= 1 ? 0.05 : rand( Normal(last(i5.rate_vector),0.01))
+            )
 
         @test v(i4) > 0
         @test v(i5) > 0
