@@ -1,5 +1,7 @@
 module ActuarialScience
 using MortalityTables
+using Transducers
+
 const mt = MortalityTables
 
 export maleMort, femaleMort,
@@ -63,16 +65,15 @@ end
 
 function Nx(lc::LifeContingency,x)
         range =x:ω(lc,x;fromlast=0)
-        # TODO can this next line be broadcast instead of mapped?
-    return sum(map(y -> Dx(lc,y),range))
+    return reduce(+, Map(x -> Dx(lc,x)), range)
 
 end
 
 function Mx(lc::LifeContingency,x)
-
     range =  x:ω(lc,x;fromlast=1)
-    return sum(map((x -> Cx(lc,x)),range))
+    return reduce(+, Map(x -> Cx(lc,x)), range)
 end
+
 tEx(lc::LifeContingency,t,x) = Dx(x+t) / Dx(x)
 
 
