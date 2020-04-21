@@ -43,7 +43,7 @@ include("decrement.jl")
 # 'actuarial objects' that combine multiple forms of decrements (lapse, interest, death, etc)
 abstract type AbstractActuarial end
 
-mutable struct LifeContingency
+struct LifeContingency
     mort
     int::InterestRate
     issue_age::Int
