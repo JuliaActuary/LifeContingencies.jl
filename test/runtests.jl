@@ -4,6 +4,7 @@ import Distributions: Normal
 using MortalityTables
 
 # assumes embedded 'testMort' table in combination with MortalityTables
+include("test_mortality.jl")
 t = UltimateMortality(maleMort)
 
 ################
