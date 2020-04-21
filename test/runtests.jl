@@ -86,5 +86,3 @@ end
     @test Ax(ins, 26) ≈ 0.1082172434
     @test äx(ins, 26) >= 0.0
 end
-
-## TODO: more robust tests because current calculations are probably off
