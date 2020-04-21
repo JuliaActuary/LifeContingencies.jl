@@ -4,15 +4,32 @@ using Transducers
 
 const mt = MortalityTables
 
-export  LifeContingency,
-        qx,px, tpx, tqx,
-        tqxy,tpxy, tqx̅y̅, tpx̅y̅,
-        lx, dx, ex,
-        ixVector,
-        InterestRate,
-        rate,vx,tvx,v,
-        Ax, Axn, äx,äxn,
-        Dx, Mx, Nx, Cx
+export LifeContingency,
+    qx,
+    px,
+    tpx,
+    tqx,
+    tqxy,
+    tpxy,
+    tqx̅y̅,
+    tpx̅y̅,
+    lx,
+    dx,
+    ex,
+    ixVector,
+    InterestRate,
+    rate,
+    vx,
+    tvx,
+    v,
+    Ax,
+    Axn,
+    äx,
+    äxn,
+    Dx,
+    Mx,
+    Nx,
+    Cx
 
 
 

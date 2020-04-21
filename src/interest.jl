@@ -29,25 +29,25 @@ end
 
 # constructor with (any) argument assumes a function that will produce an interest rate
 function InterestRate(f)
-    FunctionalInterestRate(Vector{Float64}(undef, 0),f)
+    FunctionalInterestRate(Vector{Float64}(undef, 0), f)
 end
 
 # the interst during time x
-function rate(i::ConstantInterestRate,time)
+function rate(i::ConstantInterestRate, time)
     return i.rate
 end
 
-function rate(i::FunctionalInterestRate{F},time) where {F}
+function rate(i::FunctionalInterestRate{F}, time) where {F}
     if time <= lastindex(i.rate_vector)
         return i.rate_vector[time]
     else
         rate = i.rate_function(time)
-        push!(i.rate_vector,rate)
+        push!(i.rate_vector, rate)
         return rate
     end
 end
 
-function rate(i::VectorInterestRate,time)
+function rate(i::VectorInterestRate, time)
     return i.rate_vector[time]
 end
 
@@ -55,7 +55,7 @@ end
 The discount rate from `time1` to `time2` with the initial (time zero)
 discount factor of `1.0`. Currentlu only supports whole years.
 """
-function tvx(iv::InterestRate,time1,time2, init=1.0)
+function tvx(iv::InterestRate, time1, time2, init = 1.0)
     if time1 > 0
         return tvx(iv, time1 - 1, time2 + 1, init / (1 + rate(iv, time2)))
     else
@@ -72,7 +72,7 @@ function omega(i::VectorInterestRate)
     return lastindex(i.i)
 end
 
-function omega(i::FunctionalInterestRate{F}) where F
+function omega(i::FunctionalInterestRate{F}) where {F}
     return Inf
 end
 
@@ -84,10 +84,10 @@ end
 
 The discount rate at time `time`.
 """
-vx(i::InterestRate,time) = tvx(i,1,time,1.0)
+vx(i::InterestRate, time) = tvx(i, 1, time, 1.0)
 
 """
 
 The discount rate at time 1
 """
-v(i::InterestRate) = vx(i,1)
+v(i::InterestRate) = vx(i, 1)
