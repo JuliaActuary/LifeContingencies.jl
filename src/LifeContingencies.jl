@@ -49,10 +49,10 @@ struct LifeContingency
     issue_age::Int
 end
 
-function ω(lc::LifeContingency, x; fromlast = 0)
+function ω(lc::LifeContingency)
     # if one of the omegas is infinity, that's a Float so we need
     # to narrow the type with Int
-    return Int(min(mt.ω(lc.mort, lc.issue_age), ω(lc.int)) - fromlast)
+    return Int(min(mt.ω(lc.mort, lc.issue_age), ω(lc.int)))
 end
 
 ###################
@@ -78,13 +78,13 @@ function Cx(lc::LifeContingency, duration)
 end
 
 function Nx(lc::LifeContingency, x)
-    range = x:ω(lc, x; fromlast = 0)
+    range = x:ω(lc)
     return reduce(+, Map(x -> Dx(lc, x)), range)
 
 end
 
 function Mx(lc::LifeContingency, x)
-    range = x:ω(lc, x; fromlast = 1)
+    range = x:(ω(lc)-1)
     return reduce(+, Map(x -> Cx(lc, x)), range)
 end
 
