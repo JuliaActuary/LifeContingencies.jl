@@ -9,7 +9,7 @@ MortalityTables = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"
 Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
 
 [compat]
-MortalityTables = "^0.5.1"
+MortalityTables = "^0.5"
 Transducers = "^0.4"
 julia = "^1.3"
 
