@@ -44,15 +44,15 @@ uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 version = "1.0.0"
 
 [[DataAPI]]
-git-tree-sha1 = "674b67f344687a88310213ddfa8a2b3c76cc4252"
+git-tree-sha1 = "00612b2fbe534a539dc7f70106c71e3a943d9b98"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
-version = "1.1.0"
+version = "1.2.0"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "4dead20a1606a60292529023d6eac18a1ef6432e"
+git-tree-sha1 = "9faa13be79557bf4c5713fb912b0e3c5aa33d046"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.17.12"
+version = "0.17.13"
 
 [[DataValueInterfaces]]
 git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
@@ -153,9 +153,11 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[MortalityTables]]
 deps = ["DataStructures", "ProgressMeter", "XMLDict"]
-path = "C:\\Users\\alecl\\.julia\\dev\\MortalityTables"
+git-tree-sha1 = "9519bb131bfdc8178fb75f74658c5e50dd2c8285"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaActuary/MortalityTables.jl.git"
 uuid = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"
-version = "0.5.1"
+version = "0.6.0"
 
 [[OpenBLAS_jll]]
 deps = ["CompilerSupportLibraries_jll", "Libdl", "Pkg"]
