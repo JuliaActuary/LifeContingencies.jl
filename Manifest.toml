@@ -153,9 +153,9 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[MortalityTables]]
 deps = ["DataStructures", "ProgressMeter", "XMLDict"]
-git-tree-sha1 = "d90744387235898024b855453c52784ce5347072"
+path = "C:\\Users\\alecl\\.julia\\dev\\MortalityTables"
 uuid = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"
-version = "0.5.0"
+version = "0.5.1"
 
 [[OpenBLAS_jll]]
 deps = ["CompilerSupportLibraries_jll", "Libdl", "Pkg"]

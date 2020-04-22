@@ -44,7 +44,7 @@ abstract type AbstractActuarial end
 
 
 """
-    struct LifeContingency 
+    struct LifeContingency
         mort
         int::InterestRate
         issue_age::Int
@@ -64,7 +64,7 @@ An object containing the necessary assumptions for basic actuarial calculations 
         0                       # issue age
     )
 """
-struct LifeContingency 
+struct LifeContingency
     mort
     int::InterestRate
     issue_age::Int
@@ -126,7 +126,7 @@ end
 The ``N_x`` actuarial commutation function where the `duration` argument is `x`.
 """
 function Nx(lc::LifeContingency, x)
-    range = x:ω(lc)
+    range = x:(ω(lc) - lc.issue_age)
     return reduce(+, Map(x -> Dx(lc, x)), range)
 
 end
@@ -137,7 +137,7 @@ end
 The ``M_x`` actuarial commutation function where the `duration` argument is `x`.
 """
 function Mx(lc::LifeContingency, x)
-    range = x:(ω(lc)-1)
+    range = x:(ω(lc) - lc.issue_age)
     return reduce(+, Map(x -> Cx(lc, x)), range)
 end
 
@@ -166,7 +166,7 @@ Ax(lc::LifeContingency, x) = Mx(lc, x) / Dx(lc, x)
 
 Life annuity due for someone starting in the `x`th duration.
 
-To enter the `ä` character, type `a` and then `\\ddot`. 
+To enter the `ä` character, type `a` and then `\\ddot`.
     See more on how to [input unicode](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
     in Julia.
 
@@ -178,7 +178,7 @@ To enter the `ä` character, type `a` and then `\\ddot`.
 
 Life annuity due for someone starting in the `x`th duration for `n` years.
 
-To enter the `ä` character, type `a` and then `\\ddot`. 
+To enter the `ä` character, type `a` and then `\\ddot`.
     See more on how to [input unicode](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
     in Julia.
 
