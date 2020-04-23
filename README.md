@@ -124,3 +124,10 @@ end
 display(plt)
 ```
 ![Comparison of three different mortality tables' effect on insurance cost](https://user-images.githubusercontent.com/711879/79941879-032d9300-842b-11ea-8427-a7dd36fbf2a6.png)
+
+
+## References
+
+- Life Insurance Mathematics, Gerber
+- [Actuarial Mathematics and Life-Table Statistics, Slud](http://www2.math.umd.edu/~slud/s470/BookChaps/Chp6.pdf)
+- [Commutation Functions, MacDonald](http://www.macs.hw.ac.uk/~angus/papers/eas_offprints/commfunc.pdf)
