@@ -7,7 +7,7 @@
 LifeContingencies is a package enabling actuarial life contingent calculations.
 The benefits are:
 
-- Integration with other JuliaActuary packages such as [MortalityTables](https://github.com/JuliaActuary/MortalityTables.jl)
+- Integration with other JuliaActuary packages such as [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl)
 - Fast calculations, with some parts utilizing parallel processing power automatically
 - Use functions that look more like the math you are used to (e.g. `Ax`, `ä`)
 with [Unicode support](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
@@ -16,7 +16,7 @@ with [Unicode support](https://docs.julialang.org/en/v1/manual/unicode-input/ind
 
 ## Package Overview
 
-- Leverages [MortalityTables](https://github.com/JuliaActuary/MortalityTables.jl) for
+- Leverages [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl) for
 the mortality calculations
 - Contains common insurance calculations such as:
     - `Ax`: Whole life
