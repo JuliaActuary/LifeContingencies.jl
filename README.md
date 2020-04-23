@@ -1,5 +1,8 @@
 # LifeContingencies.jl
 
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaActuary.github.io/LifeContingencies.jl/stable/) 
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaActuary.github.io/ActuaryUtilities.jl/dev/)
+
 LifeContingencies is a package enabling actuarial life contingent calculations.
 The benefits are:
 
@@ -21,7 +24,7 @@ the mortality calculations
     - `äxn`: Life contingent annuity due for `n` years
 - Contains various commutaion functions such as `Dx`,`Mx`,`Cx`, etc.
 - Various interest rate mechanics (e.g. stochastic, constant, etc.)
-- API documentation available soon™
+- More documentation available by clicking the DOCS bages at the top of this README
 
 ## Examples
 
