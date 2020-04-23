@@ -34,7 +34,6 @@ export LifeContingency,
 
 
 include("interest.jl")
-include("decrement.jl")
 
 
 
