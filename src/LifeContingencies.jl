@@ -29,7 +29,9 @@ export LifeContingency,
     Dx,
     Mx,
     Nx,
-    Cx
+    Cx,
+    Px,
+    tVx
 
 
 
@@ -183,5 +185,20 @@ To enter the `ä` character, type `a` and then `\\ddot`.
 
 """
 äxn(lc::LifeContingency, x, n) = (Nx(lc, x) - Nx(lc, x + n)) / Dx(lc, x)
+
+"""
+    Px(lc::LifeContingency,x)
+
+A whole life insurance with 1 unit payable at the end of the year of death,
+and payable by net annual premiums, starting from time `x` (often `0`).
+"""
+Px(lc::LifeContingency, x) = Ax(lc, x) / äx(lc, x)
+
+"""
+    tVx(lc::LifeContingency,x,k)
+
+The net premium reserve at the end of year `t`, starting from time `x` (often `0`).
+"""
+tVx(lc::LifeContingency, x, k) = Ax(lc, x + k) - Px(lc, x) * äx(lc, x + k)
 
 end # module
