@@ -4,12 +4,10 @@ authors = ["Alec Loudenback"]
 version = "0.3.0"
 
 [deps]
-Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 MortalityTables = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"
 Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
 
 [compat]
-Distributions = "0.23"
 MortalityTables = "^0.6"
 Transducers = "^0.4"
 julia = "^1.3"
