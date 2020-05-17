@@ -52,7 +52,8 @@ abstract type AbstractActuarial end
     end
 
 An object containing the necessary assumptions for basic actuarial calculations such
-    as commutation functions or life insurance/annuity rates.
+    as commutation functions or life insurance/annuity rates. Issue age is defined so that select 
+    mortality rates can be accommodated and so many other calculations need only duration specified.
 
 # Examples
     using MortalityTables
@@ -126,9 +127,9 @@ end
 
 The ``N_x`` actuarial commutation function where the `duration` argument is `x`.
 """
-function Nx(lc::LifeContingency, x)
-    range = x:(ω(lc) - lc.issue_age)
-    return reduce(+, Map(x -> Dx(lc, x)), range)
+function Nx(lc::LifeContingency, duration)
+    range = duration:(ω(lc) - lc.issue_age)
+    return reduce(+, Map(duration -> Dx(lc, duration)), range)
 
 end
 
@@ -137,9 +138,9 @@ end
 
 The ``M_x`` actuarial commutation function where the `duration` argument is `x`.
 """
-function Mx(lc::LifeContingency, x)
-    range = x:(ω(lc) - lc.issue_age)
-    return reduce(+, Map(x -> Cx(lc, x)), range)
+function Mx(lc::LifeContingency, duration)
+    range = duration:(ω(lc) - lc.issue_age)
+    return reduce(+, Map(duration -> Cx(lc, duration)), range)
 end
 
 tEx(lc::LifeContingency, t, x) = Dx(x + t) / Dx(x)
