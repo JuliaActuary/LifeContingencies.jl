@@ -19,11 +19,11 @@ with [Unicode support](https://docs.julialang.org/en/v1/manual/unicode-input/ind
 - Leverages [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl) for
 the mortality calculations
 - Contains common insurance calculations such as:
-    - `Ax`: Whole life
-    - `Axn`: Term life for `n` years
-    - `äx`: Life contingent annuity due
-    - `äxn`: Life contingent annuity due for `n` years
-- Contains various commutaion functions such as `Dx`,`Mx`,`Cx`, etc.
+    - `A(x)`: Whole life
+    - `A(x,n)`: Term life for `n` years
+    - `ä(x)`: Life contingent annuity due
+    - `ä(x,n)`: Life contingent annuity due for `n` years
+- Contains various commutaion functions such as `D(x)`,`M(x)`,`C(x)`, etc.
 - Various interest rate mechanics (e.g. stochastic, constant, etc.)
 - More documentation available by clicking the DOCS bages at the top of this README
 
@@ -45,7 +45,7 @@ l = LifeContingency(
     )
 
 start_time = 0
-Ax(l,start_time) # 0.111...
+A(l,start_time) # 0.111...
 ```
 
 Use a stochastic interest rate calculation to price a term policy:
@@ -70,7 +70,7 @@ l = LifeContingency(
 
 start_time = 0
 term = 10
-Axn(l,start_time,term) # somewhere around 0.055
+A(l,start_time,term) # somewhere around 0.055
 ```
 
 You can use autocorrelated interest rates - substitute the following in the prior example
@@ -115,7 +115,7 @@ whole_life_costs = map(tables) do t
             ia
             )
 
-        Ax(lc,0) / äx(lc,0)
+        A(lc,0) / ä(lc,0)
 
     end
 end
