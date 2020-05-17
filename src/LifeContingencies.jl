@@ -1,37 +1,28 @@
 module LifeContingencies
+
 using MortalityTables
 using Transducers
 
 const mt = MortalityTables
 
 export LifeContingency,
-    qx,
-    px,
-    tpx,
-    tqx,
-    tqxy,
-    tpxy,
-    tqx̅y̅,
-    tpx̅y̅,
-    lx,
-    dx,
-    ex,
-    ixVector,
+    l,
     InterestRate,
     rate,
-    vx,
-    tvx,
     v,
-    Ax,
-    Axn,
-    äx,
-    äxn,
-    Dx,
-    Mx,
-    Nx,
-    Cx,
-    Px,
-    tVx
+    A,
+    ä,
+    D,
+    M,
+    N,
+    C,
+    P,
+    V,
+    disc,
+    reserve_net_premium,
+    insurance,
+    annuity_due,
+    net_premium_annual
 
 
 
@@ -52,7 +43,8 @@ abstract type AbstractActuarial end
     end
 
 An object containing the necessary assumptions for basic actuarial calculations such
-    as commutation functions or life insurance/annuity rates.
+    as commutation functions or life insurance/annuity rates. Issue age is defined so that select 
+    mortality rates can be accommodated and so many other calculations need only duration specified.
 
 # Examples
     using MortalityTables
@@ -89,20 +81,22 @@ end
 ###################
 
 """
-    Dx(lc::LifeContingency, duration)
+    D(lc::LifeContingency, duration)
 
 The ``D_x`` actuarial commutation function where the `duration` argument is `x`.
+Issue age is based on the issue_age in the LifeContingency `lc`.
 """
-function Dx(lc::LifeContingency, duration)
-    tvx(lc.int, duration, 1) * p(lc.mort, lc.issue_age, 1, duration)
+function D(lc::LifeContingency, duration)
+    v(lc.int, duration, 1) * p(lc.mort, lc.issue_age, 1, duration)
 end
 
 """
-    lx(lc::LifeContingency, duration)
+    l(lc::LifeContingency, duration)
 
 The ``l_x`` actuarial commutation function where the `duration` argument is `x`.
+Issue age is based on the issue_age in the LifeContingency `lc`.
 """
-function lx(lc::LifeContingency, duration)
+function l(lc::LifeContingency, duration)
     if duration == 0
         return 1.0
     else
@@ -111,38 +105,42 @@ function lx(lc::LifeContingency, duration)
 end
 
 """
-    Cx(lc::LifeContingency, duration)
+    C(lc::LifeContingency, duration)
 
 The ``C_x`` actuarial commutation function where the `duration` argument is `x`.
+Issue age is based on the issue_age in the LifeContingency `lc`.
 """
-function Cx(lc::LifeContingency, duration)
-    tvx(lc.int, duration + 1, 1) *
+function C(lc::LifeContingency, duration)
+    v(lc.int, duration + 1, 1) *
     q(lc.mort, lc.issue_age, duration + 1) *
-    lx(lc, duration)
+    l(lc, duration)
 end
 
 """
-    Nx(lc::LifeContingency, duration)
+    N(lc::LifeContingency, duration)
 
 The ``N_x`` actuarial commutation function where the `duration` argument is `x`.
+Issue age is based on the issue_age in the LifeContingency `lc`.
 """
-function Nx(lc::LifeContingency, x)
-    range = x:(ω(lc) - lc.issue_age)
-    return reduce(+, Map(x -> Dx(lc, x)), range)
+function N(lc::LifeContingency, duration)
+    range = duration:(ω(lc) - lc.issue_age)
+    return reduce(+, Map(duration->D(lc, duration)), range)
 
 end
 
 """
-    Mx(lc::LifeContingency, duration)
+    M(lc::LifeContingency, duration)
 
 The ``M_x`` actuarial commutation function where the `duration` argument is `x`.
+Issue age is based on the issue_age in the LifeContingency `lc`.
 """
-function Mx(lc::LifeContingency, x)
-    range = x:(ω(lc) - lc.issue_age)
-    return reduce(+, Map(x -> Cx(lc, x)), range)
+function M(lc::LifeContingency, duration)
+    range = duration:(ω(lc) - lc.issue_age)
+    return reduce(+, Map(duration->C(lc, duration)), range)
 end
 
-tEx(lc::LifeContingency, t, x) = Dx(x + t) / Dx(x)
+
+E(lc::LifeContingency, t, x) = D(x + t) / D(x)
 
 
 ##################
@@ -150,32 +148,35 @@ tEx(lc::LifeContingency, t, x) = Dx(x + t) / Dx(x)
 ##################
 
 """
-    Axn(lc::LifeContingency, x, n)
+    A(lc::LifeContingency, x, n)
 
-Term insurance on age x for n years for someone starting in the `x`th duration.
+Term insurance for n years for someone starting in the `x`th duration.
+Issue age is based on the issue_age in the LifeContingency `lc`.
 """
-Axn(lc::LifeContingency, x, n) = (Mx(lc, x) - Mx(lc, x + n)) / Dx(lc, x)
+A(lc::LifeContingency, x, n) = (M(lc, x) - M(lc, x + n)) / D(lc, x)
 
 """
-Ax(lc::LifeContingency, x)
+A(lc::LifeContingency, x)
 Whole life insurance for someone starting in the `x`th duration.
+Issue age is based on the issue_age in the LifeContingency `lc`.
 """
-Ax(lc::LifeContingency, x) = Mx(lc, x) / Dx(lc, x)
+A(lc::LifeContingency, x) = M(lc, x) / D(lc, x)
 
 """
-    äx(lc::LifeContingency, x)
+    ä(lc::LifeContingency, x)
 
 Life annuity due for someone starting in the `x`th duration.
+Issue age is based on the issue_age in the LifeContingency `lc`.
 
 To enter the `ä` character, type `a` and then `\\ddot`.
     See more on how to [input unicode](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
     in Julia.
 
 """
-äx(lc::LifeContingency, x) = Nx(lc, x) / Dx(lc, x)
+ä(lc::LifeContingency, x) = N(lc, x) / D(lc, x)
 
 """
-    äx(lc::LifeContingency, x,n)
+    ä(lc::LifeContingency, x,n)
 
 Life annuity due for someone starting in the `x`th duration for `n` years.
 
@@ -184,21 +185,29 @@ To enter the `ä` character, type `a` and then `\\ddot`.
     in Julia.
 
 """
-äxn(lc::LifeContingency, x, n) = (Nx(lc, x) - Nx(lc, x + n)) / Dx(lc, x)
+ä(lc::LifeContingency, x, n) = (N(lc, x) - N(lc, x + n)) / D(lc, x)
 
 """
-    Px(lc::LifeContingency,x)
+    P(lc::LifeContingency,x)
 
 A whole life insurance with 1 unit payable at the end of the year of death,
 and payable by net annual premiums, starting from time `x` (often `0`).
 """
-Px(lc::LifeContingency, x) = Ax(lc, x) / äx(lc, x)
+P(lc::LifeContingency, x) = A(lc, x) / ä(lc, x)
 
 """
-    tVx(lc::LifeContingency,x,k)
+    V(lc::LifeContingency,t,x=0)
 
 The net premium reserve at the end of year `t`, starting from time `x` (often `0`).
 """
-tVx(lc::LifeContingency, x, k) = Ax(lc, x + k) - Px(lc, x) * äx(lc, x + k)
+V(lc::LifeContingency, t,x = 0) = A(lc, x + t) - P(lc, x) * ä(lc, x + t)
+
+# aliases
+disc = v
+reserve_net_premium = V
+insurance = A
+annuity_due = ä
+net_premium_annual = P
+
 
 end # module
