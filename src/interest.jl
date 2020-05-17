@@ -116,13 +116,13 @@ function rate(i::VectorInterestRate, time)
 end
 
 """
-    tvx(iv::InterestRate, time1, time2, init = 1.0)
+    v(iv::InterestRate, time1, time2, init = 1.0)
 The discount rate from `time1` to `time2` with the initial (time zero)
 discount factor of `1.0`. Currently only supports whole years.
 """
-function tvx(iv::InterestRate, time1, time2, init = 1.0)
+function v(iv::InterestRate, time1, time2, init = 1.0)
     if time1 > 0
-        return tvx(iv, time1 - 1, time2 + 1, init / (1 + rate(iv, time2)))
+        return v(iv, time1 - 1, time2 + 1, init / (1 + rate(iv, time2)))
     else
         return init
     end
@@ -153,13 +153,13 @@ end
 ### Convienence functions
 
 """
-    vx(i::InterestRate, time)    
+    v(i::InterestRate, time)    
 The discount rate at time `time`.
 """
-vx(i::InterestRate, time) = tvx(i, 1, time, 1.0)
+v(i::InterestRate, time) = v(i, 1, time, 1.0)
 
 """
     v(i::InterestRate)
 The discount rate at time `1`.
 """
-v(i::InterestRate) = vx(i, 1)
+v(i::InterestRate) =  v(i, 1)
