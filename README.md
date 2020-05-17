@@ -1,7 +1,7 @@
 # LifeContingencies.jl
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaActuary.github.io/LifeContingencies.jl/stable/) 
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaActuary.github.io/ActuaryUtilities.jl/dev/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaActuary.github.io/LifeContingencies.jl/dev/)
 ![](https://github.com/JuliaActuary/LifeContingencies.jl/workflows/CI/badge.svg)
 
 LifeContingencies is a package enabling actuarial life contingent calculations.
