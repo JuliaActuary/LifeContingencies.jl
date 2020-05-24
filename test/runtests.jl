@@ -59,7 +59,7 @@ end
 @testset "Insurance" begin
     @testset "demo mortality" begin
         i = InterestRate(0.05)
-        ins = LifeContingency(t, i, 0)
+        ins = LifeContingency(SingleLife(mort=t,issue_age=0), i)
 
         @test l(ins, 0) ≈ 1.0
         @test l(ins, 1) ≈ 0.993010000000000
@@ -97,8 +97,7 @@ end
         @testset "issue age 116" begin
             t = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
             i = InterestRate(0.05)
-            issue_age = 116
-            ins = LifeContingency(t.select, i, issue_age)
+            ins = LifeContingency(SingleLife(mort=t.select,issue_age=116), i)
 
 
             @test l(ins, 0) ≈ 1.0
@@ -132,8 +131,7 @@ end
         @testset "issue age 30" begin
             t = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
             i = InterestRate(0.05)
-            issue_age = 30
-            ins = LifeContingency(t.select, i, issue_age)
+            ins = LifeContingency(SingleLife(mort=t.select,issue_age=30), i)
 
 
             @test l(ins, 0) ≈ 1.0

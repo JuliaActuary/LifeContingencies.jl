@@ -129,26 +129,25 @@ function v(iv::InterestRate, time1, time2, init = 1.0)
 end
 
 """ 
-    omega(i::InterestRate)
+    ω(i::InterestRate)
 
 The last period that the interest rate is defined for. Assumed to be infinite (`Inf`) for 
     functional and constant interest rate types. Returns the `lastindex` of the vector if 
-    a vector type. Also callable using `ω` instead of `omega`.
+    a vector type. Also callable using `omega` instead of `ω`.
 
 """
-function omega(i::ConstantInterestRate)
+function mt.ω(i::ConstantInterestRate)
     return Inf
 end
 
-function omega(i::VectorInterestRate)
+function mt.ω(i::VectorInterestRate)
     return lastindex(i.i)
 end
 
-function omega(i::FunctionalInterestRate{F}) where {F}
+function mt.ω(i::FunctionalInterestRate{F}) where {F}
     return Inf
 end
 
-ω(i::InterestRate) = omega(i)
 
 ### Convienence functions
 
