@@ -25,6 +25,7 @@ export LifeContingency,
     net_premium_annual,
     q,p,
     SingleLife, Frasier, JointLife,
+    LastSurvivor,
     omega, ω
 
 
@@ -81,6 +82,10 @@ struct JointLife <: Life
     lives::Tuple{SingleLife,SingleLife}
     insurance::JointInsurance
     joint_assumption::JointAssumption
+end
+
+function JointLife(l1::SingleLife, l2::SingleLife,ins::JointInsurance,ja::JointAssumption)
+    return JointLife((l1,l2),ins,ja)
 end
 
 struct LifeContingency
@@ -275,8 +280,11 @@ mt.q(::SingleLife,lc::LifeContingency,duration,time) = q(lc.life,duration,time)
 mt.q(l::SingleLife,duration,time) = q(l.mort,l.issue_age,duration,time)
 mt.q(l::SingleLife,duration) = q(l.mort,l.issue_age,duration,1)
 
-function mt.q(l::JointLife,ins::LastSurvivor,assump::JointAssumption,duration,time) 
-    return 1 - p(l,ins,assump,duration,time) 
+function mt.q(l::JointLife,duration,time) 
+    return 1 - p(l,duration,time) 
+end
+function mt.q(l::JointLife,duration) 
+    return q(l::JointLife,1,duration) 
 end
 
 """
@@ -292,16 +300,19 @@ mt.p(::SingleLife,lc::LifeContingency,duration,time) = p(lc.life,duration,time)
 mt.p(l::SingleLife,duration,time) = p(l.mort,l.issue_age,duration,time)
 mt.p(l::SingleLife,duration) = p(l.mort,l.issue_age,duration,1)
 
-function mt.p(l::JointLife,ins::LastSurvivor,assump::JointAssumption,duration,time)
+function mt.p(l::JointLife,duration,time)
+    return mt.p(l.insurance,l.joint_assumption,l,duration,time)
+end
+function mt.p(ins::LastSurvivor,assump::JointAssumption,l::JointLife,duration,time)
     l1 = l.lives[1] 
     l2 = l.lives[1] 
-    ₜpₓ = p(l1,l1.issue_age,duration,time)
-    ₜpᵧ = p(l2,l2.issue_age,duration,time)
+    ₜpₓ = p(l1.mort,l1.issue_age,duration,time,l1.fractional_assump)
+    ₜpᵧ = p(l2.mort,l2.issue_age,duration,time,l2.fractional_assump)
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 
-function mt.p(l::JointLife,ins::LastSurvivor,assump::JointAssumption,duration)
-    return p(l,ins,assump,duration)
+function mt.p(l::JointLife,duration)
+    return p(l,1,duration)
 end
 
 # aliases
