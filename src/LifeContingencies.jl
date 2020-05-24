@@ -114,30 +114,30 @@ end
 ###################
 
 """
-    D(lc::LifeContingency, duration)
+    D(lc::LifeContingency, time)
 
-The ``D_x`` actuarial commutation function where the `duration` argument is `x`.
+The ``D_x`` actuarial commutation function where the `time` argument is `x`.
 Issue age is based on the issue_age in the LifeContingency `lc`.
 """
-function D(lc::LifeContingency, duration)
-    return D(lc.life,lc,duration)
+function D(lc::LifeContingency, time)
+    return D(lc.life,lc,time)
 end
 
-function D(::SingleLife,lc::LifeContingency, duration)
-    v(lc.int, duration, 1) * p(lc, lc.life.issue_age, 1, duration)
+function D(::SingleLife,lc::LifeContingency, time)
+    v(lc.int, time, 1) * p(lc, 1, time)
 end
 
 """
-    l(lc::LifeContingency, duration)
+    l(lc::LifeContingency, time)
 
-The ``l_x`` actuarial commutation function where the `duration` argument is `x`.
+The ``l_x`` actuarial commutation function where the `time` argument is `x`.
 Issue age is based on the issue_age in the LifeContingency `lc`.
 """
-function l(lc::LifeContingency, duration)
-    if duration == 0
+function l(lc::LifeContingency, time)
+    if time == 0
         return 1.0
     else
-        return p(lc.life, lc.life.issue_age, 1,duration)
+        return p(lc.life, 1,time)
     end
 end
 
@@ -153,7 +153,7 @@ end
 
 function C(::SingleLife,lc::LifeContingency, duration)
     v(lc.int, duration + 1, 1) *
-    mt.q(lc.life.mort, lc.life.issue_age, duration + 1) *
+    mt.q(lc.life, duration + 1) *
     l(lc, duration)
 end
 
@@ -263,37 +263,45 @@ function V(lc::LifeContingency, t,start_time = 0)
 end
 
 """
-    q(lc::LifeContingency,issue_age,duration,time=1)
-    q(lc::LifeContingency,issue_age,duration,time=1)
+    q(lc::LifeContingency,duration,time=1)
+    q(lc::LifeContingency,duration,time=1)
 
 Return the probablity of death for the given LifeContingency. 
 """
-mt.q(lc::LifeContingency,issue_age,duration,time=1) = q(lc.mort,issue_age,duration,time)
+mt.q(lc::LifeContingency,duration,time=1) = q(lc.life,lc,duration,time)
 
-mt.q(::SingleLife,lc::LifeContingency,issue_age,duration,time) = q(lc.life,issue_age,duration,time)
+mt.q(::SingleLife,lc::LifeContingency,duration,time) = q(lc.life,duration,time)
 
-mt.q(l::SingleLife,issue_age,duration,time=1) = mt.q(l.mort,issue_age,duration,time)
+mt.q(l::SingleLife,duration,time) = q(l.mort,l.issue_age,duration,time)
+mt.q(l::SingleLife,duration) = q(l.mort,l.issue_age,duration,1)
 
-function mt.q(l::JointLife,ins::LastSurvivor,assump::JointAssumption,issue_age,duration,time) 
-    return 1 - p(l,ins,assump,issue_age,duration,time) 
+function mt.q(l::JointLife,ins::LastSurvivor,assump::JointAssumption,duration,time) 
+    return 1 - p(l,ins,assump,duration,time) 
 end
 
 """
-    p(lc::LifeContingency,issue_age,duration,time=1)
-    p(lc::LifeContingency,issue_age,duration)
+    p(lc::LifeContingency,duration,time=1)
+    p(lc::LifeContingency,duration)
 
 Return the probablity of survival for the given LifeContingency. 
 """
-mt.p(lc::LifeContingency,issue_age,duration,time=1) = p(lc.life, lc, issue_age, duration, time)
+mt.p(lc::LifeContingency,duration,time=1) = p(lc.life, lc, duration, time)
 
-mt.p(::SingleLife,lc::LifeContingency,issue_age,duration,time) = p(lc.life,issue_age,duration,time)
+mt.p(::SingleLife,lc::LifeContingency,duration,time) = p(lc.life,duration,time)
 
-mt.p(l::SingleLife,issue_age,duration,time=1) = mt.p(l.mort,issue_age,duration,time)
+mt.p(l::SingleLife,duration,time) = p(l.mort,l.issue_age,duration,time)
+mt.p(l::SingleLife,duration) = p(l.mort,l.issue_age,duration,1)
 
-function mt.p(l::JointLife,ins::LastSurvivor,assump::JointAssumption,issue_age,duration,time) 
-    ₜpₓ = p(l.lives[1],issue_age[1],duration,time)
-    ₜpᵧ = p(l.lives[1],issue_age[2],duration,time)
+function mt.p(l::JointLife,ins::LastSurvivor,assump::JointAssumption,duration,time)
+    l1 = l.lives[1] 
+    l2 = l.lives[1] 
+    ₜpₓ = p(l1,l1.issue_age,duration,time)
+    ₜpᵧ = p(l2,l2.issue_age,duration,time)
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
+end
+
+function mt.p(l::JointLife,ins::LastSurvivor,assump::JointAssumption,duration)
+    return p(l,ins,assump,duration)
 end
 
 # aliases
