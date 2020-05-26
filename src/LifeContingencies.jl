@@ -284,7 +284,7 @@ function mt.q(l::JointLife,duration,time)
     return 1 - p(l,duration,time) 
 end
 function mt.q(l::JointLife,duration) 
-    return p(l::JointLife,1,duration-1) - p(l::JointLife,1,duration) 
+    return 1 -  p(l::JointLife,1,duration) / p(l::JointLife,1,duration-1)
 end
 
 """
@@ -305,8 +305,8 @@ function mt.p(l::JointLife,duration,time)
 end
 function mt.p(ins::LastSurvivor,assump::JointAssumption,l::JointLife,duration,time)
     l1,l2 = l.lives
-    ₜpₓ = p(l1.mort,l1.issue_age,duration,time,l1.fractional_assump)
-    ₜpᵧ = p(l2.mort,l2.issue_age,duration,time,l2.fractional_assump)
+    ₜpₓ = time == 0 ? 1.0 : p(l1.mort,l1.issue_age,duration,time,l1.fractional_assump)
+    ₜpᵧ = time == 0 ? 1.0 : p(l2.mort,l2.issue_age,duration,time,l2.fractional_assump)
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 
@@ -317,7 +317,11 @@ end
 # conditional on another life. Here we have to use the whole surivaval
 # stream to calculate a mortality at a given point
 function mt.p(l::JointLife,duration)
-    return   1 - q(l,duration)
+    if duration == 0
+        return 1.0
+    else
+        return   1 - q(l,duration)
+    end
 end
 
 # aliases
