@@ -23,8 +23,16 @@
             l2 = SingleLife(mort = m2, issue_age = 60)
 
             jl = JointLife(l1, l2, LastSurvivor(), Frasier())
-
-            @test isapprox(p(jl, 1, 2), 0.9997, atol = 1e-4)
+            
+            @test isapprox( p(jl, 1, 2) , 0.9997, atol = 1e-4)
+            
+            
+            ins = LifeContingency(jl,InterestRate(0.05))
+            ins_l1 = LifeContingency(jl.lives[1],InterestRate(0.05))
+            ins_l2 = LifeContingency(jl.lives[2],InterestRate(0.05))
+            # problem 9.1.f
+            @test isapprox( ä(ins,5)     , 4.5437, atol = 1e-4)
+            @test isapprox( A(ins)     , A(ins_l1) + A(ins_l2) - A(ins_l1) * A(ins_l2) )
 
 
         end
