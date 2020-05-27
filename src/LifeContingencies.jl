@@ -73,18 +73,18 @@ abstract type JointAssumption end
 
 struct Frasier <: JointAssumption end
 
-abstract type JointInsurance end
+abstract type Contingency end
 
-struct LastSurvivor <: JointInsurance end
-struct FirstToDie <: JointInsurance end
+struct LastSurvivor <: Contingency end
+struct FirstToDie <: Contingency end
 
 struct JointLife <: Life
     lives::Tuple{SingleLife,SingleLife}
-    insurance::JointInsurance
+    contingency::Contingency
     joint_assumption::JointAssumption
 end
 
-function JointLife(l1::SingleLife, l2::SingleLife,ins::JointInsurance,ja::JointAssumption)
+function JointLife(l1::SingleLife, l2::SingleLife,ins::Contingency,ja::JointAssumption)
     return JointLife((l1,l2),ins,ja)
 end
 
@@ -210,15 +210,26 @@ A(lc::LifeContingency, duration, time) = A(lc.life,lc,duration,time)
 function A(::SingleLife,lc::LifeContingency, duration, time) 
     return (M(lc, duration) - M(lc, duration + time)) / D(lc, duration)
 end
-
+    
 """
     A(lc::LifeContingency, duration)
 
 Whole life insurance for someone starting in the ``x``th `duration`.
 Issue age is based on the `issue_age` in the LifeContingency `lc`.
 """
-A(lc::LifeContingency, duration) = A(lc.life,lc,duration)
+A(lc::LifeContingency, duration=1) = A(lc.life,lc,duration)
 A(::SingleLife,lc::LifeContingency, duration) = M(lc, duration) / D(lc, duration)
+
+# for joint, dispactch based on the type of insruance and assumption
+A(::JointLife,lc::LifeContingency, duration) = A(lc.life.contingency, lc.life.joint_assumption,lc,duration)
+
+function A(::LastSurvivor,::Frasier,lc::LifeContingency,duration)
+    l1 = LifeContingency(lc.life.lives[1],lc.int)
+    l2 = LifeContingency(lc.life.lives[2],lc.int)
+    A₁ = A(l1,duration)
+    A₂ = A(l2,duration)
+    return  A₁ + A₂ - A₁ * A₂
+end
 
 """
     ä(lc::LifeContingency, duration)
@@ -233,6 +244,13 @@ To enter the `ä` character, type `a` and then `\\ddot`.
 """
 ä(lc::LifeContingency, duration) = ä(lc.life,lc, duration)
 ä(::SingleLife,lc::LifeContingency, duration) = N(lc, duration) / D(lc, duration)
+
+# for joint, dispactch based on the type of insruance and assumption
+ä(::JointLife,lc::LifeContingency, duration) = ä(lc.life.contingency,lc.life.joint_assumption,lc,duration)
+
+function ä(::LastSurvivor,::Frasier, lc::LifeContingency, duration)
+    return sum( v(lc.int,t,1) * p(lc,1,t) for t in 0:(duration-1))
+end
 
 """
     ä(lc::LifeContingency, duration,time)
@@ -273,9 +291,7 @@ end
 
 Return the probablity of death for the given LifeContingency. 
 """
-mt.q(lc::LifeContingency,duration,time=1) = q(lc.life,lc,duration,time)
-
-mt.q(::SingleLife,lc::LifeContingency,duration,time) = q(lc.life,duration,time)
+mt.q(lc::LifeContingency,duration,time=1) = q(lc.life,duration,time)
 
 mt.q(l::SingleLife,duration,time) = q(l.mort,l.issue_age,duration,time)
 mt.q(l::SingleLife,duration) = q(l.mort,l.issue_age,duration,1)
@@ -293,16 +309,15 @@ end
 
 Return the probablity of survival for the given LifeContingency. 
 """
-mt.p(lc::LifeContingency,duration,time=1) = p(lc.life, lc, duration, time)
-
-mt.p(::SingleLife,lc::LifeContingency,duration,time) = p(lc.life,duration,time)
+mt.p(lc::LifeContingency,duration,time=1) = p(lc.life, duration, time)
 
 mt.p(l::SingleLife,duration,time) = p(l.mort,l.issue_age,duration,time)
 mt.p(l::SingleLife,duration) = p(l.mort,l.issue_age,1,1)
 
 function mt.p(l::JointLife,duration,time)
-    return mt.p(l.insurance,l.joint_assumption,l,duration,time)
+    return mt.p(l.contingency,l.joint_assumption,l,duration,time)
 end
+
 function mt.p(ins::LastSurvivor,assump::JointAssumption,l::JointLife,duration,time)
     l1,l2 = l.lives
     ₜpₓ = time == 0 ? 1.0 : p(l1.mort,l1.issue_age,duration,time,l1.fractional_assump)
