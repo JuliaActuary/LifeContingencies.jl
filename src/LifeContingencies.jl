@@ -242,7 +242,7 @@ To enter the `ä` character, type `a` and then `\\ddot`.
     in Julia.
 
 """
-ä(lc::LifeContingency, duration) = ä(lc.life,lc, duration)
+ä(lc::LifeContingency, duration=1) = ä(lc.life,lc, duration)
 ä(::SingleLife,lc::LifeContingency, duration) = N(lc, duration) / D(lc, duration)
 
 # for joint, dispactch based on the type of insruance and assumption

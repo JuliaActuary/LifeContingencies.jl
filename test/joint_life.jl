@@ -36,6 +36,19 @@
 
 
         end
+
+        @testset "ALMCR Excercise 9.4" begin
+
+            l1 = SingleLife(mort = Makeham(0.0001,0.0003,1.075),issue_age = 25)
+            l2 = SingleLife(mort = Makeham(0.0001,0.0003,1.075),issue_age = 30)
+
+            # whole life last survivor annuity due
+            jl = JointLife(l1,l2,LastSurvivor(),Frasier())
+            ins = LifeContingency(jl,InterestRate(0.05))
+
+            # I'm not sure if ä(ins) is currently the right API for WL annuity...
+            @test isapprox( ä(ins), 15.8901)
+        end
     
         @testset "CIA tables" begin
             m1 = tbls["1986-92 CIA – Male Smoker, ANB"]
