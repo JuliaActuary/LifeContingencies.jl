@@ -34,14 +34,6 @@
             @test isapprox( ä(ins,5)     , 4.5437, atol = 1e-4)
             @test isapprox( A(ins)     , A(ins_l1) + A(ins_l2) - A(ins_l1) * A(ins_l2) )
 
-
-        end
-
-        @testset "ALMCR Excercise 9.4" begin
-
-            l1 = SingleLife(mort = Makeham(0.0001,0.0003,1.075),issue_age = 25)
-            l2 = SingleLife(mort = Makeham(0.0001,0.0003,1.075),issue_age = 30)
-
             # whole life last survivor annuity due
             jl = JointLife(l1,l2,LastSurvivor(),Frasier())
             ins = LifeContingency(jl,InterestRate(0.05))
