@@ -92,6 +92,10 @@ function InterestRate(f)
     FunctionalInterestRate(Vector{Float64}(undef, 0), f)
 end
 
+# make interest rates broadcastable
+Base.broadcastable(i::InterestRate) = Ref(i)
+
+
 """
         rate(i::InterestRate,time)
 
@@ -116,49 +120,57 @@ function rate(i::VectorInterestRate, time)
 end
 
 """
-    v(iv::InterestRate, time1, time2, init = 1.0)
-The discount rate from `time1` to `time2` with the initial (time zero)
-discount factor of `1.0`. Currently only supports whole years.
+    v(i::InterestRate, from_period, to_period)
+    v(i::InterestRate, period)
+
+The three argument method returns the discount factor applicable between period `from_period` and `to_period` given `InterestRate` `i`.
+The two argument method returns the discount factor from period zero to `period` given `InterestRate` `i`.
+
+# Examples
+```julia-repl
+julia> i = InterestRate(0.05)
+julia> v(i,1)
+0.9523809523809523
+julia> v.(i,1:5)
+5-element Array{Float64,1}:
+ 0.9523809523809523
+ 0.9070294784580498
+ 0.863837598531476
+ 0.8227024747918819
+ 0.7835261664684589
+ julia> v(i,1,3)
+0.9070294784580498
+```
+
 """
-function v(iv::InterestRate, time1, time2, init = 1.0)
-    if time1 > 0
-        return v(iv, time1 - 1, time2 + 1, init / (1 + rate(iv, time2)))
-    else
-        return init
-    end
+function v(i::InterestRate, from_period, to_period)
+    return v(i,to_period) ./ v(i,from_period)
+end
+
+"""
+    v(i::InterestRate, period)    
+The discount rate at period `period`.
+"""
+function v(i::InterestRate, period) 
+    reduce(/, 1 .+ rate.(i,1:period);init=1.0 )
 end
 
 """ 
-    ω(i::InterestRate)
+    omega(i::InterestRate)
 
 The last period that the interest rate is defined for. Assumed to be infinite (`Inf`) for 
     functional and constant interest rate types. Returns the `lastindex` of the vector if 
-    a vector type. Also callable using `omega` instead of `ω`.
+    a vector type. Also callable using `ω` instead of `omega`.
 
 """
-function mt.ω(i::ConstantInterestRate)
+function mt.omega(i::ConstantInterestRate)
     return Inf
 end
 
-function mt.ω(i::VectorInterestRate)
+function mt.omega(i::VectorInterestRate)
     return lastindex(i.i)
 end
 
-function mt.ω(i::FunctionalInterestRate{F}) where {F}
+function mt.omega(i::FunctionalInterestRate{F}) where {F}
     return Inf
 end
-
-
-### Convienence functions
-
-"""
-    v(i::InterestRate, time)    
-The discount rate at time `time`.
-"""
-v(i::InterestRate, time) = v(i, 1, time, 1.0)
-
-"""
-    v(i::InterestRate)
-The discount rate at time `1`.
-"""
-v(i::InterestRate) =  v(i, 1)

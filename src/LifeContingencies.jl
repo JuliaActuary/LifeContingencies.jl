@@ -129,7 +129,7 @@ function D(lc::LifeContingency, time)
 end
 
 function D(::SingleLife,lc::LifeContingency, time)
-    v(lc.int, time, 1) * p(lc, 1, time)
+    v(lc.int, time) * p(lc, 1,time)
 end
 
 """
@@ -157,7 +157,7 @@ function C(lc::LifeContingency, duration)
 end
 
 function C(::SingleLife,lc::LifeContingency, duration)
-    v(lc.int, duration + 1, 1) *
+    v(lc.int, duration + 1) *
     mt.q(lc.life, duration + 1) *
     l(lc, duration)
 end
@@ -298,7 +298,7 @@ mt.p(lc::LifeContingency,duration,time=1) = p(lc.life, lc, duration, time)
 mt.p(::SingleLife,lc::LifeContingency,duration,time) = p(lc.life,duration,time)
 
 mt.p(l::SingleLife,duration,time) = p(l.mort,l.issue_age,duration,time)
-mt.p(l::SingleLife,duration) = p(l.mort,l.issue_age,duration,1)
+mt.p(l::SingleLife,duration) = p(l.mort,l.issue_age,1,1)
 
 function mt.p(l::JointLife,duration,time)
     return mt.p(l.insurance,l.joint_assumption,l,duration,time)

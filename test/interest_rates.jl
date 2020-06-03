@@ -2,30 +2,48 @@
 
     ## functional interest rate
     @testset "functional interest rate" begin
-        i1 = InterestRate(time->0.05)
+        i = InterestRate(time->0.05)
 
-        @test 1 / (1.05) == v(i1)
-        @test 1 / (1.05) == v(i1, 1)
-        @test 1 / (1.05^2) == v(i1, 2, 1)
-        @test 0.05 == rate(i1, 1)
+        @test v(i,0) == 1.0
+        @test v(i,1) == 1 / 1.05
+        @test v(i,2) == 1 / 1.05 ^ 2
+        @test v(i,3) == 1 / 1.05 ^ 3
+        @test v(i,1,2) == 1 / 1.05
+        @test rate(i,1) == 0.05
+        @test rate(i,2) == 0.05
+
+        @test v.(i,1:3) == [1 / 1.05 ^ t for t in 1:3]
+
     end
 
     ## vector interest rate
     @testset "vector interest rate" begin
-        i2 = InterestRate([0.05, 0.05, 0.05])
-        @test 1 / (1.05) == v(i2)
-        @test 1 / (1.05) == v(i2, 1)
-        @test 1 / (1.05^2) == v(i2, 2, 1)
+        i = InterestRate([0.05, 0.05, 0.05])
+
+        @test v(i,0) == 1.0
+        @test v(i,1) == 1 / 1.05
+        @test v(i,2) == 1 / 1.05 ^ 2
+        @test v(i,3) == 1 / 1.05 ^ 3
+        @test v(i,1,2) == 1 / 1.05
+        @test rate(i,1) == 0.05
+        @test rate(i,2) == 0.05
+
+        @test v.(i,1:3) == [1 / 1.05 ^ t for t in 1:3]
     end
 
     ## real interest rate
     @testset "constant interest rate" begin
-        i3 = InterestRate(0.05)
+        i = InterestRate(0.05)
 
-        @test 1 / (1.05) == v(i3)
-        @test 1 / (1.05) == v(i3, 1)
-        @test 1 / (1.05^2) == v(i3, 2, 1)
-        @test 1 / (1.05^120) ≈ v(i3, 120, 1)
+        @test v(i,0) == 1.0
+        @test v(i,1) == 1 / 1.05
+        @test v(i,2) == 1 / 1.05 ^ 2
+        @test v(i,3) == 1 / 1.05 ^ 3
+        @test v(i,1,2) == 1 / 1.05
+        @test rate(i,1) == 0.05
+        @test rate(i,2) == 0.05
+        
+        @test v.(i,1:3) == [1 / 1.05 ^ t for t in 1:3]
     end
 
     ## Stochastic interest rate
@@ -36,8 +54,10 @@
             time->time <= 1 ? 0.05 : rand(Normal(last(i5.rate_vector), 0.01)),
         )
 
-        @test v(i4) > 0
-        @test v(i5) > 0
+        @test v(i4,0) == 1.0
+        @test v(i5,0) == 1.0
+        @test v(i4,1) > 0
+        @test v(i5,1) > 0
         @test v(i4, 120, 1) > 0
         @test v(i5, 120, 1) > 0
     end
