@@ -200,34 +200,37 @@ E(lc::LifeContingency, t, x) = D(lc,x + t) / D(lc,x)
 ### Insurances ###
 ##################
 
+   
 """
-    A(lc::LifeContingency, duration, time)
+    A(lc::LifeContingency,from_time=0,to_time=nothing)
 
-Term insurance for n years for someone starting in the ``x``th `duration`.
+Life insurance for someone starting at `from_time` and lasting until `to_time`. If `to_time` is `nothing` (the default), will be insurance until the end of the mortality table or interest rates.
+
 Issue age is based on the `issue_age` in the LifeContingency `lc`.
 """
-A(lc::LifeContingency, duration, time) = A(lc.life,lc,duration,time)
-function A(::SingleLife,lc::LifeContingency, duration, time) 
-    return (M(lc, duration) - M(lc, duration + time)) / D(lc, duration)
+A(lc::LifeContingency,from_time=0,to_time=nothing) = A(lc.life,lc,from_time,to_time)
+function A(::SingleLife,lc::LifeContingency, from_time,to_time)
+    mt = lc.life.mort
+    iss_age = lc.life.issue_age
+    start_age = iss_age + from_time
+    end_age = isnothing(to_time) ? omega(lc) : to_time + iss_age + start_age
+    len = end_age - start_age
+    disc = v.(lc.int,1:len)
+    tpx =  [p(mt,iss_age,1 + start_age - lc.life.issue_age,   t,lc.life.fractional_assump) for t in 0:(len-1)]
+    qx = [q(mt,iss_age,1 + start_age - lc.life.issue_age + t ,1,lc.life.fractional_assump) for t in 0:(len-1)]   
+    reduce(+, disc .* tpx  .* qx)
 end
-    
-"""
-    A(lc::LifeContingency, duration)
-
-Whole life insurance for someone starting in the ``x``th `duration`.
-Issue age is based on the `issue_age` in the LifeContingency `lc`.
-"""
-A(lc::LifeContingency, duration=1) = A(lc.life,lc,duration)
-A(::SingleLife,lc::LifeContingency, duration) = M(lc, duration) / D(lc, duration)
 
 # for joint, dispactch based on the type of insruance and assumption
-A(::JointLife,lc::LifeContingency, duration) = A(lc.life.contingency, lc.life.joint_assumption,lc,duration)
+function A(::JointLife,lc::LifeContingency, from_time=0, to_time=nothing) 
+    A(lc.life.contingency, lc.life.joint_assumption,lc,from_time,to_time)
+end
 
-function A(::LastSurvivor,::Frasier,lc::LifeContingency,duration)
+function A(::LastSurvivor,::Frasier,lc::LifeContingency,from_time=0, to_time=nothing)
     l1 = LifeContingency(lc.life.lives[1],lc.int)
     l2 = LifeContingency(lc.life.lives[2],lc.int)
-    A₁ = A(l1,duration)
-    A₂ = A(l2,duration)
+    A₁ = A(l1,from_time,to_time)
+    A₂ = A(l2,from_time,to_time)
     return  A₁ + A₂ - A₁ * A₂
 end
 

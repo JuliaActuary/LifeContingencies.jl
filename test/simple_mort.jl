@@ -29,8 +29,8 @@ t = UltimateMortality(maleMort)
     @test A(ins, 0) ≈ 0.04223728223
     @test ä(ins, 0) ≈ 20.1130170731192000
 
-    @test A(ins, 26, 1) ≈ 0.001299047619
-    @test A(ins, 26) ≈ 0.1082172434
+    @test A(ins, 26, 1) ≈ 0.001299047619    # 1 year term ins
+    @test A(ins, 26) ≈ 0.1082172434         # whole life ins
 
     @test N(ins, 26) ≈ 5.156762988852310
     @test D(ins, 26) ≈ 0.275358702015970
