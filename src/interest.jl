@@ -1,5 +1,11 @@
 include("decrement.jl")
 
+abstract type InterestCompounding end
+
+struct Simple <: InterestCompounding end
+struct Compound <: InterestCompounding end
+struct Continuous <: InterestCompounding end
+
 """
     InterestRate() 
 
@@ -24,12 +30,13 @@ takes a time and returns an annual interst rate for that time. Construct by call
 
     # an autocorrelated rate
     InterestRate(
-            time -> time <= 1 ? 0.05 : rand(Normal(last(i5.rate_vector), 0.01)),
+            time -> time <= 1 ? 0.05 : rand(Normal(last(i5.rate), 0.01)),
         )
 """
 struct FunctionalInterestRate{F} <: InterestRate
-    rate_vector::Array{Float64,1}
+    rate::Array{Float64,1}
     rate_function::F
+    compound::InterestCompounding
 end
 
 """
@@ -45,7 +52,8 @@ defined interest rates for longer-dated periods.
     InterestRate([0.05, 0.05, 0.05])
 """
 struct VectorInterestRate{T} <: InterestRate
-    rate_vector::Array{T,1}
+    rate::Array{T,1}
+    compound::InterestCompounding
 end
 
 
@@ -61,6 +69,7 @@ Construct by calling `InterestRate()` with a rate as an argument.
 """
 struct ConstantInterestRate <: InterestRate
     rate
+    compound::InterestCompounding
 end
 
 
@@ -70,7 +79,7 @@ end
 Construct a `VectorInterestRate`.
 """
 function InterestRate(v::Vector{Float64})
-    VectorInterestRate(v)
+    VectorInterestRate(v,Compound())
 end
 
 """
@@ -79,7 +88,7 @@ end
 Construct a `ConstantInterestRate`.
 """
 function InterestRate(i::Real)
-    ConstantInterestRate(i)
+    ConstantInterestRate(i,Compound())
 end
 
 """
@@ -89,7 +98,7 @@ Construct a `FunctionalInterestRate`. Assumes that `f` is a function that takes 
 period and returns the annual effective rate for that period.
 """
 function InterestRate(f)
-    FunctionalInterestRate(Vector{Float64}(undef, 0), f)
+    FunctionalInterestRate(Vector{Float64}(undef, 0), f,Continuous())
 end
 
 # make interest rates broadcastable
@@ -106,17 +115,17 @@ function rate(i::ConstantInterestRate, time)
 end
 
 function rate(i::FunctionalInterestRate{F}, time) where {F}
-    if time <= lastindex(i.rate_vector)
-        return i.rate_vector[time]
+    if time <= lastindex(i.rate)
+        return i.rate[time]
     else
         rate = i.rate_function(time)
-        push!(i.rate_vector, rate)
+        push!(i.rate, rate)
         return rate
     end
 end
 
 function rate(i::VectorInterestRate, time)
-    return i.rate_vector[time]
+    return i.rate[time]
 end
 
 """
@@ -173,4 +182,55 @@ end
 
 function mt.omega(i::FunctionalInterestRate{F}) where {F}
     return Inf
+end
+
+
+# Iterators
+
+struct DiscountFactor{T,P}
+    int::T
+    periodicity::P
+end
+
+DiscountFactor(int) = DiscountFactor(int,Year(1))
+
+function Base.iterate(df::DiscountFactor{ConstantInterestRate,Year}, state=1.0) 
+    return (state,state / (1 +df.int.rate))
+end
+
+function Base.IteratorSize(::Type{<:DiscountFactor{ConstantInterestRate,Year}})
+    return Base.IsInfinite()
+end
+
+function Base.iterate(df::DiscountFactor{VectorInterestRate{T},Year}, state=(v=1.0,i=1)) where {T<:Number}
+    if state.i > (length(df.int.rate)+1)
+        return nothing
+    elseif state.i > length(df.int.rate)
+        (state.v,(v = nothing,i= state.i + 1))
+    else 
+        (state.v, (v = state.v / (1 + df.int.rate[state.i]) , i =  state.i + 1))
+    end
+end
+
+function Base.length(df::DiscountFactor{VectorInterestRate{T},Year})  where {T<:Number}
+    return length(df.int.rate) + 1
+end
+
+function Base.IteratorSize(::Type{<:DiscountFactor{VectorInterestRate{T},Year}}) where {T<:Number}
+    return Base.HasLength()
+end
+
+function Base.IteratorSize(::Type{<:DiscountFactor{FunctionalInterestRate{F},Year}}) where {F}
+    return Base.IsInfinite() # if SizeUnkown, then can end up growing infinitely with `collect`
+end
+
+function Base.iterate(df::DiscountFactor{FunctionalInterestRate{F},Year}, state=(v=1.0,i=1)) where {F}
+    i = df.int.rate_function(state.i)
+    if isnothing(state.v)
+        return nothing
+    elseif isnothing(i)
+        return (state.v,(v=nothing,i = state.i + 1))
+    else 
+        (state.v, (v = state.v / (1 +i) , i =  state.i + 1))
+    end
 end
