@@ -2,6 +2,8 @@ module LifeContingencies
 
 using MortalityTables
 using Transducers
+using Dates
+using IterTools
 
 const mt = MortalityTables
 
@@ -19,6 +21,7 @@ export LifeContingency,
     P,
     V,
     disc,
+    decrements,
     reserve_net_premium,
     insurance,
     annuity_due,
@@ -26,7 +29,8 @@ export LifeContingency,
     q,p,
     SingleLife, Frasier, JointLife,
     LastSurvivor,
-    omega, ω
+    omega, ω,
+    DiscountFactor
 
 
 
@@ -93,6 +97,59 @@ struct LifeContingency
     int::InterestRate
 end
 Base.broadcastable(lc::LifeContingency) = Ref(lc)
+
+decrements(lc::LifeContingency) = decrements(lc.life)
+decrements(lc::SingleLife) = (death = lc.mort,)
+decrements(lc::JointLife) = (death = [lc.life[1].mort,lc.life[2].mort],)
+
+function Base.iterate(lc::LifeContingency)
+    #TODO calcualte the decrments here in an iterative fashion rather than calling out to 
+    # `survivorship`
+    @show decs = decrements(lc)
+
+    @show f, r = firstrest(zip(decrements(lc)...))
+    return (
+        ( # current value
+            time=0,
+            suvivorship=1.0,
+            cumulative_decrement=0.0,
+            decrements=f,
+        ), 
+        ( # state
+            time=1,
+            survivorship = 1.0 * survivorship(lc,1),
+            cumulative_decrement = 1 - survivorship(lc,1),
+            decrements_tail=r,
+        ) 
+    )
+end
+
+
+function Base.iterate(lc::LifeContingency,state)
+    #TODO calcualte the decrments here in an iterative fashion rather than calling out to 
+    # `survivorship`
+    IterTools.@ifsomething state.decrements_tail
+        return nothing
+    else
+        f, r = firstrest(state.decrements_tail)
+        next_time = state.time + 1
+        return (
+                state, # current value
+            ( # state
+                time=next_time,
+                survivorship = state.survivorship * survivorship(lc,state.time,next_time),
+                cumulative_decrement = 1 - survivorship(lc,state.time,next_time),
+                decrements_tail=r,
+            ) 
+        )
+    end
+end
+
+function Base.IteratorSize(::Type{<:LifeContingency})
+    return Base.HasLength()
+end
+
+Base.length(lc::LifeContingency) = length(zip(decrements(lc)))
 
 """
     ω(lc::LifeContingency)

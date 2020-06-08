@@ -4,6 +4,8 @@ authors = ["Alec Loudenback"]
 version = "0.5.0"
 
 [deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 MortalityTables = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"
 Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
 
