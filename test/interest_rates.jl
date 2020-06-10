@@ -63,12 +63,12 @@
     end
 end
 
-@testset "DiscountFactor" begin
+@testset "DiscountFactor Iterator" begin
 
     target = [1 / 1.05 ^ t for t in 0:4 ]
 
     @testset "consant" begin
-        df = DiscountFactor(InterestRate(0.05))
+        df = DiscountFactor(InterestRate(0.05),1)
 
         ds = Iterators.take(df,5) |> collect
 
@@ -79,6 +79,7 @@ end
         # can't collect an infinite series
         @test_throws MethodError collect(df)
 
+        @test df == InterestRate(0.05)(1)
     end
 
     @testset "vector" begin

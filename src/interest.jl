@@ -34,7 +34,7 @@ takes a time and returns an annual interst rate for that time. Construct by call
         )
 """
 struct FunctionalInterestRate{F} <: InterestRate
-    rate::Array{Float64,1}
+    rate::Array{Float64,1} # keep track of prior rates for autocorrelation
     rate_function::F
     compound::InterestCompounding
 end
@@ -52,7 +52,7 @@ defined interest rates for longer-dated periods.
     InterestRate([0.05, 0.05, 0.05])
 """
 struct VectorInterestRate{T} <: InterestRate
-    rate::Array{T,1}
+    rate
     compound::InterestCompounding
 end
 
@@ -78,8 +78,12 @@ end
 
 Construct a `VectorInterestRate`.
 """
-function InterestRate(v::Vector{Float64})
-    VectorInterestRate(v,Compound())
+function InterestRate(v::Vector{Float64},times::Vector{T} = nothing; compound=Compound()) where {T}
+    if isnothing(times) 
+        times =  [t for t in 1:length(v)]
+    end
+    int = LinearInterpolation(times,v,extrapolation_bc = Flat())
+    VectorInterestRate(int,compound)
 end
 
 """
@@ -87,8 +91,8 @@ end
 
 Construct a `ConstantInterestRate`.
 """
-function InterestRate(i::Real)
-    ConstantInterestRate(i,Compound())
+function InterestRate(i::Real; compound=Compound())
+    ConstantInterestRate(i,compound)
 end
 
 """
@@ -97,8 +101,8 @@ end
 Construct a `FunctionalInterestRate`. Assumes that `f` is a function that takes a given time
 period and returns the annual effective rate for that period.
 """
-function InterestRate(f)
-    FunctionalInterestRate(Vector{Float64}(undef, 0), f,Continuous())
+function InterestRate(f; compound=Continuous())
+    FunctionalInterestRate(Vector{Float64}(undef, 0), f,compound)
 end
 
 # make interest rates broadcastable
@@ -125,7 +129,7 @@ function rate(i::FunctionalInterestRate{F}, time) where {F}
 end
 
 function rate(i::VectorInterestRate, time)
-    return i.rate[time]
+    return i.rate(time)
 end
 
 """
@@ -152,16 +156,25 @@ julia> v.(i,1:5)
 ```
 
 """
-function v(i::InterestRate, from_period, to_period)
+function v(i::InterestRate, from_period::Int, to_period::Int)
     return v(i,to_period) ./ v(i,from_period)
 end
 
 """
-    v(i::InterestRate, period)    
-The discount rate at period `period`.
+    v(i::InterestRate, to_time)    
+The discount rate at time `to_time`.
 """
-function v(i::InterestRate, period) 
-    reduce(/, 1 .+ rate.(i,1:period);init=1.0 )
+function v(i::InterestRate, to_time::Int) 
+    reduce(/, 1 .+ rate.(i,1:to_time);init=1.0 )
+end
+
+function v(i::InterestRate, from_time, to_time) 
+    @show quadgk(t -> rate(i,t), from_time,to_time)
+    1.0 / (1 + quadgk(t -> rate(i,t), from_time,to_time)[1])
+end
+
+function v(i::InterestRate, to_time) 
+    1.0 * v(i,0,to_time)
 end
 
 """ 
@@ -187,50 +200,34 @@ end
 
 # Iterators
 
-struct DiscountFactor{T,P}
+"""
+`timestep` is the fractional portion of the rate period. E.g. if you are using annual rates, then `time_step` is fraction of the year in each of the itereated time steps.
+"""
+struct DiscountFactor{T<:InterestRate}
     int::T
-    periodicity::P
+    time_step 
 end
 
-DiscountFactor(int) = DiscountFactor(int,Year(1))
+(i::InterestRate)(time_period) = DiscountFactor(i,time_period)
 
-function Base.iterate(df::DiscountFactor{ConstantInterestRate,Year}, state=1.0) 
-    return (state,state / (1 +df.int.rate))
+function Base.iterate(df::DiscountFactor{T}) where {T<:InterestRate}
+    return (1.0,(v = 1.0 * v(df.int,df.time_step),time = df.time_step))
 end
 
-function Base.IteratorSize(::Type{<:DiscountFactor{ConstantInterestRate,Year}})
+function Base.iterate(df::DiscountFactor{ConstantInterestRate},state) 
+    new_time =  df.time_step + df.time_step
+    return (state.v,(v = state.v  * v(df.int,df.time_step,new_time),time = new_time))
+end
+
+function Base.IteratorSize(::Type{<:DiscountFactor{T}}) where {T<:InterestRate}
+    # if SizeUnkown, then can end up growing infinitely with `collect` for FunctionalInterestRate
     return Base.IsInfinite()
 end
 
-function Base.iterate(df::DiscountFactor{VectorInterestRate{T},Year}, state=(v=1.0,i=1)) where {T<:Number}
-    if state.i > (length(df.int.rate)+1)
-        return nothing
-    elseif state.i > length(df.int.rate)
-        (state.v,(v = nothing,i= state.i + 1))
-    else 
-        (state.v, (v = state.v / (1 + df.int.rate[state.i]) , i =  state.i + 1))
-    end
-end
-
-function Base.length(df::DiscountFactor{VectorInterestRate{T},Year})  where {T<:Number}
+function Base.length(df::DiscountFactor{VectorInterestRate{T}})  where {T<:Number}
     return length(df.int.rate) + 1
 end
 
-function Base.IteratorSize(::Type{<:DiscountFactor{VectorInterestRate{T},Year}}) where {T<:Number}
+function Base.IteratorSize(::Type{<:DiscountFactor{VectorInterestRate{T}}}) where {T<:Number}
     return Base.HasLength()
-end
-
-function Base.IteratorSize(::Type{<:DiscountFactor{FunctionalInterestRate{F},Year}}) where {F}
-    return Base.IsInfinite() # if SizeUnkown, then can end up growing infinitely with `collect`
-end
-
-function Base.iterate(df::DiscountFactor{FunctionalInterestRate{F},Year}, state=(v=1.0,i=1)) where {F}
-    i = df.int.rate_function(state.i)
-    if isnothing(state.v)
-        return nothing
-    elseif isnothing(i)
-        return (state.v,(v=nothing,i = state.i + 1))
-    else 
-        (state.v, (v = state.v / (1 +i) , i =  state.i + 1))
-    end
 end

@@ -4,6 +4,7 @@ using MortalityTables
 using Transducers
 using Dates
 using IterTools
+using QuadGK
 
 const mt = MortalityTables
 
@@ -125,25 +126,25 @@ function Base.iterate(lc::LifeContingency)
 end
 
 
-function Base.iterate(lc::LifeContingency,state)
-    #TODO calcualte the decrments here in an iterative fashion rather than calling out to 
-    # `survivorship`
-    IterTools.@ifsomething state.decrements_tail
-        return nothing
-    else
-        f, r = firstrest(state.decrements_tail)
-        next_time = state.time + 1
-        return (
-                state, # current value
-            ( # state
-                time=next_time,
-                survivorship = state.survivorship * survivorship(lc,state.time,next_time),
-                cumulative_decrement = 1 - survivorship(lc,state.time,next_time),
-                decrements_tail=r,
-            ) 
-        )
-    end
-end
+# function Base.iterate(lc::LifeContingency,state)
+#     #TODO calcualte the decrments here in an iterative fashion rather than calling out to 
+#     # `survivorship`
+#     IterTools.@ifsomething state.decrements_tail
+#         return nothing
+#     else
+#         f, r = firstrest(state.decrements_tail)
+#         next_time = state.time + 1
+#         return (
+#                 state, # current value
+#             ( # state
+#                 time=next_time,
+#                 survivorship = state.survivorship * survivorship(lc,state.time,next_time),
+#                 cumulative_decrement = 1 - survivorship(lc,state.time,next_time),
+#                 decrements_tail=r,
+#             ) 
+#         )
+#     end
+# end
 
 function Base.IteratorSize(::Type{<:LifeContingency})
     return Base.HasLength()
