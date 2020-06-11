@@ -83,19 +83,18 @@ end
     end
 
     @testset "vector" begin
-    df = DiscountFactor(InterestRate(repeat([0.05],4)))
+    df = DiscountFactor(InterestRate(repeat([0.05],4)),1)
 
         ds = Iterators.take(df,5) |> collect
         @test all(ds .≈ target)
-
         @test all(collect(df) .≈ target)
         @test length(df) == 5
 
-
+        @test InterestRate([0.05,0.05,0.05,0.05])(1) == df
     end
 
     @testset "nonterminating functional" begin
-        df = DiscountFactor(InterestRate(time-> 0.05))
+        df = DiscountFactor(InterestRate(time-> 0.05),1)
         ds = Iterators.take(df,5) |> collect
 
         @test all(ds .≈ target)
@@ -108,7 +107,7 @@ end
 
     @testset "terminating functional" begin
 
-        df = DiscountFactor(InterestRate(time-> time < 3 ? 0.05 : nothing))
+        df = DiscountFactor(InterestRate(time-> time < 3 ? 0.05 : nothing),1)
         @test all(Iterators.take(df,3) |> collect .≈   [1.0, 1 / 1.05, 1/1.05^2])
     end
 

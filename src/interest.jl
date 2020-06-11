@@ -51,7 +51,7 @@ defined interest rates for longer-dated periods.
     # 5% interest for years 1, 2, and 3
     InterestRate([0.05, 0.05, 0.05])
 """
-struct VectorInterestRate{T} <: InterestRate
+struct VectorInterestRate <: InterestRate
     rate
     compound::InterestCompounding
 end
@@ -78,12 +78,8 @@ end
 
 Construct a `VectorInterestRate`.
 """
-function InterestRate(v::Vector{Float64},times::Vector{T} = nothing; compound=Compound()) where {T}
-    if isnothing(times) 
-        times =  [t for t in 1:length(v)]
-    end
-    int = LinearInterpolation(times,v,extrapolation_bc = Flat())
-    VectorInterestRate(int,compound)
+function InterestRate(v::Vector{Float64}; compound=Compound())
+    VectorInterestRate(v,compound)
 end
 
 """
@@ -120,7 +116,7 @@ end
 
 function rate(i::FunctionalInterestRate{F}, time) where {F}
     if time <= lastindex(i.rate)
-        return i.rate[time]
+        return i.rate[Int(time)]
     else
         rate = i.rate_function(time)
         push!(i.rate, rate)
@@ -129,7 +125,7 @@ function rate(i::FunctionalInterestRate{F}, time) where {F}
 end
 
 function rate(i::VectorInterestRate, time)
-    return i.rate(time)
+    return i.rate[time]
 end
 
 """
@@ -156,25 +152,49 @@ julia> v.(i,1:5)
 ```
 
 """
-function v(i::InterestRate, from_period::Int, to_period::Int)
-    return v(i,to_period) ./ v(i,from_period)
-end
 
 """
     v(i::InterestRate, to_time)    
 The discount rate at time `to_time`.
 """
-function v(i::InterestRate, to_time::Int) 
-    reduce(/, 1 .+ rate.(i,1:to_time);init=1.0 )
+function v(i::InterestRate, to_time)
+    if to_time == 0
+        1.0
+    else
+        v(i,0,to_time)
+    end
 end
 
 function v(i::InterestRate, from_time, to_time) 
-    @show quadgk(t -> rate(i,t), from_time,to_time)
-    1.0 / (1 + quadgk(t -> rate(i,t), from_time,to_time)[1])
+    return v(i.compound,i,from_time,to_time)
 end
 
-function v(i::InterestRate, to_time) 
-    1.0 * v(i,0,to_time)
+function v(::Compound,i::ConstantInterestRate, from_time, to_time) 
+    1.0 / (1 + i.rate) ^ (to_time - from_time)
+end
+function v(::Simple,i::ConstantInterestRate, from_time, to_time) 
+    1.0 / (1 + i.rate * (to_time - from_time))
+end
+function v(::Continuous,i::ConstantInterestRate, from_time, to_time) 
+    1.0 / exp(rate(i) * (to_time - from_time))
+end
+
+function v(i::VectorInterestRate, from_time, to_time) 
+    return v(i.compound,i,from_time,to_time)
+end
+
+function v(::Compound,i::VectorInterestRate, from_time, to_time) 
+    #won't handle non-int times
+    reduce(/, 1 .+ rate.(i,1:to_time);init=1.0 )
+end
+
+function v(::Continuous,i::FunctionalInterestRate{F}, from_time, to_time) where {F}
+    #won't handle non-int times
+    1 / exp(quadgk(t -> rate(i,t),from_time,to_time ))
+end
+
+function v(::Compound,i::FunctionalInterestRate{F}, from_time, to_time) where {F}
+    reduce(/, 1 .+ rate.(i,1:to_time);init=1.0 )
 end
 
 """ 
@@ -214,20 +234,35 @@ function Base.iterate(df::DiscountFactor{T}) where {T<:InterestRate}
     return (1.0,(v = 1.0 * v(df.int,df.time_step),time = df.time_step))
 end
 
-function Base.iterate(df::DiscountFactor{ConstantInterestRate},state) 
-    new_time =  df.time_step + df.time_step
+function Base.iterate(df::DiscountFactor{T},state) where {T<:InterestRate}
+    new_time =  state.time + df.time_step
     return (state.v,(v = state.v  * v(df.int,df.time_step,new_time),time = new_time))
 end
 
+function Base.iterate(df::DiscountFactor{VectorInterestRate},state)
+    # this can probably be simplified...
+
+    new_time =  state.time + df.time_step
+    if isnothing(state.v)
+        return nothing
+    end
+
+    if state.time + 1 >= length(df)
+        v′ = nothing
+    else
+        v′ = state.v  * v(df.int,df.time_step,new_time)
+    end
+    return (state.v,(v = v′ ,time = new_time))
+end
 function Base.IteratorSize(::Type{<:DiscountFactor{T}}) where {T<:InterestRate}
     # if SizeUnkown, then can end up growing infinitely with `collect` for FunctionalInterestRate
     return Base.IsInfinite()
 end
 
-function Base.length(df::DiscountFactor{VectorInterestRate{T}})  where {T<:Number}
+function Base.length(df::DiscountFactor{VectorInterestRate})
     return length(df.int.rate) + 1
 end
 
-function Base.IteratorSize(::Type{<:DiscountFactor{VectorInterestRate{T}}}) where {T<:Number}
+function Base.IteratorSize(::Type{<:DiscountFactor{VectorInterestRate}})
     return Base.HasLength()
 end
