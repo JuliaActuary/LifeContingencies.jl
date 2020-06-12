@@ -114,16 +114,6 @@ function rate(i::ConstantInterestRate, time)
     return i.rate
 end
 
-function rate(i::FunctionalInterestRate{F}, time) where {F}
-    if time <= lastindex(i.rate)
-        return i.rate[Int(time)]
-    else
-        rate = i.rate_function(time)
-        push!(i.rate, rate)
-        return rate
-    end
-end
-
 function rate(i::VectorInterestRate, time)
     return i.rate[time]
 end
@@ -185,17 +175,9 @@ end
 
 function v(::Compound,i::VectorInterestRate, from_time, to_time) 
     #won't handle non-int times
-    reduce(/, 1 .+ rate.(i,1:to_time);init=1.0 )
+    reduce(/, 1 .+ rate.(i,(from_time+1):to_time);init=1.0 )
 end
 
-function v(::Continuous,i::FunctionalInterestRate{F}, from_time, to_time) where {F}
-    #won't handle non-int times
-    1 / exp(quadgk(t -> rate(i,t),from_time,to_time ))
-end
-
-function v(::Compound,i::FunctionalInterestRate{F}, from_time, to_time) where {F}
-    reduce(/, 1 .+ rate.(i,1:to_time);init=1.0 )
-end
 
 """ 
     omega(i::InterestRate)
@@ -213,9 +195,6 @@ function mt.omega(i::VectorInterestRate)
     return lastindex(i.i)
 end
 
-function mt.omega(i::FunctionalInterestRate{F}) where {F}
-    return Inf
-end
 
 
 # Iterators
@@ -236,23 +215,23 @@ end
 
 function Base.iterate(df::DiscountFactor{T},state) where {T<:InterestRate}
     new_time =  state.time + df.time_step
-    return (state.v,(v = state.v  * v(df.int,df.time_step,new_time),time = new_time))
+    return (state.v,(v = state.v  * v(df.int,state.time,new_time),time = new_time))
 end
 
 function Base.iterate(df::DiscountFactor{VectorInterestRate},state)
-    # this can probably be simplified...
-
-    new_time =  state.time + df.time_step
-    if isnothing(state.v)
-        return nothing
-    end
+    
+    isnothing(state) && return nothing
 
     if state.time + 1 >= length(df)
-        v′ = nothing
+        next = nothing
     else
-        v′ = state.v  * v(df.int,df.time_step,new_time)
+        new_time =  state.time + df.time_step
+        next = (v = state.v  * v(df.int,state.time,new_time), time  = new_time)
     end
-    return (state.v,(v = v′ ,time = new_time))
+    return (
+        state.v,
+        next
+        )
 end
 function Base.IteratorSize(::Type{<:DiscountFactor{T}}) where {T<:InterestRate}
     # if SizeUnkown, then can end up growing infinitely with `collect` for FunctionalInterestRate
@@ -266,3 +245,6 @@ end
 function Base.IteratorSize(::Type{<:DiscountFactor{VectorInterestRate}})
     return Base.HasLength()
 end
+
+DiscountFactor{LifeContingencies.VectorInterestRate}(LifeContingencies.VectorInterestRate([0.05, 0.05, 0.05, 0.05], LifeContingencies.Compound()), 1) 
+DiscountFactor{LifeContingencies.VectorInterestRate}(LifeContingencies.VectorInterestRate([0.05, 0.05, 0.05, 0.05], LifeContingencies.Compound()), 1)
