@@ -5,7 +5,7 @@ using Transducers
 using Dates
 using IterTools
 using QuadGK
-
+    
 const mt = MortalityTables
 
 export LifeContingency,
@@ -27,10 +27,10 @@ export LifeContingency,
     insurance,
     annuity_due,
     net_premium_annual,
-    q,p,
     SingleLife, Frasier, JointLife,
     LastSurvivor,
-    omega, ω,
+    omega,
+    survivorship,
     DiscountFactor
 
 
@@ -89,8 +89,8 @@ struct JointLife <: Life
     joint_assumption::JointAssumption
 end
 
-function JointLife(l1::SingleLife, l2::SingleLife,ins::Contingency,ja::JointAssumption)
-    return JointLife((l1,l2),ins,ja)
+function JointLife(l1::SingleLife, l2::SingleLife, contingency::Contingency,joint_assumption::JointAssumption)
+    return JointLife((l1,l2),contingency,joint_assumption)
 end
 
 struct LifeContingency
@@ -125,27 +125,6 @@ function Base.iterate(lc::LifeContingency)
     )
 end
 
-
-# function Base.iterate(lc::LifeContingency,state)
-#     #TODO calcualte the decrments here in an iterative fashion rather than calling out to 
-#     # `survivorship`
-#     IterTools.@ifsomething state.decrements_tail
-#         return nothing
-#     else
-#         f, r = firstrest(state.decrements_tail)
-#         next_time = state.time + 1
-#         return (
-#                 state, # current value
-#             ( # state
-#                 time=next_time,
-#                 survivorship = state.survivorship * survivorship(lc,state.time,next_time),
-#                 cumulative_decrement = 1 - survivorship(lc,state.time,next_time),
-#                 decrements_tail=r,
-#             ) 
-#         )
-#     end
-# end
-
 function Base.IteratorSize(::Type{<:LifeContingency})
     return Base.HasLength()
 end
@@ -155,21 +134,23 @@ Base.length(lc::LifeContingency) = length(zip(decrements(lc)))
 """
     ω(lc::LifeContingency)
 
-Returns the last defined period for both the interest rate and mortality table.
-    In the future, this may only look up the omega of the mortality table.
+Returns the last defined time_period for both the interest rate and mortality table.
+Note that this is *different* than calling `omega` on a `MortalityTable`, which will give you the last `attained_age`.
+
+Example, if the `LifeContingency` has issue age 60, and the last defined attained age for the `MortalityTable` is 100, then `omega` of the `MortalityTable` will be `100` and `omega` of the `LifeContingency` will be `40`.
 """
-function mt.ω(lc::LifeContingency)
+function mt.omega(lc::LifeContingency)
     # if one of the omegas is infinity, that's a Float so we need
     # to narrow the type with Int
-    return Int(min(ω(lc.life), ω(lc.int)))
+    return Int(min(omega(lc.life), omega(lc.int)))
 end
 
-function mt.ω(l::SingleLife)
-    return mt.ω(l.mort)    
+function mt.omega(l::SingleLife)
+    return mt.omega(l.mort) - l.issue_age + 1    
 end
 
-function mt.ω(l::JointLife)
-    return minimum( ω.(l.lives) )    
+function mt.omega(l::JointLife)
+    return minimum( omega.(l.lives) )    
 end
 
 ###################
@@ -205,7 +186,7 @@ end
 ``C_x`` is a retrospective actuarial commutation function which is the product of the discount factor and the difference in `l` (``l_x``).
 """
 function C(lc::LifeContingency, to_time)
-    v(lc.int, to_time) * (l(lc,to_time + 1) - l(lc, to_time))
+    v(lc.int, to_time+1) * (l(lc,to_time) - l(lc, to_time+1))
     
 end
 
@@ -215,13 +196,8 @@ end
 ``N_x`` is a prospective actuarial commutation function which is the sum of the `D` (``D_x``) values from the given time to the end of the mortality table.
 """
 function N(lc::LifeContingency, from_time)
-    return reduce(+,)
-    return N(lc.life,lc, from_time)
-end
-
-function N(::SingleLife,lc::LifeContingency, from_time)
-    range = from_time:(ω(lc) - lc.life.issue_age)
-    return reduce(+, Map(from_time->D(lc, from_time)), range)
+    range = from_time:(omega(lc)-1)
+    return reduce(+,Map(from_time->D(lc, from_time)), range)
 end
 
 """
@@ -235,8 +211,8 @@ function M(lc::LifeContingency, from_time)
 end
 
 function M(::SingleLife,lc::LifeContingency, from_time)
-    range = from_time:(ω(lc) - lc.life.issue_age)
-    return reduce(+, Map(from_time->C(lc, from_time)), range)
+    range = from_time:(omega(lc) - lc.life.issue_age -1)
+    return reduce(+,Map(from_time->C(lc, from_time)), range)
 end
 
 
@@ -255,29 +231,42 @@ Life insurance for someone starting at `from_time` and lasting until `to_time`. 
 
 Issue age is based on the `issue_age` in the LifeContingency `lc`.
 """
-A(lc::LifeContingency,from_time=0,to_time=nothing) = A(lc.life,lc,from_time,to_time)
-function A(::SingleLife,lc::LifeContingency, from_time,to_time)
+A(lc::LifeContingency,to_time=nothing) = A(lc.life,lc,to_time)
+
+function A(::SingleLife,lc::LifeContingency,to_time)
+    iszero(to_time) && return 0.0 #short circuit and return 0 if there is no time elapsed
     mt = lc.life.mort
     iss_age = lc.life.issue_age
-    start_age = iss_age + from_time
-    end_age = isnothing(to_time) ? omega(lc) : to_time + iss_age + start_age
-    len = end_age - start_age
-    disc = v.(lc.int,1:len)
-    tpx =  [p(mt,iss_age,1 + start_age - lc.life.issue_age,   t,lc.life.fractional_assump) for t in 0:(len-1)]
-    qx = [q(mt,iss_age,1 + start_age - lc.life.issue_age + t ,1,lc.life.fractional_assump) for t in 0:(len-1)]   
-    reduce(+, disc .* tpx  .* qx)
+    end_age = to_time + iss_age -1
+    len = end_age - iss_age
+    disc = v.(lc.int,1:len+1)
+    tpx =  [survivorship(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
+    qx =   mt[iss_age:end_age]
+
+    sum(disc .* tpx  .* qx)
+end
+
+function A(::SingleLife,lc::LifeContingency,::Nothing)
+    mt = lc.life.mort
+    iss_age = lc.life.issue_age
+    end_age = omega(lc) + iss_age - 1
+    len = end_age - iss_age
+    disc = v.(lc.int,1:len+1)
+    tpx =  [survivorship(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
+    qx =   mt[iss_age:end_age]
+
+    sum(disc .* tpx  .* qx)
 end
 
 # for joint, dispactch based on the type of insruance and assumption
-function A(::JointLife,lc::LifeContingency, from_time=0, to_time=nothing) 
-    A(lc.life.contingency, lc.life.joint_assumption,lc,from_time,to_time)
+function A(::JointLife,lc::LifeContingency, to_time=nothing) 
+    A(lc.life.contingency, lc.life.joint_assumption,lc,to_time)
 end
 
-function A(::LastSurvivor,::Frasier,lc::LifeContingency,from_time=0, to_time=nothing)
-    l1 = LifeContingency(lc.life.lives[1],lc.int)
-    l2 = LifeContingency(lc.life.lives[2],lc.int)
-    A₁ = A(l1,from_time,to_time)
-    A₂ = A(l2,from_time,to_time)
+function A(::LastSurvivor,::Frasier,lc::LifeContingency, to_time=nothing)
+    
+    A₁ = A(LifeContingency(lc.life.lives[1],lc.int), to_time)
+    A₂ = A(LifeContingency(lc.life.lives[2],lc.int), to_time)
     return  A₁ + A₂ - A₁ * A₂
 end
 
@@ -294,21 +283,37 @@ To enter the `ä` character, type `a` and then `\\ddot`.
     in Julia.
 
 """
-ä(lc::LifeContingency, from_time=0,to_time=nothing) = ä(lc.life,lc, from_time,to_time)
+ä(lc::LifeContingency, to_time=nothing) = ä(lc.life,lc,to_time)
 
-function ä(::SingleLife,lc::LifeContingency, from_time=0,to_time=nothing) 
-    to_time = isnothing(to_time) ? omega(lc) - lc.life.issue_age : to_time
-    (N(lc, from_time) - N(lc,to_time)) / (D(lc, from_time) - D(lc,to_time)) 
+function ä(::SingleLife,lc::LifeContingency, to_time)
+    iszero(to_time) && return 0.0
+    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
+end
+
+function ä(::SingleLife,lc::LifeContingency, ::Nothing)
+    to_time = omega(lc)
+    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
 end
 
 # for joint, dispactch based on the type of insruance and assumption
-function ä(::JointLife,lc::LifeContingency, from_time=1, to_time=nothing) 
-    ä(lc.life.contingency,lc.life.joint_assumption,lc,from_time,to_time)
+function ä(::JointLife,lc::LifeContingency, to_time) 
+    return ä(lc.life.contingency,lc.life.joint_assumption,lc,to_time)
 end
 
-function ä(::LastSurvivor,::Frasier, lc::LifeContingency, from_time, to_time)
-    to_time = isnothing(to_time) ? omega(lc) - lc.life.issue_age : to_time
-    return sum( v(lc.int,t,1) * p(lc,1,t) for t in from_time:(to_time-1))
+function ä(::LastSurvivor,::Frasier, lc::LifeContingency, to_time)
+    iszero(to_time) && return 0.0
+    @show disc.(lc.int,0:to_time-1)
+    @show [survivorship(lc,t) for t in 0:to_time-1]
+    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
+
+end
+
+function ä(::LastSurvivor,::Frasier, lc::LifeContingency, ::Nothing)
+    @show to_time = omega(lc)
+    @show disc.(lc.int,0:to_time-1)
+    @show [survivorship(lc,t) for t in 0:to_time-1]
+    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
+
 end
 
 """
@@ -336,11 +341,6 @@ Return the probablity of death for the given LifeContingency.
 """
 mt.cumulative_decrement(lc::LifeContingency,from_time,to_time) = 1 - survivorship(lc.life,from_time,to_time)
 
-# mt.cumulative_decrement(l::SingleLife,from_time) = 1 - survivorship(l,from_time)
-# mt.cumulative_decrement(l::SingleLife,from_time,to_time) = 1 - survivorship(l,from_time,to_time)
-
-# mt.cumulative_decrement(l::JointLife,from_time) = 1 - survivorship(l,from_time) 
-# mt.cumulative_decrement(l::JointLife,from_time,to_time) = 1 - survivorship(l,from_time,to_time) 
 
 """
     survivorship(lc::LifeContingency,from_time,to_time)
@@ -354,14 +354,17 @@ mt.survivorship(lc::LifeContingency,from_time,to_time) = survivorship(lc.life, f
 mt.survivorship(l::SingleLife,to_time) = survivorship(l,0,to_time)
 mt.survivorship(l::SingleLife,from_time,to_time) = survivorship(l.mort,l.issue_age + from_time,l.issue_age + to_time)
 
-function mt.survivorship(l::JointLife,duration,time)
-    return mt.survivorship(l.contingency,l.joint_assumption,l,duration,time)
+mt.survivorship(l::JointLife,to_time) = survivorship(l::JointLife,0,to_time)
+function mt.survivorship(l::JointLife,from_time,to_time) 
+    return survivorship(l.contingency,l.joint_assumption,l::JointLife,from_time,to_time)
 end
 
 function mt.survivorship(ins::LastSurvivor,assump::JointAssumption,l::JointLife,from_time,to_time)
+    to_time == 0 && return 1.0
+    
     l1,l2 = l.lives
-    ₜpₓ = time == 0 ? 1.0 : survivorship(l1.mort,l1.issue_age + from_time,to_time,l1.fractional_assump)
-    ₜpᵧ = time == 0 ? 1.0 : survivorship(l2.mort,l2.issue_age + from_time,to_time,l2.fractional_assump)
+    ₜpₓ = survivorship(l1.mort,l1.issue_age + from_time,l1.issue_age + to_time,l1.fractional_assump)
+    ₜpᵧ = survivorship(l2.mort,l2.issue_age + from_time,l2.issue_age + to_time,l2.fractional_assump)
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 
@@ -371,13 +374,13 @@ end
 # indexing starting in a future duration is okay because there's not a 
 # conditional on another life. Here we have to use the whole surivaval
 # stream to calculate a mortality at a given point
-function mt.survivorship(l::JointLife,duration)
-    if duration == 0
-        return 1.0
-    else
-        return   1 - q(l,duration)
-    end
-end
+# function mt.survivorship(l::JointLife,time)
+#     if time == 0
+#         return 1.0
+#     else
+#         return   1 - cumulative_decrement(l,time)
+#     end
+# end
 
 # aliases
 disc = v
@@ -385,6 +388,6 @@ reserve_net_premium = V
 insurance = A
 annuity_due = ä
 net_premium_annual = P
-omega(x) = ω(x)
+ω(x) = omega(x)
 
 end # module
