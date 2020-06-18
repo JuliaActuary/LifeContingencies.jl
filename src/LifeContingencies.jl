@@ -259,15 +259,26 @@ function A(::SingleLife,lc::LifeContingency,::Nothing)
 end
 
 # for joint, dispactch based on the type of insruance and assumption
-function A(::JointLife,lc::LifeContingency, to_time=nothing) 
+function A(::JointLife,lc::LifeContingency, to_time) 
     A(lc.life.contingency, lc.life.joint_assumption,lc,to_time)
 end
 
-function A(::LastSurvivor,::Frasier,lc::LifeContingency, to_time=nothing)
-    
-    A₁ = A(LifeContingency(lc.life.lives[1],lc.int), to_time)
-    A₂ = A(LifeContingency(lc.life.lives[2],lc.int), to_time)
-    return  A₁ + A₂ - A₁ * A₂
+function A(::LastSurvivor,::Frasier,lc::LifeContingency, to_time)
+    iszero(to_time) && return 0.0 #short circuit and return 0 if there is no time elapsed
+    disc = v.(lc.int,1:to_time)
+    tpx =  [survivorship(lc,t) for t in 0:to_time-1]
+    qx =   [ survivorship(lc,t) - survivorship(lc,t+1) for t in 0:to_time-1]
+
+    sum(disc .* tpx  .* qx)
+end
+
+function A(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
+    to_time = omega(lc)
+    disc = v.(lc.int,1:to_time)
+    tpx =  [survivorship(lc,t) for t in 0:to_time-1]
+    qx =   [ survivorship(lc,t) - survivorship(lc,t+1) for t in 0:to_time-1]
+
+    sum(disc .* tpx  .* qx)
 end
 
 """
@@ -291,7 +302,7 @@ function ä(::SingleLife,lc::LifeContingency, to_time)
 end
 
 function ä(::SingleLife,lc::LifeContingency, ::Nothing)
-    to_time = omega(lc)
+    to_time = omega(lc)  + 1 # plus one to catch the payment right after the final mortality rate
     return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
 end
 
@@ -302,16 +313,16 @@ end
 
 function ä(::LastSurvivor,::Frasier, lc::LifeContingency, to_time)
     iszero(to_time) && return 0.0
-    @show disc.(lc.int,0:to_time-1)
-    @show [survivorship(lc,t) for t in 0:to_time-1]
+    disc.(lc.int,0:to_time-1)
+    [survivorship(lc,t) for t in 0:to_time-1]
     return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
 
 end
 
 function ä(::LastSurvivor,::Frasier, lc::LifeContingency, ::Nothing)
-    @show to_time = omega(lc)
-    @show disc.(lc.int,0:to_time-1)
-    @show [survivorship(lc,t) for t in 0:to_time-1]
+    to_time = omega(lc) + 1 # plus one to catch the payment right after the final mortality rate
+    disc.(lc.int,0:to_time-1)
+    [survivorship(lc,t) for t in 0:to_time-1]
     return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
 
 end

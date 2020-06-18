@@ -22,7 +22,7 @@
             l1 = SingleLife(mort = m1, issue_age = 65)
             l2 = SingleLife(mort = m2, issue_age = 60)
 
-            jl = JointLife(l1, l2, contingency = LastSurvivor(), joint_assumption=Frasier())
+            jl = JointLife(l1, l2, LastSurvivor(), Frasier())
             
             @test isapprox( survivorship(jl, 2) , 0.9997, atol = 1e-4)
             
@@ -31,15 +31,9 @@
             ins_l1 = LifeContingency(jl.lives[1],InterestRate(0.05))
             ins_l2 = LifeContingency(jl.lives[2],InterestRate(0.05))
             # problem 9.1.f
-            @test isapprox( ä(ins,5)     , 4.5437, atol = 1e-4)
-            @test isapprox( A(ins)     , A(ins_l1) + A(ins_l2) - A(ins_l1) * A(ins_l2) )
+            @test isapprox( ä(ins,5), 4.5437, atol = 1e-4)
 
-            # whole life last survivor annuity due
-            jl = JointLife(l1,l2,contingency = LastSurvivor(),joint_assumption=Frasier())
-            ins = LifeContingency(jl,InterestRate(0.05))
-
-            # I'm not sure if ä(ins) is currently the right API for WL annuity...
-            @test isapprox( ä(ins), 4.5437)
+            @test isapprox( ä(ins), 4.5437, atol = 1e-4)
         end
     
         @testset "CIA tables" begin
@@ -48,17 +42,18 @@
             l1 = SingleLife(mort = m1.ultimate, issue_age = 40)
             l2 = SingleLife(mort = m2.ultimate, issue_age = 37)
 
-            jl = JointLife(l1, l2, contingency = LastSurvivor(), joint_assumption=Frasier())
+            jl = JointLife(l1, l2, LastSurvivor(), Frasier())
             
             @testset "independent lives" begin
-                for time in 1:40
-                    tpx = survivorship(l1,time)
-                    tpy = survivorship(l2,time)
+                for time in 1:1
+                    @show tpx = 1 - (survivorship(l1,time-1) - survivorship(l1,time))
+                    @show tpy =1 -  (survivorship(l2,time-1) - survivorship(l2,time))
 
-                    tpxy_prior = tpx + tpy - tpx * tpy
-                    tpx = survivorship(l1, time)
-                    tpy = survivorship(l2,time)
-                    tpxy = tpx + tpy - tpx * tpy
+                    @show tpxy_prior = tpx + tpy - tpx * tpy
+                    @show tpx = 1 - (survivorship(l1, time) - survivorship(l1, time+1))
+                    @show tpy = 1 - (survivorship(l2, time) - survivorship(l2, time+1))
+
+                    @show tpxy = tpx + tpy - tpx * tpy
                     @test cumulative_decrement(jl, time) == 1 - tpxy / tpxy_prior
                 end
             end

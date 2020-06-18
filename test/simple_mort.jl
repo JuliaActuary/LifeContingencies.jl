@@ -1,4 +1,4 @@
-@testset "one year" begin
+@testset "one  year" begin
     ins = LifeContingency(
         SingleLife(
             mort = UltimateMortality([0.5]),
@@ -8,7 +8,7 @@
     )
 
     @test omega(ins) ≈ 1
-    @test ä(ins) ≈ 1
+    @test ä(ins) ≈ 1 + .5 / 1.05
     @test ä(ins,1) ≈ 1
     @test ä(ins,0) ≈ 0
 
@@ -23,13 +23,62 @@
     )
 
     @test omega(ins_jl) ≈ 1
-    @test ä(ins_jl) ≈ 1
+    @test ä(ins_jl) ≈ 1 + .75 / 1.05
     @test ä(ins_jl,1) ≈ 1
     @test ä(ins_jl,0) ≈ 0
 
+    @test survivorship(ins_jl,1) ≈ 0.75
     @test A(ins_jl) ≈ .25 / 1.05
     @test A(ins_jl,1) ≈ 0.25 / 1.05
     @test A(ins_jl,0) ≈ 0
+
+    ins = LifeContingency(
+        SingleLife(
+            mort = UltimateMortality([0.5,0.5]),
+            issue_age = 0
+        ),
+        InterestRate(0.05)
+    )
+
+    @test omega(ins) ≈ 2
+    @test ä(ins) ≈ 1 + .5 * 1 / 1.05 + .25 / 1.05 ^2
+    @test ä(ins,1) ≈ 1
+    @test ä(ins,2) ≈ 1 + .5 * 1 / 1.05
+    @test ä(ins,0) ≈ 0
+
+    @test A(ins) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
+    @test A(ins,1) ≈ 0.5 / 1.05
+    @test A(ins,0) ≈ 0
+
+end
+
+@testset "two years" begin
+    ins = LifeContingency(
+        SingleLife(
+            mort = UltimateMortality([0.5,0.5]),
+            issue_age = 0
+        ),
+        InterestRate(0.05)
+    )
+
+    @test omega(ins) ≈ 2
+    @test ä(ins,1) ≈ 1
+    @test ä(ins,2) ≈ 1 + .5 * 1 / 1.05
+    @test ä(ins,0) ≈ 0
+
+    @test A(ins) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
+    @test A(ins,1) ≈ 0.5 / 1.05
+    @test A(ins,0) ≈ 0
+
+    ins_jl = LifeContingency(
+        JointLife((ins.life,ins.life),LastSurvivor(),Frasier()),
+        InterestRate(0.05)
+    )
+
+    @test omega(ins_jl) ≈ 2
+    @test ä(ins_jl,1) ≈ 1
+    @test ä(ins_jl,2) ≈ 1 + .75 /1.05
+    @test ä(ins_jl,0) ≈ 0
 
 end
 
