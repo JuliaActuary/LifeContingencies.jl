@@ -119,8 +119,8 @@ function rate(i::VectorInterestRate, time)
 end
 
 """
-    v(i::InterestRate, from_period, to_period)
-    v(i::InterestRate, period)
+    disc(i::InterestRate, from_period, to_period)
+    disc(i::InterestRate, period)
 
 The three argument method returns the discount factor applicable between period `from_period` and `to_period` given `InterestRate` `i`.
 The two argument method returns the discount factor from period zero to `period` given `InterestRate` `i`.
@@ -128,7 +128,7 @@ The two argument method returns the discount factor from period zero to `period`
 # Examples
 ```julia-repl
 julia> i = InterestRate(0.05)
-julia> v(i,1)
+julia> disc(i,1)
 0.9523809523809523
 julia> v.(i,1:5)
 5-element Array{Float64,1}:
@@ -137,43 +137,43 @@ julia> v.(i,1:5)
  0.863837598531476
  0.8227024747918819
  0.7835261664684589
- julia> v(i,1,3)
+ julia> disc(i,1,3)
 0.9070294784580498
 ```
 
 """
 
 """
-    v(i::InterestRate, to_time)    
+    disc(i::InterestRate, to_time)    
 The discount rate at time `to_time`.
 """
-function v(i::InterestRate, to_time)
+function disc(i::InterestRate, to_time)
     if to_time == 0
         1.0
     else
-        v(i,0,to_time)
+        disc(i,0,to_time)
     end
 end
 
-function v(i::InterestRate, from_time, to_time) 
-    return v(i.compound,i,from_time,to_time)
+function disc(i::InterestRate, from_time, to_time) 
+    return disc(i.compound,i,from_time,to_time)
 end
 
-function v(::Compound,i::ConstantInterestRate, from_time, to_time) 
+function disc(::Compound,i::ConstantInterestRate, from_time, to_time) 
     1.0 / (1 + i.rate) ^ (to_time - from_time)
 end
-function v(::Simple,i::ConstantInterestRate, from_time, to_time) 
+function disc(::Simple,i::ConstantInterestRate, from_time, to_time) 
     1.0 / (1 + i.rate * (to_time - from_time))
 end
-function v(::Continuous,i::ConstantInterestRate, from_time, to_time) 
+function disc(::Continuous,i::ConstantInterestRate, from_time, to_time) 
     1.0 / exp(rate(i) * (to_time - from_time))
 end
 
-function v(i::VectorInterestRate, from_time, to_time) 
-    return v(i.compound,i,from_time,to_time)
+function disc(i::VectorInterestRate, from_time, to_time) 
+    return disc(i.compound,i,from_time,to_time)
 end
 
-function v(::Compound,i::VectorInterestRate, from_time, to_time) 
+function disc(::Compound,i::VectorInterestRate, from_time, to_time) 
     #won't handle non-int times
     reduce(/, 1 .+ rate.(i,(from_time+1):to_time);init=1.0 )
 end
@@ -210,12 +210,12 @@ end
 (i::InterestRate)(time_period) = DiscountFactor(i,time_period)
 
 function Base.iterate(df::DiscountFactor{T}) where {T<:InterestRate}
-    return (1.0,(v = 1.0 * v(df.int,df.time_step),time = df.time_step))
+    return (1.0,(v = 1.0 * disc(df.int,df.time_step),time = df.time_step))
 end
 
 function Base.iterate(df::DiscountFactor{T},state) where {T<:InterestRate}
     new_time =  state.time + df.time_step
-    return (state.v,(v = state.v  * v(df.int,state.time,new_time),time = new_time))
+    return (state.v,(v = state.v  * disc(df.int,state.time,new_time),time = new_time))
 end
 
 function Base.iterate(df::DiscountFactor{VectorInterestRate},state)
@@ -226,7 +226,7 @@ function Base.iterate(df::DiscountFactor{VectorInterestRate},state)
         next = nothing
     else
         new_time =  state.time + df.time_step
-        next = (v = state.v  * v(df.int,state.time,new_time), time  = new_time)
+        next = (v = state.v  * disc(df.int,state.time,new_time), time  = new_time)
     end
     return (
         state.v,

@@ -163,7 +163,7 @@ end
 ``D_x`` is a retrospective actuarial commutation function which is the product of the survivorship and discount factor.
 """
 function D(lc::LifeContingency, to_time)
-    return v(lc.int, to_time) * survivorship(lc,to_time)
+    return disc(lc.int, to_time) * survivorship(lc,to_time)
 end
 
 
@@ -186,7 +186,7 @@ end
 ``C_x`` is a retrospective actuarial commutation function which is the product of the discount factor and the difference in `l` (``l_x``).
 """
 function C(lc::LifeContingency, to_time)
-    v(lc.int, to_time+1) * (l(lc,to_time) - l(lc, to_time+1))
+    disc(lc.int, to_time+1) * (l(lc,to_time) - l(lc, to_time+1))
     
 end
 
@@ -234,11 +234,11 @@ function A(::SingleLife,lc::LifeContingency,to_time)
     iss_age = lc.life.issue_age
     end_age = to_time + iss_age -1
     len = end_age - iss_age
-    disc = v.(lc.int,1:len+1)
+    v = disc.(lc.int,1:len+1)
     tpx =  [survivorship(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
     qx =   mt[iss_age:end_age]
 
-    sum(disc .* tpx  .* qx)
+    sum(v .* tpx  .* qx)
 end
 
 function A(::SingleLife,lc::LifeContingency,::Nothing)
@@ -246,11 +246,11 @@ function A(::SingleLife,lc::LifeContingency,::Nothing)
     iss_age = lc.life.issue_age
     end_age = omega(lc) + iss_age - 1
     len = end_age - iss_age
-    disc = v.(lc.int,1:len+1)
+    v = disc.(lc.int,1:len+1)
     tpx =  [survivorship(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
     qx =   mt[iss_age:end_age]
 
-    sum(disc .* tpx  .* qx)
+    sum(v .* tpx  .* qx)
 end
 
 # for joint, dispactch based on the type of insruance and assumption
@@ -260,20 +260,20 @@ end
 
 function A(::LastSurvivor,::Frasier,lc::LifeContingency, to_time)
     iszero(to_time) && return 0.0 #short circuit and return 0 if there is no time elapsed
-    disc = v.(lc.int,1:to_time)
+    v = disc.(lc.int,1:to_time)
     tpx =  [survivorship(lc,t) for t in 0:to_time-1]
     qx =   [ survivorship(lc,t) - survivorship(lc,t+1) for t in 0:to_time-1]
 
-    sum(disc .* tpx  .* qx)
+    sum(v .* tpx  .* qx)
 end
 
 function A(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
     to_time = omega(lc)
-    disc = v.(lc.int,1:to_time)
+    v = disc.(lc.int,1:to_time)
     tpx =  [survivorship(lc,t) for t in 0:to_time-1]
     qx =   [ survivorship(lc,t) - survivorship(lc,t+1) for t in 0:to_time-1]
 
-    sum(disc .* tpx  .* qx)
+    sum(v .* tpx  .* qx)
 end
 
 """
@@ -388,22 +388,10 @@ function mt.survivorship(ins::LastSurvivor,assump::JointAssumption,l::JointLife,
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 
-# because the cumulative effect of the unknown life statuses,
-# we always assume that the calculations are from the issue age
-# which is a little bit different from the single life, where
-# indexing starting in a future duration is okay because there's not a 
-# conditional on another life. Here we have to use the whole surivaval
-# stream to calculate a mortality at a given point
-# function mt.survivorship(l::JointLife,time)
-#     if time == 0
-#         return 1.0
-#     else
-#         return   1 - cumulative_decrement(l,time)
-#     end
-# end
+disc(lc::LifeContingency,t) = disc(lc.int,t)
+disc(lc::LifeContingency,t1,t2) = disc(lc.int,t1,t2)
 
 # aliases
-disc = v
 reserve_net_premium = V
 insurance = A
 annuity_due = ä

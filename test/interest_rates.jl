@@ -5,30 +5,30 @@
     @testset "vector interest rate" begin
         i = InterestRate([0.05, 0.05, 0.05])
 
-        @test v(i,0) == 1.0
-        @test v(i,1) == 1 / 1.05
-        @test v(i,2) == 1 / 1.05 ^ 2
-        @test v(i,3) == 1 / 1.05 ^ 3
-        @test v(i,1,2) == 1 / 1.05
+        @test disc(i,0) == 1.0
+        @test disc(i,1) == 1 / 1.05
+        @test disc(i,2) == 1 / 1.05 ^ 2
+        @test disc(i,3) == 1 / 1.05 ^ 3
+        @test disc(i,1,2) == 1 / 1.05
         @test rate(i,1) == 0.05
         @test rate(i,2) == 0.05
 
-        @test v.(i,1:3) == [1 / 1.05 ^ t for t in 1:3]
+        @test disc.(i,1:3) == [1 / 1.05 ^ t for t in 1:3]
     end
 
     ## real interest rate
     @testset "constant interest rate" begin
         i = InterestRate(0.05)
 
-        @test v(i,0) == 1.0
-        @test v(i,1) == 1 / 1.05
-        @test v(i,2) == 1 / 1.05 ^ 2
-        @test v(i,3) == 1 / 1.05 ^ 3
-        @test v(i,1,2) == 1 / 1.05
+        @test disc(i,0) == 1.0
+        @test disc(i,1) == 1 / 1.05
+        @test disc(i,2) == 1 / 1.05 ^ 2
+        @test disc(i,3) == 1 / 1.05 ^ 3
+        @test disc(i,1,2) == 1 / 1.05
         @test rate(i,1) == 0.05
         @test rate(i,2) == 0.05
         
-        @test v.(i,1:3) == [1 / 1.05 ^ t for t in 1:3]
+        @test disc.(i,1:3) == [1 / 1.05 ^ t for t in 1:3]
     end
 end
 
@@ -62,4 +62,17 @@ end
         @test_broken InterestRate([0.05,0.05,0.05,0.05])(1) == df #https://stackoverflow.com/questions/62336686/struct-equality-with-arrays
     end
 
+end
+
+@testset "passthrough life contingency" begin
+    ins = LifeContingency(
+        SingleLife(
+            mort = UltimateMortality([0.5]),
+            issue_age = 0
+        ),
+        InterestRate(0.05)
+    )
+
+    @test disc(ins,1) ≈ 1/1.05
+    @test disc(ins,1,2) ≈ 1/1.05
 end
