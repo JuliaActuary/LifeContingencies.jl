@@ -45,16 +45,11 @@
             jl = JointLife(l1, l2, LastSurvivor(), Frasier())
             
             @testset "independent lives" begin
-                for time in 1:1
-                    @show tpx = 1 - (survivorship(l1,time-1) - survivorship(l1,time))
-                    @show tpy =1 -  (survivorship(l2,time-1) - survivorship(l2,time))
+                for time in 1:40
+                    tpx = survivorship(l1,time)
+                    tpy = survivorship(l2,time)
 
-                    @show tpxy_prior = tpx + tpy - tpx * tpy
-                    @show tpx = 1 - (survivorship(l1, time) - survivorship(l1, time+1))
-                    @show tpy = 1 - (survivorship(l2, time) - survivorship(l2, time+1))
-
-                    @show tpxy = tpx + tpy - tpx * tpy
-                    @test cumulative_decrement(jl, time) == 1 - tpxy / tpxy_prior
+                    @test survivorship(jl, time) == tpx + tpy - tpx * tpy
                 end
             end
         
@@ -66,7 +61,7 @@
                 end
 
                 for time in 1:40
-                    q′ =  cumulative_decrement(jl, time) - cumulative_decrement(jl, time-1)
+                    q′ =  1 - survivorship(jl, time) / survivorship(jl, time-1)
 
                     @test isapprox(q′, q_annual[time], atol = 1e-6)
                 end

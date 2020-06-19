@@ -207,14 +207,9 @@ The ``M_x`` actuarial commutation function where the `from_time` argument is `x`
 Issue age is based on the issue_age in the LifeContingency `lc`.
 """
 function M(lc::LifeContingency, from_time)
-    return M(lc.life,lc,from_time)
-end
-
-function M(::SingleLife,lc::LifeContingency, from_time)
-    range = from_time:(omega(lc) - lc.life.issue_age -1)
+    range = from_time:omega(lc)-1
     return reduce(+,Map(from_time->C(lc, from_time)), range)
 end
-
 
 E(lc::LifeContingency, t, x) = D(lc,x + t) / D(lc,x)
 
@@ -328,20 +323,34 @@ function ä(::LastSurvivor,::Frasier, lc::LifeContingency, ::Nothing)
 end
 
 """
-    P(lc::LifeContingency,start_time=0)
+    P(lc::LifeContingency)
+    P(lc::LifeContingency,to_time)
 
-A whole life insurance with 1 unit payable at the end of the year of death,
-and payable by net annual premiums, starting from `start_time` timepoint (often `0`).
+The net premium for a whole life insurance (without second argument) or a term life insurance through `to_time`.
+
+The net premium is based on 1 unit of insurance with the death benfit payable at the end of the year and assuming annual net premiums.
 """
-P(lc::LifeContingency, start_time=0) = A(lc, start_time) / ä(lc, start_time)
+P(lc::LifeContingency) = A(lc) / ä(lc)
+P(lc::LifeContingency,to_time) = A(lc,to_time) / ä(lc,to_time)
 
 """
-    V(lc::LifeContingency,t,start_time=0)
+    V(lc::LifeContingency,time)
 
-The net premium reserve at the end of year `t`, starting from time `start_time` (often `0`).
+The net premium reserve at the end of year `time`.
 """
-function V(lc::LifeContingency, t,start_time = 0) 
-    return A(lc, start_time + t) - P(lc, start_time) * ä(lc, start_time + t)
+function V(lc::LifeContingency, time) 
+    PVFB = A(lc) - A(lc,time)
+    PVFP = P(lc) * (ä(lc) - ä(lc,time))
+    return (PVFB - PVFP) / APV(lc,time)
+end
+
+"""
+    APV(lc::LifeContingency,to_time)
+
+The **actuarial present value** which is the survivorship times the discount factor for the life contingency.
+"""
+function APV(lc::LifeContingency,to_time)
+    return survivorship(lc,to_time) * disc(lc.int,to_time)
 end
 
 """

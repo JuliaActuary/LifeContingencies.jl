@@ -27,11 +27,13 @@
     @test ä(ins_jl,1) ≈ 1
     @test ä(ins_jl,0) ≈ 0
 
-    @test survivorship(ins_jl,1) ≈ 0.75
+    @test survivorship(ins_jl,1) ≈ .5 + .5 - .5 * .5
     @test A(ins_jl) ≈ .25 / 1.05
     @test A(ins_jl,1) ≈ 0.25 / 1.05
     @test A(ins_jl,0) ≈ 0
+end
 
+@testset "two year" begin
     ins = LifeContingency(
         SingleLife(
             mort = UltimateMortality([0.5,0.5]),
@@ -49,6 +51,15 @@
     @test A(ins) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
     @test A(ins,1) ≈ 0.5 / 1.05
     @test A(ins,0) ≈ 0
+
+    ins_jl = LifeContingency(
+        JointLife((ins.life,ins.life),LastSurvivor(),Frasier()),
+        InterestRate(0.05)
+    )
+
+    @test survivorship(ins_jl,0) ≈ 1.0
+    @test survivorship(ins_jl,1) ≈ .5 + .5 - .5 * .5
+    @test survivorship(ins_jl,2) ≈ (.25 + .25 - .25 * .25)
 
 end
 
