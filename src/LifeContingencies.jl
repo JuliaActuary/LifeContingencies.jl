@@ -12,7 +12,6 @@ export LifeContingency,
     l,
     InterestRate,
     rate,
-    v,
     A,
     ä,
     D,
@@ -22,7 +21,6 @@ export LifeContingency,
     P,
     V,
     disc,
-    decrements,
     reserve_net_premium,
     insurance,
     annuity_due,
@@ -47,13 +45,18 @@ abstract type Life end
 """
     struct SingleLife
         mort
-        int::InterestRate
         issue_age::Int
+        alive::Bool
+        fractional_assump::MortalityTables.DeathDistribution
     end
 
-An object containing the necessary assumptions for basic actuarial calculations such
-    as commutation functions or life insurance/annuity rates. Issue age is defined so that select 
-    mortality rates can be accommodated and so many other calculations need only duration specified.
+A `Life` object containing the necessary assumptions for contingent maths related to a single life. Use with a `LifeContingency` to do many actuaral present value calculations. 
+
+Keyword arguments:
+- `mort` pass a mortality vector, which is an array of applicable mortality rates indexed by attained age
+- `issue_age` is the assumed issue age for the `SingleLife` and is the basis of many contingency calculations.
+- `alive` Default value is `true`. Useful for joint insurances with different status on the lives insured.
+- `fractional_assump`. Default value is `Uniform()`. This is a `DeathDistribution` from the `MortalityTables.jl` package and is the assumption to use for non-integer ages/times.
 
 # Examples
     using MortalityTables
@@ -61,12 +64,10 @@ An object containing the necessary assumptions for basic actuarial calculations 
     mort = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
 
     SingleLife(
-        mort.select,            # a MortalityTables mortality table
-        InterestRate(0.05),     # interest rate
-        0                       # issue age
+        mort       = mort.select[30], 
+        issue_age  = 30          
     )
 """
-#TODO UPDATE DOCS 
 Base.@kwdef struct SingleLife <: Life
     mort
     issue_age::Int
@@ -74,70 +75,115 @@ Base.@kwdef struct SingleLife <: Life
     fractional_assump = mt.Uniform()
 end
 
+""" 
+    JointAssumption()
+
+An abstract type representing the different assumed relationship between the survivorship of the lives on a JointLife. Available options to use include:
+- `Frasier()`
+"""
 abstract type JointAssumption end
 
+""" 
+    Frasier()
+
+The assumption of independnt lives in a joint life calculation.
+Is a subtype of `JointAssumption`.
+"""
 struct Frasier <: JointAssumption end
 
+""" 
+    Contingency()
+
+An abstract type representing the different triggers for contingent benefits. Available options to use include:
+- `LastSurvivor()`
+"""
 abstract type Contingency end
 
+"""
+    LastSurvivor()
+The contingency whereupon benefits are payable upon both lives passing.
+Is a subtype of `Contingency`
+"""
 struct LastSurvivor <: Contingency end
-struct FirstToDie <: Contingency end
 
-struct JointLife <: Life
+# TODO: Not Implemented
+# """
+#     FirstToDie()
+# The contingency whereupon benefits are payable upon the first life passing.
+
+# Is a subtype of `Contingency`
+# """
+# struct FirstToDie <: Contingency end
+
+"""
+    struct JointLife
+        lives
+        contingency
+        joint_assumption
+    end
+
+    A `Life` object containing the necessary assumptions for contingent maths related to a joint life insurance. Use with a `LifeContingency` to do many actuaral present value calculations. 
+
+Keyword arguments:
+- `lives` is a tuple of two `SingleLife`s
+- `contingency` default is `LastSurvivor()`. It is the trigger for contingent benefits. See `?Contingency`. 
+- `joint_assumption` Default value is `Frasier()`. It is the assumed relationship between the mortality of the two lives. See `?JointAssumption`. 
+
+# Examples
+    using MortalityTables
+    tbls = MortalityTables.tables()
+    mort = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
+
+    l1 = SingleLife(
+        mort       = mort.select[30], 
+        issue_age  = 30          
+    )
+    l2 = SingleLife(
+        mort       = mort.select[30], 
+        issue_age  = 30          
+    )
+
+    jl = JointLife(
+        lives = (l1,l2),
+        contingency = LastSurvivor(),
+        joint_assumption = Frasier()
+    )
+"""
+Base.@kwdef struct JointLife <: Life
     lives::Tuple{SingleLife,SingleLife}
-    contingency::Contingency
-    joint_assumption::JointAssumption
+    contingency::Contingency = LastSurvivor()
+    joint_assumption::JointAssumption = Frasier()
 end
 
-function JointLife(l1::SingleLife, l2::SingleLife, contingency::Contingency,joint_assumption::JointAssumption)
-    return JointLife((l1,l2),contingency,joint_assumption)
-end
-
+"""
+    struct LifeContingency
+        life::Life
+"""
 struct LifeContingency
     life::Life
     int::InterestRate
 end
+
 Base.broadcastable(lc::LifeContingency) = Ref(lc)
 
-decrements(lc::LifeContingency) = decrements(lc.life)
-decrements(lc::SingleLife) = (death = lc.mort,)
-decrements(lc::JointLife) = (death = [lc.life[1].mort,lc.life[2].mort],)
-
-function Base.iterate(lc::LifeContingency)
-    #TODO calcualte the decrments here in an iterative fashion rather than calling out to 
-    # `survivorship`
-    @show decs = decrements(lc)
-
-    @show f, r = firstrest(zip(decrements(lc)...))
-    return (
-        ( # current value
-            time=0,
-            suvivorship=1.0,
-            cumulative_decrement=0.0,
-            decrements=f,
-        ), 
-        ( # state
-            time=1,
-            survivorship = 1.0 * survivorship(lc,1),
-            cumulative_decrement = 1 - survivorship(lc,1),
-            decrements_tail=r,
-        ) 
-    )
-end
-
-function Base.IteratorSize(::Type{<:LifeContingency})
-    return Base.HasLength()
-end
-
-Base.length(lc::LifeContingency) = length(zip(decrements(lc)))
-
 """
-    ω(lc::LifeContingency)
+    omega(lc::LifeContingency)
+    omega(l::Life)
+    omega(i::InterestRate)
+
+# `Life`s and `LifeContingency`s
 
 Returns the last defined time_period for both the interest rate and mortality table.
 Note that this is *different* than calling `omega` on a `MortalityTable`, which will give you the last `attained_age`.
 
-Example, if the `LifeContingency` has issue age 60, and the last defined attained age for the `MortalityTable` is 100, then `omega` of the `MortalityTable` will be `100` and `omega` of the `LifeContingency` will be `40`.
+Example: if the `LifeContingency` has issue age 60, and the last defined attained age for the `MortalityTable` is 100, then `omega` of the `MortalityTable` will be `100` and `omega` of the 
+`LifeContingency` will be `40`.
+
+# `InterestRate`s
+
+The last period that the interest rate is defined for. Assumed to be infinite (`Inf`) for 
+    functional and constant interest rate types. Returns the `lastindex` of the vector if 
+    a vector type.
 """
 function mt.omega(lc::LifeContingency)
     # if one of the omegas is infinity, that's a Float so we need
@@ -153,6 +199,14 @@ function mt.omega(l::JointLife)
     return minimum( omega.(l.lives) )    
 end
 
+function mt.omega(i::ConstantInterestRate)
+    return Inf
+end
+
+function mt.omega(i::VectorInterestRate)
+    return lastindex(i.i)
+end
+
 ###################
 ## COMMUTATIONS ###
 ###################
@@ -166,10 +220,6 @@ function D(lc::LifeContingency, to_time)
     return disc(lc.int, to_time) * survivorship(lc,to_time)
 end
 
-
-struct DIter
-    lc
-end
 
 """
     l(lc::LifeContingency, to_time)
@@ -280,9 +330,7 @@ end
     ä(lc::LifeContingency, from_time=0,to_time=nothing)
 
 Life annuity due for the life contingency `lc` with the benefit period starting at `from_time` and ending at `to_time`. If `to_time` is `nothing`, will be benefit until the end of the mortality table or interest rates.
-Issue age is based on the `issue_age` in the LifeContingency `lc`.
 
-Issue age is based on the `issue_age` in the LifeContingency `lc`.
 
 To enter the `ä` character, type `a` and then `\\ddot`.
     See more on how to [input unicode](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
