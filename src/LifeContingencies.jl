@@ -2,14 +2,16 @@ module LifeContingencies
 
 using MortalityTables
 using Transducers
-
+using Dates
+using IterTools
+using QuadGK
+    
 const mt = MortalityTables
 
 export LifeContingency,
     l,
     InterestRate,
     rate,
-    v,
     A,
     ä,
     D,
@@ -23,10 +25,11 @@ export LifeContingency,
     insurance,
     annuity_due,
     net_premium_annual,
-    q,p,
     SingleLife, Frasier, JointLife,
     LastSurvivor,
-    omega, ω
+    omega,
+    survivorship,
+    DiscountFactor
 
 
 
@@ -42,13 +45,18 @@ abstract type Life end
 """
     struct SingleLife
         mort
-        int::InterestRate
         issue_age::Int
+        alive::Bool
+        fractional_assump::MortalityTables.DeathDistribution
     end
 
-An object containing the necessary assumptions for basic actuarial calculations such
-    as commutation functions or life insurance/annuity rates. Issue age is defined so that select 
-    mortality rates can be accommodated and so many other calculations need only duration specified.
+A `Life` object containing the necessary assumptions for contingent maths related to a single life. Use with a `LifeContingency` to do many actuaral present value calculations. 
+
+Keyword arguments:
+- `mort` pass a mortality vector, which is an array of applicable mortality rates indexed by attained age
+- `issue_age` is the assumed issue age for the `SingleLife` and is the basis of many contingency calculations.
+- `alive` Default value is `true`. Useful for joint insurances with different status on the lives insured.
+- `fractional_assump`. Default value is `Uniform()`. This is a `DeathDistribution` from the `MortalityTables.jl` package and is the assumption to use for non-integer ages/times.
 
 # Examples
     using MortalityTables
@@ -56,12 +64,10 @@ An object containing the necessary assumptions for basic actuarial calculations 
     mort = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
 
     SingleLife(
-        mort.select,            # a MortalityTables mortality table
-        InterestRate(0.05),     # interest rate
-        0                       # issue age
+        mort       = mort.select[30], 
+        issue_age  = 30          
     )
 """
-#TODO UPDATE DOCS 
 Base.@kwdef struct SingleLife <: Life
     mort
     issue_age::Int
@@ -69,49 +75,136 @@ Base.@kwdef struct SingleLife <: Life
     fractional_assump = mt.Uniform()
 end
 
+""" 
+    JointAssumption()
+
+An abstract type representing the different assumed relationship between the survivorship of the lives on a JointLife. Available options to use include:
+- `Frasier()`
+"""
 abstract type JointAssumption end
 
+""" 
+    Frasier()
+
+The assumption of independnt lives in a joint life calculation.
+Is a subtype of `JointAssumption`.
+"""
 struct Frasier <: JointAssumption end
 
-abstract type JointInsurance end
+""" 
+    Contingency()
 
-struct LastSurvivor <: JointInsurance end
-struct FirstToDie <: JointInsurance end
+An abstract type representing the different triggers for contingent benefits. Available options to use include:
+- `LastSurvivor()`
+"""
+abstract type Contingency end
 
-struct JointLife <: Life
+"""
+    LastSurvivor()
+The contingency whereupon benefits are payable upon both lives passing.
+Is a subtype of `Contingency`
+"""
+struct LastSurvivor <: Contingency end
+
+# TODO: Not Implemented
+# """
+#     FirstToDie()
+# The contingency whereupon benefits are payable upon the first life passing.
+
+# Is a subtype of `Contingency`
+# """
+# struct FirstToDie <: Contingency end
+
+"""
+    struct JointLife
+        lives
+        contingency
+        joint_assumption
+    end
+
+    A `Life` object containing the necessary assumptions for contingent maths related to a joint life insurance. Use with a `LifeContingency` to do many actuaral present value calculations. 
+
+Keyword arguments:
+- `lives` is a tuple of two `SingleLife`s
+- `contingency` default is `LastSurvivor()`. It is the trigger for contingent benefits. See `?Contingency`. 
+- `joint_assumption` Default value is `Frasier()`. It is the assumed relationship between the mortality of the two lives. See `?JointAssumption`. 
+
+# Examples
+    using MortalityTables
+    tbls = MortalityTables.tables()
+    mort = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
+
+    l1 = SingleLife(
+        mort       = mort.select[30], 
+        issue_age  = 30          
+    )
+    l2 = SingleLife(
+        mort       = mort.select[30], 
+        issue_age  = 30          
+    )
+
+    jl = JointLife(
+        lives = (l1,l2),
+        contingency = LastSurvivor(),
+        joint_assumption = Frasier()
+    )
+"""
+Base.@kwdef struct JointLife <: Life
     lives::Tuple{SingleLife,SingleLife}
-    insurance::JointInsurance
-    joint_assumption::JointAssumption
+    contingency::Contingency = LastSurvivor()
+    joint_assumption::JointAssumption = Frasier()
 end
 
-function JointLife(l1::SingleLife, l2::SingleLife,ins::JointInsurance,ja::JointAssumption)
-    return JointLife((l1,l2),ins,ja)
-end
-
+"""
+    struct LifeContingency
+        life::Life
+"""
 struct LifeContingency
     life::Life
     int::InterestRate
 end
 
+Base.broadcastable(lc::LifeContingency) = Ref(lc)
 
 """
-    ω(lc::LifeContingency)
+    omega(lc::LifeContingency)
+    omega(l::Life)
+    omega(i::InterestRate)
 
-Returns the last defined period for both the interest rate and mortality table.
-    In the future, this may only look up the omega of the mortality table.
+# `Life`s and `LifeContingency`s
+
+Returns the last defined time_period for both the interest rate and mortality table.
+Note that this is *different* than calling `omega` on a `MortalityTable`, which will give you the last `attained_age`.
+
+Example: if the `LifeContingency` has issue age 60, and the last defined attained age for the `MortalityTable` is 100, then `omega` of the `MortalityTable` will be `100` and `omega` of the 
+`LifeContingency` will be `40`.
+
+# `InterestRate`s
+
+The last period that the interest rate is defined for. Assumed to be infinite (`Inf`) for 
+    functional and constant interest rate types. Returns the `lastindex` of the vector if 
+    a vector type.
 """
-function mt.ω(lc::LifeContingency)
+function mt.omega(lc::LifeContingency)
     # if one of the omegas is infinity, that's a Float so we need
     # to narrow the type with Int
-    return Int(min(ω(lc.life), ω(lc.int)))
+    return Int(min(omega(lc.life), omega(lc.int)))
 end
 
-function mt.ω(l::SingleLife)
-    return mt.ω(l.mort, l.issue_age)    
+function mt.omega(l::SingleLife)
+    return mt.omega(l.mort) - l.issue_age + 1    
 end
 
-function mt.ω(l::JointLife)
-    return minimum( ω.(l.lives) )    
+function mt.omega(l::JointLife)
+    return minimum( omega.(l.lives) )    
+end
+
+function mt.omega(i::ConstantInterestRate)
+    return Inf
+end
+
+function mt.omega(i::VectorInterestRate)
+    return lastindex(i.i)
 end
 
 ###################
@@ -119,79 +212,54 @@ end
 ###################
 
 """
-    D(lc::LifeContingency, time)
+    D(lc::LifeContingency, to_time)
 
-The ``D_x`` actuarial commutation function where the `time` argument is `x`.
+``D_x`` is a retrospective actuarial commutation function which is the product of the survivorship and discount factor.
+"""
+function D(lc::LifeContingency, to_time)
+    return disc(lc.int, to_time) * survivorship(lc,to_time)
+end
+
+
+"""
+    l(lc::LifeContingency, to_time)
+
+``l_x`` is a retrospective actuarial commutation function which is the survivorship up to a certain point in time. By default, will have a unitary basis (ie `1.0`), but you can specify `basis` keyword argument to use something different (e.g. `1000` is common in the literature.)
+"""
+function l(lc::LifeContingency, to_time; basis=1.0)
+    return survivorship(lc.life,to_time) * basis
+end
+
+"""
+    C(lc::LifeContingency, to_time)
+
+``C_x`` is a retrospective actuarial commutation function which is the product of the discount factor and the difference in `l` (``l_x``).
+"""
+function C(lc::LifeContingency, to_time)
+    disc(lc.int, to_time+1) * (l(lc,to_time) - l(lc, to_time+1))
+    
+end
+
+"""
+    N(lc::LifeContingency, from_time)
+
+``N_x`` is a prospective actuarial commutation function which is the sum of the `D` (``D_x``) values from the given time to the end of the mortality table.
+"""
+function N(lc::LifeContingency, from_time)
+    range = from_time:(omega(lc)-1)
+    return reduce(+,Map(from_time->D(lc, from_time)), range)
+end
+
+"""
+    M(lc::LifeContingency, from_time)
+
+The ``M_x`` actuarial commutation function where the `from_time` argument is `x`.
 Issue age is based on the issue_age in the LifeContingency `lc`.
 """
-function D(lc::LifeContingency, time)
-    return D(lc.life,lc,time)
+function M(lc::LifeContingency, from_time)
+    range = from_time:omega(lc)-1
+    return reduce(+,Map(from_time->C(lc, from_time)), range)
 end
-
-function D(::SingleLife,lc::LifeContingency, time)
-    v(lc.int, time) * p(lc, 1,time)
-end
-
-"""
-    l(lc::LifeContingency, time)
-
-The ``l_x`` actuarial commutation function where the `time` argument is `x`.
-Issue age is based on the issue_age in the LifeContingency `lc`.
-"""
-function l(lc::LifeContingency, time)
-    if time == 0
-        return 1.0
-    else
-        return p(lc.life, 1,time)
-    end
-end
-
-"""
-    C(lc::LifeContingency, duration)
-
-The ``C_x`` actuarial commutation function where the `duration` argument is `x`.
-Issue age is based on the issue_age in the LifeContingency `lc`.
-"""
-function C(lc::LifeContingency, duration)
-    return C(lc.life,lc,duration)
-end
-
-function C(::SingleLife,lc::LifeContingency, duration)
-    v(lc.int, duration + 1) *
-    mt.q(lc.life, duration + 1) *
-    l(lc, duration)
-end
-
-"""
-    N(lc::LifeContingency, duration)
-
-The ``N_x`` actuarial commutation function where the `duration` argument is `x`.
-Issue age is based on the issue_age in the LifeContingency `lc`.
-"""
-function N(lc::LifeContingency, duration)
-    return N(lc.life,lc, duration)
-end
-
-function N(::SingleLife,lc::LifeContingency, duration)
-    range = duration:(ω(lc) - lc.life.issue_age)
-    return reduce(+, Map(duration->D(lc, duration)), range)
-end
-
-"""
-    M(lc::LifeContingency, duration)
-
-The ``M_x`` actuarial commutation function where the `duration` argument is `x`.
-Issue age is based on the issue_age in the LifeContingency `lc`.
-"""
-function M(lc::LifeContingency, duration)
-    return M(lc.life,lc,duration)
-end
-
-function M(::SingleLife,lc::LifeContingency, duration)
-    range = duration:(ω(lc) - lc.life.issue_age)
-    return reduce(+, Map(duration->C(lc, duration)), range)
-end
-
 
 E(lc::LifeContingency, t, x) = D(lc,x + t) / D(lc,x)
 
@@ -200,136 +268,182 @@ E(lc::LifeContingency, t, x) = D(lc,x + t) / D(lc,x)
 ### Insurances ###
 ##################
 
+   
 """
-    A(lc::LifeContingency, duration, time)
+    A(lc::LifeContingency,from_time=0,to_time=nothing)
 
-Term insurance for n years for someone starting in the ``x``th `duration`.
+Life insurance for someone starting at `from_time` and lasting until `to_time`. If `to_time` is `nothing` (the default), will be insurance until the end of the mortality table or interest rates.
+
 Issue age is based on the `issue_age` in the LifeContingency `lc`.
 """
-A(lc::LifeContingency, duration, time) = A(lc.life,lc,duration,time)
-function A(::SingleLife,lc::LifeContingency, duration, time) 
-    return (M(lc, duration) - M(lc, duration + time)) / D(lc, duration)
+A(lc::LifeContingency,to_time=nothing) = A(lc.life,lc,to_time)
+
+function A(::SingleLife,lc::LifeContingency,to_time)
+    iszero(to_time) && return 0.0 #short circuit and return 0 if there is no time elapsed
+    mt = lc.life.mort
+    iss_age = lc.life.issue_age
+    end_age = to_time + iss_age -1
+    len = end_age - iss_age
+    v = disc.(lc.int,1:len+1)
+    tpx =  [survivorship(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
+    qx =   mt[iss_age:end_age]
+
+    sum(v .* tpx  .* qx)
+end
+
+function A(::SingleLife,lc::LifeContingency,::Nothing)
+    mt = lc.life.mort
+    iss_age = lc.life.issue_age
+    end_age = omega(lc) + iss_age - 1
+    len = end_age - iss_age
+    v = disc.(lc.int,1:len+1)
+    tpx =  [survivorship(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
+    qx =   mt[iss_age:end_age]
+
+    sum(v .* tpx  .* qx)
+end
+
+# for joint, dispactch based on the type of insruance and assumption
+function A(::JointLife,lc::LifeContingency, to_time) 
+    A(lc.life.contingency, lc.life.joint_assumption,lc,to_time)
+end
+
+function A(::LastSurvivor,::Frasier,lc::LifeContingency, to_time)
+    iszero(to_time) && return 0.0 #short circuit and return 0 if there is no time elapsed
+    v = disc.(lc.int,1:to_time)
+    tpx =  [survivorship(lc,t) for t in 0:to_time-1]
+    qx =   [ survivorship(lc,t) - survivorship(lc,t+1) for t in 0:to_time-1]
+
+    sum(v .* tpx  .* qx)
+end
+
+function A(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
+    to_time = omega(lc)
+    v = disc.(lc.int,1:to_time)
+    tpx =  [survivorship(lc,t) for t in 0:to_time-1]
+    qx =   [ survivorship(lc,t) - survivorship(lc,t+1) for t in 0:to_time-1]
+
+    sum(v .* tpx  .* qx)
 end
 
 """
-    A(lc::LifeContingency, duration)
+    ä(lc::LifeContingency, from_time=0,to_time=nothing)
 
-Whole life insurance for someone starting in the ``x``th `duration`.
-Issue age is based on the `issue_age` in the LifeContingency `lc`.
-"""
-A(lc::LifeContingency, duration) = A(lc.life,lc,duration)
-A(::SingleLife,lc::LifeContingency, duration) = M(lc, duration) / D(lc, duration)
+Life annuity due for the life contingency `lc` with the benefit period starting at `from_time` and ending at `to_time`. If `to_time` is `nothing`, will be benefit until the end of the mortality table or interest rates.
 
-"""
-    ä(lc::LifeContingency, duration)
-
-Life annuity due for someone starting in the their ``x``th `duration`.
-Issue age is based on the `issue_age` in the LifeContingency `lc`.
 
 To enter the `ä` character, type `a` and then `\\ddot`.
     See more on how to [input unicode](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
     in Julia.
 
 """
-ä(lc::LifeContingency, duration) = ä(lc.life,lc, duration)
-ä(::SingleLife,lc::LifeContingency, duration) = N(lc, duration) / D(lc, duration)
+ä(lc::LifeContingency, to_time=nothing) = ä(lc.life,lc,to_time)
 
-"""
-    ä(lc::LifeContingency, duration,time)
+function ä(::SingleLife,lc::LifeContingency, to_time)
+    iszero(to_time) && return 0.0
+    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
+end
 
-Life annuity due for someone starting in the `x`th `duration` for `time` years.
+function ä(::SingleLife,lc::LifeContingency, ::Nothing)
+    to_time = omega(lc)  + 1 # plus one to catch the payment right after the final mortality rate
+    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
+end
 
-To enter the `ä` character, type `a` and then `\\ddot`.
-    See more on how to [input unicode](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
-    in Julia.
+# for joint, dispactch based on the type of insruance and assumption
+function ä(::JointLife,lc::LifeContingency, to_time) 
+    return ä(lc.life.contingency,lc.life.joint_assumption,lc,to_time)
+end
 
-"""
-ä(lc::LifeContingency, duration, time) = ä(lc.life,lc, duration, time)
+function ä(::LastSurvivor,::Frasier, lc::LifeContingency, to_time)
+    iszero(to_time) && return 0.0
+    disc.(lc.int,0:to_time-1)
+    [survivorship(lc,t) for t in 0:to_time-1]
+    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
 
-function ä(::SingleLife, lc::LifeContingency, duration, time) 
-    return (N(lc, duration) - N(lc, duration + time)) / D(lc, duration)
+end
+
+function ä(::LastSurvivor,::Frasier, lc::LifeContingency, ::Nothing)
+    to_time = omega(lc) + 1 # plus one to catch the payment right after the final mortality rate
+    disc.(lc.int,0:to_time-1)
+    [survivorship(lc,t) for t in 0:to_time-1]
+    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
+
 end
 
 """
-    P(lc::LifeContingency,start_time=0)
+    P(lc::LifeContingency)
+    P(lc::LifeContingency,to_time)
 
-A whole life insurance with 1 unit payable at the end of the year of death,
-and payable by net annual premiums, starting from `start_time` timepoint (often `0`).
+The net premium for a whole life insurance (without second argument) or a term life insurance through `to_time`.
+
+The net premium is based on 1 unit of insurance with the death benfit payable at the end of the year and assuming annual net premiums.
 """
-P(lc::LifeContingency, start_time=0) = A(lc, start_time) / ä(lc, start_time)
+P(lc::LifeContingency) = A(lc) / ä(lc)
+P(lc::LifeContingency,to_time) = A(lc,to_time) / ä(lc,to_time)
 
 """
-    V(lc::LifeContingency,t,start_time=0)
+    V(lc::LifeContingency,time)
 
-The net premium reserve at the end of year `t`, starting from time `start_time` (often `0`).
+The net premium reserve at the end of year `time`.
 """
-function V(lc::LifeContingency, t,start_time = 0) 
-    return A(lc, start_time + t) - P(lc, start_time) * ä(lc, start_time + t)
+function V(lc::LifeContingency, time) 
+    PVFB = A(lc) - A(lc,time)
+    PVFP = P(lc) * (ä(lc) - ä(lc,time))
+    return (PVFB - PVFP) / APV(lc,time)
 end
 
 """
-    q(lc::LifeContingency,duration,time=1)
-    q(lc::LifeContingency,duration,time=1)
+    APV(lc::LifeContingency,to_time)
+
+The **actuarial present value** which is the survivorship times the discount factor for the life contingency.
+"""
+function APV(lc::LifeContingency,to_time)
+    return survivorship(lc,to_time) * disc(lc.int,to_time)
+end
+
+"""
+    cumulative_decrement(lc::LifeContingency,to_time)
+    cumulative_decrement(lc::LifeContingency,from_time,to_time)
 
 Return the probablity of death for the given LifeContingency. 
 """
-mt.q(lc::LifeContingency,duration,time=1) = q(lc.life,lc,duration,time)
+mt.cumulative_decrement(lc::LifeContingency,from_time,to_time) = 1 - survivorship(lc.life,from_time,to_time)
 
-mt.q(::SingleLife,lc::LifeContingency,duration,time) = q(lc.life,duration,time)
-
-mt.q(l::SingleLife,duration,time) = q(l.mort,l.issue_age,duration,time)
-mt.q(l::SingleLife,duration) = q(l.mort,l.issue_age,duration,1)
-
-function mt.q(l::JointLife,duration,time) 
-    return 1 - p(l,duration,time) 
-end
-function mt.q(l::JointLife,duration) 
-    return 1 -  p(l::JointLife,1,duration) / p(l::JointLife,1,duration-1)
-end
 
 """
-    p(lc::LifeContingency,duration,time=1)
-    p(lc::LifeContingency,duration)
+    survivorship(lc::LifeContingency,from_time,to_time)
+    survivorship(lc::LifeContingency,to_time)
 
 Return the probablity of survival for the given LifeContingency. 
 """
-mt.p(lc::LifeContingency,duration,time=1) = p(lc.life, lc, duration, time)
+mt.survivorship(lc::LifeContingency,to_time) = survivorship(lc.life, 0, to_time)
+mt.survivorship(lc::LifeContingency,from_time,to_time) = survivorship(lc.life, from_time, to_time)
 
-mt.p(::SingleLife,lc::LifeContingency,duration,time) = p(lc.life,duration,time)
+mt.survivorship(l::SingleLife,to_time) = survivorship(l,0,to_time)
+mt.survivorship(l::SingleLife,from_time,to_time) = survivorship(l.mort,l.issue_age + from_time,l.issue_age + to_time)
 
-mt.p(l::SingleLife,duration,time) = p(l.mort,l.issue_age,duration,time)
-mt.p(l::SingleLife,duration) = p(l.mort,l.issue_age,1,1)
-
-function mt.p(l::JointLife,duration,time)
-    return mt.p(l.insurance,l.joint_assumption,l,duration,time)
+mt.survivorship(l::JointLife,to_time) = survivorship(l::JointLife,0,to_time)
+function mt.survivorship(l::JointLife,from_time,to_time) 
+    return survivorship(l.contingency,l.joint_assumption,l::JointLife,from_time,to_time)
 end
-function mt.p(ins::LastSurvivor,assump::JointAssumption,l::JointLife,duration,time)
+
+function mt.survivorship(ins::LastSurvivor,assump::JointAssumption,l::JointLife,from_time,to_time)
+    to_time == 0 && return 1.0
+    
     l1,l2 = l.lives
-    ₜpₓ = time == 0 ? 1.0 : p(l1.mort,l1.issue_age,duration,time,l1.fractional_assump)
-    ₜpᵧ = time == 0 ? 1.0 : p(l2.mort,l2.issue_age,duration,time,l2.fractional_assump)
+    ₜpₓ = survivorship(l1.mort,l1.issue_age + from_time,l1.issue_age + to_time,l1.fractional_assump)
+    ₜpᵧ = survivorship(l2.mort,l2.issue_age + from_time,l2.issue_age + to_time,l2.fractional_assump)
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 
-# because the cumulative effect of the unknown life statuses,
-# we always assume that the calculations are from the issue age
-# which is a little bit different from the single life, where
-# indexing starting in a future duration is okay because there's not a 
-# conditional on another life. Here we have to use the whole surivaval
-# stream to calculate a mortality at a given point
-function mt.p(l::JointLife,duration)
-    if duration == 0
-        return 1.0
-    else
-        return   1 - q(l,duration)
-    end
-end
+disc(lc::LifeContingency,t) = disc(lc.int,t)
+disc(lc::LifeContingency,t1,t2) = disc(lc.int,t1,t2)
 
 # aliases
-disc = v
 reserve_net_premium = V
 insurance = A
 annuity_due = ä
 net_premium_annual = P
-omega(x) = ω(x)
+ω(x) = omega(x)
 
 end # module
