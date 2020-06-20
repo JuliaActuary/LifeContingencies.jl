@@ -2,7 +2,7 @@
     @testset "issue age 116" begin
         t = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
         i = InterestRate(0.05)
-        ins = LifeContingency(SingleLife(mort = t.select, issue_age = 116), i)
+        ins = LifeContingency(SingleLife(mort = t.ultimate, issue_age = 116), i)
 
 
         @test l(ins, 0) ≈ 1.0
@@ -25,18 +25,19 @@
         @test M(ins, 1) ≈ 0.1800468954723570
         @test M(ins, 2) ≈ 0.0264364171050101
 
-        @test A(ins, 0) ≈ 0.9418373716628330
-        @test ä(ins, 0) ≈ 1.2214151950805000
+        @test A(ins) ≈ 0.9418373716628330
+        @test ä(ins) ≈ 1.2214151950805000
 
-        @test A(ins, 3) ≈ 0.9499904761904760
-        @test ä(ins, 3) ≈ 1.0502000000000000
+        qs = t.ultimate[116:118]
+        @test A(ins, 3) ≈ sum(qs .* [1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 1:3])
+        @test ä(ins, 3) ≈ sum([1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 0:2])
 
     end
 
     @testset "issue age 30" begin
         t = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
         i = InterestRate(0.05)
-        ins = LifeContingency(SingleLife(mort = t.select, issue_age = 30), i)
+        ins = LifeContingency(SingleLife(mort = t.select[30], issue_age = 30), i)
 
 
         @test l(ins, 0) ≈ 1.0
@@ -61,15 +62,17 @@
         @test M(ins, 1) ≈ 0.1104702077177110
         @test M(ins, 2) ≈ 0.1100531118446950
 
-        @test A(ins, 0) ≈ 0.1107844934319970
-        @test ä(ins, 0) ≈ 18.6735256379281000
-        @test P(ins, 0) ≈ 0.0059327036350854
+        @test A(ins) ≈ 0.1107844934319970
+        @test ä(ins) ≈ 18.6735256379281000
+        @test P(ins) ≈ 0.0059327036350854
         @test V(ins, 1) ≈ 0.0059012862412992
         @test V(ins, 2) ≈ 0.0119711961204193
 
-        @test A(ins, 26) ≈ 0.3324580935487340
-        @test ä(ins, 26) ≈ 14.0183800354766000
-        @test P(ins, 26) ≈ 0.0237158710712205
+        qs = t.select[30][30:55]
+        @test A(ins, 26) ≈ sum(qs .* [1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 1:26])
+        @test ä(ins, 26) ≈ sum([1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 0:25])
+
+        @test P(ins, 26) ≈ A(ins, 26) /  ä(ins, 26) 
 
     end
 end

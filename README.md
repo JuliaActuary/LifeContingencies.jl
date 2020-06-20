@@ -4,13 +4,14 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaActuary.github.io/LifeContingencies.jl/dev/)
 ![](https://github.com/JuliaActuary/LifeContingencies.jl/workflows/CI/badge.svg)
 [![codecov](https://codecov.io/gh/JuliaActuary/LifeContingencies.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaActuary/LifeContingencies.jl)
+[![lifecycle](https://img.shields.io/badge/LifeCycle-Developing-yellow)](https://www.tidyverse.org/lifecycle/)
 
 LifeContingencies is a package enabling actuarial life contingent calculations.
 The benefits are:
 
 - Integration with other JuliaActuary packages such as [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl)
 - Fast calculations, with some parts utilizing parallel processing power automatically
-- Use functions that look more like the math you are used to (e.g. `Ax`, `ä`)
+- Use functions that look more like the math you are used to (e.g. `A`, `ä`)
 with [Unicode support](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
 - All of the power, speed, convenience, tooling, and ecosystem of Julia
 - Flexible and modular modeling approach
@@ -25,30 +26,42 @@ the mortality calculations
     - `ä(x)`: Life contingent annuity due
     - `ä(x,n)`: Life contingent annuity due for `n` years
 - Contains various commutaion functions such as `D(x)`,`M(x)`,`C(x)`, etc.
+- `SingleLife` and `JointLife` capable
 - Various interest rate mechanics (e.g. stochastic, constant, etc.)
 - More documentation available by clicking the DOCS bages at the top of this README
 
 ## Examples
 
-Calculate the whole life insurance rate for a 30-year-old male nonsmoker using
-2015 VBT base table and a 5% interest rate
+###  Basic Functions
+Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base table and a 5% interest rate
 
 ```julia
 using LifeContingencies, MortalityTables
 
 tbls = MortalityTables.tables()
 vbt2001 = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
-issue_age = 30
-l = LifeContingency(
-    vbt2001.select,
-    InterestRate(0.05),
-    issue_age
-    )
+age = 30
+life = SingleLife(
+    mort = vbt2001.select[age],
+    issue_age = age
+)
 
-start_time = 0
-A(l,start_time) # 0.111...
+lc = LifeContingency(
+    life,
+    InterestRate(0.05)
+)
+
+
+A(lc)        # Whole Life insurance
+A(lc,10)     # 10 year term insurance
+P(lc)        # Net whole life premium 
+V(lc,5)      # Net premium reserve for whole life insurance at time 5
+ä(lc)        # Whole life annuity due
+ä(lc, 5)     # 5 year annuity due
+...          # and more!
 ```
 
+### Determine Stochastic Net Premium for Term Policy
 Use a stochastic interest rate calculation to price a term policy:
 
 ```julia
@@ -61,37 +74,44 @@ vbt2001 = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker,
 # use an interest rate that's normally distirbuted
 μ = 0.05
 σ = 0.01
-int = InterestRate(t -> rand(Normal(μ,σ)))
 
-l = LifeContingency(
-    vbt2001.select,
-    int,
-    30 # issue age
-    )
+years = 100
+int =   InterestRate(
+            rand(
+                Normal(μ,σ),
+                years)
+        )
 
-start_time = 0
+life = SingleLife(
+    mort = vbt2001.select[30],
+    issue_age = 30
+)
+
+lc = LifeContingency(
+    life,
+    int
+)
+
 term = 10
-A(l,start_time,term) # somewhere around 0.055
+A(lc,term) # around 0.055
 ```
-
+#### Extending example to use autocorrelated interest rates
 You can use autocorrelated interest rates - substitute the following in the prior example
 using the ability to self reference:
 
 ```julia
 σ = 0.01
 initial_rate = 0.05
-int = InterestRate(
-    function intAR(time)
-        if time <= 1
-            initial_rate
-        else
-            i′ = last(int.rate_vector)
-            rand(Normal(i′,σ))
-        end
-    end
-)
+vec = fill(initial_rate,years)
 
+for i in 2:length(vec)
+    vec[i] = rand(Normal(vec[i-1],σ))
+end
+
+int = InterestRate(vec)
 ```
+
+### Premium comparison across Mortality Tables
 
 Compare the cost of annual premium, whole life insurance between multiple tables visually:
 
@@ -111,24 +131,42 @@ int = InterestRate(0.05)
 whole_life_costs = map(tables) do t
     map(issue_ages) do ia
         lc = LifeContingency(
-            t.ultimate,
-            int,
-            ia
+                SingleLife(
+                    mort=t.ultimate,
+                    issue_age=ia
+                ),
+                int
             )
 
-        A(lc,0) / ä(lc,0)
+        P(lc)
 
     end
 end
 
 plt = plot(ylabel="Annual Premium per unit", xlabel="Issue Age",
-            legend=:topleft, legendfontsize=8)
+            legend=:topleft, legendfontsize=8,size=(800,600))
 for (i,t) in enumerate(tables)
     plot!(plt,issue_ages,whole_life_costs[i], label="$(t.d.name)")
 end
 display(plt)
 ```
-![Comparison of three different mortality tables' effect on insurance cost](https://user-images.githubusercontent.com/711879/79941879-032d9300-842b-11ea-8427-a7dd36fbf2a6.png)
+![Comparison of three different mortality tables' effect on insurance cost](https://user-images.githubusercontent.com/711879/85190836-cb539800-b281-11ea-96b0-e3f3eab59449.png)
+
+
+### Joint Life
+
+```julia
+m1 = tbls["1986-92 CIA – Male Smoker, ANB"]
+m2 = tbls["1986-92 CIA – Female Nonsmoker, ANB"]
+l1 = SingleLife(mort = m1.ultimate, issue_age = 40)
+l2 = SingleLife(mort = m2.ultimate, issue_age = 37)
+
+jl = JointLife(lives=(l1, l2), contingency=LastSurvivor(), joint_assumption=Frasier())
+
+
+A(jl)   # whole life insurance
+...     # similar functions as shown in the first example above
+```
 
 
 ## References
