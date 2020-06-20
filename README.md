@@ -26,11 +26,13 @@ the mortality calculations
     - `ä(x)`: Life contingent annuity due
     - `ä(x,n)`: Life contingent annuity due for `n` years
 - Contains various commutaion functions such as `D(x)`,`M(x)`,`C(x)`, etc.
+- `SingleLife` and `JointLife` capable
 - Various interest rate mechanics (e.g. stochastic, constant, etc.)
 - More documentation available by clicking the DOCS bages at the top of this README
 
 ## Examples
 
+###  Basic Functions
 Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base table and a 5% interest rate
 
 ```julia
@@ -59,6 +61,7 @@ ä(lc, 5)     # 5 year annuity due
 ...          # and more!
 ```
 
+### Determine Stochastic Net Premium for Term Policy
 Use a stochastic interest rate calculation to price a term policy:
 
 ```julia
@@ -92,7 +95,7 @@ lc = LifeContingency(
 term = 10
 A(lc,term) # around 0.055
 ```
-
+#### Extending example to use autocorrelated interest rates
 You can use autocorrelated interest rates - substitute the following in the prior example
 using the ability to self reference:
 
@@ -107,6 +110,8 @@ end
 
 int = InterestRate(vec)
 ```
+
+### Premium comparison across Mortality Tables
 
 Compare the cost of annual premium, whole life insurance between multiple tables visually:
 
@@ -147,6 +152,21 @@ display(plt)
 ```
 ![Comparison of three different mortality tables' effect on insurance cost](https://user-images.githubusercontent.com/711879/85190836-cb539800-b281-11ea-96b0-e3f3eab59449.png)
 
+
+### Joint Life
+
+```julia
+m1 = tbls["1986-92 CIA – Male Smoker, ANB"]
+m2 = tbls["1986-92 CIA – Female Nonsmoker, ANB"]
+l1 = SingleLife(mort = m1.ultimate, issue_age = 40)
+l2 = SingleLife(mort = m2.ultimate, issue_age = 37)
+
+jl = JointLife(lives=(l1, l2), contingency=LastSurvivor(), joint_assumption=Frasier())
+
+
+A(jl)   # whole life insurance
+...     # similar functions as shown in the first example above
+```
 
 
 ## References
