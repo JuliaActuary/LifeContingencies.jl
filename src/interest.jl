@@ -1,5 +1,3 @@
-include("decrement.jl")
-
 abstract type InterestCompounding end
 
 struct Simple <: InterestCompounding end
@@ -26,6 +24,8 @@ defined interest rates for longer-dated periods.
     # 5% interest for years 1, 2, and 3
     InterestRate([0.05, 0.05, 0.05])
 """
+abstract type InterestRate end
+
 struct VectorInterestRate <: InterestRate
     rate
     compound::InterestCompounding
