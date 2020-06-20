@@ -53,7 +53,10 @@ end
     @test A(ins,0) ≈ 0
 
     ins_jl = LifeContingency(
-        JointLife((ins.life,ins.life),LastSurvivor(),Frasier()),
+        JointLife(
+            lives = (ins.life,ins.life),
+            contingency = LastSurvivor(),
+            joint_assumption = Frasier()),
         InterestRate(0.05)
     )
 
@@ -82,7 +85,10 @@ end
     @test A(ins,0) ≈ 0
 
     ins_jl = LifeContingency(
-        JointLife((ins.life,ins.life),LastSurvivor(),Frasier()),
+        JointLife(
+            lives = (ins.life,ins.life),
+            contingency = LastSurvivor(),
+            joint_assumption = Frasier()),
         InterestRate(0.05)
     )
 

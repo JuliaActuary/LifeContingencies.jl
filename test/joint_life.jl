@@ -22,7 +22,7 @@
             l1 = SingleLife(mort = m1, issue_age = 65)
             l2 = SingleLife(mort = m2, issue_age = 60)
 
-            jl = JointLife(l1, l2, LastSurvivor(), Frasier())
+            jl = JointLife(lives=(l1, l2), contingency = LastSurvivor(), joint_assumption=Frasier())
             
             @test isapprox( survivorship(jl, 2) , 0.9997, atol = 1e-4)
             
@@ -42,7 +42,7 @@
             l1 = SingleLife(mort = m1.ultimate, issue_age = 40)
             l2 = SingleLife(mort = m2.ultimate, issue_age = 37)
 
-            jl = JointLife(l1, l2, LastSurvivor(), Frasier())
+            jl = JointLife(lives=(l1, l2), contingency=LastSurvivor(), joint_assumption=Frasier())
             
             @testset "independent lives" begin
                 for time in 1:40
