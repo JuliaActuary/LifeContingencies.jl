@@ -15,31 +15,6 @@ concrete implementations of interest rate calculations.
 abstract type InterestRate <: Decrement end
 
 """
-    FunctionalInterestRate()
-
-`FunctionalInterestRate` is a struct with a `rate_function` that is a function that
-takes a time and returns an annual interst rate for that time. Construct by calling
-    `InterestRate()` with a function as an argument. 
-
-# Examples
-    # simply return 5% always
-    InterestRate(time -> 0.05) 
-    
-    # for every period, return a normally distrubted rate
-    InterestRate((x -> rand(Normal(0.05, 0.01))))
-
-    # an autocorrelated rate
-    InterestRate(
-            time -> time <= 1 ? 0.05 : rand(Normal(last(i5.rate), 0.01)),
-        )
-"""
-struct FunctionalInterestRate{F} <: InterestRate
-    rate::Array{Float64,1} # keep track of prior rates for autocorrelation
-    rate_function::F
-    compound::InterestCompounding
-end
-
-"""
     VectorInterestRate()
 
 `VectorInterestRate` is a struct with a given vector where the element `t` is the rate at time `t`.
