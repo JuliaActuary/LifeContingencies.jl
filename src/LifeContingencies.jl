@@ -14,6 +14,7 @@ export LifeContingency,
     rate,
     APV,
     A,
+    a,
     ä,
     D,
     M,
@@ -341,13 +342,13 @@ To enter the `ä` character, type `a` and then `\\ddot`.
 ä(lc::LifeContingency, to_time=nothing) = ä(lc.life,lc,to_time)
 
 function ä(::SingleLife,lc::LifeContingency, to_time)
-    iszero(to_time) && return 0.0
+    to_time < 0 && throw(ArgumentError("to_time must be greater than or equal to 1"))
     return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
 end
 
 function ä(::SingleLife,lc::LifeContingency, ::Nothing)
-    to_time = omega(lc)  + 1 # plus one to catch the payment right after the final mortality rate
-    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
+    to_time = omega(lc) 
+    return sum(disc.(lc.int,0:to_time) .* [survivorship(lc,t) for t in 0:to_time])
 end
 
 # for joint, dispactch based on the type of insruance and assumption
@@ -356,20 +357,37 @@ function ä(::JointLife,lc::LifeContingency, to_time)
 end
 
 function ä(::LastSurvivor,::Frasier, lc::LifeContingency, to_time)
-    iszero(to_time) && return 0.0
-    disc.(lc.int,0:to_time-1)
-    [survivorship(lc,t) for t in 0:to_time-1]
+    to_time <= 0 && throw(ArgumentError("to_time must be greater than or equal to 1"))
     return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
 
 end
 
 function ä(::LastSurvivor,::Frasier, lc::LifeContingency, ::Nothing)
-    to_time = omega(lc) + 1 # plus one to catch the payment right after the final mortality rate
-    disc.(lc.int,0:to_time-1)
-    [survivorship(lc,t) for t in 0:to_time-1]
-    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
+    to_time = omega(lc) 
+    return sum(disc.(lc.int,0:to_time) .* [survivorship(lc,t) for t in 0:to_time])
 
 end
+
+"""
+    a(lc::LifeContingency, from_time=0,to_time=nothing)
+
+Life annuity immediate for the life contingency `lc` with the benefit period starting at `from_time` and ending at `to_time`. If `to_time` is `nothing`, will be benefit until the end of the mortality table or interest rates.
+
+
+"""
+# eq 5.11 ALMCR 2nd ed
+a(lc::LifeContingency) = ä(lc) - 1 
+
+# eq 5.13 ALMCR 2nd ed
+function a(lc::LifeContingency,to_time) 
+    return ä(lc,to_time) - 1 + disc(lc,to_time) * survivorship(lc,to_time)
+end
+
+function a(lc::LifeContingency,from_time,to_time) 
+    return ä(lc,from_time,to_time) - 1 + disc(lc,from_time,to_time) * survivorship(lc,from_time,to_time)
+end
+
+
 
 """
     P(lc::LifeContingency)

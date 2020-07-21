@@ -8,9 +8,11 @@
     )
 
     @test omega(ins) ≈ 1
-    @test ä(ins) ≈ 1 + .5 / 1.05
+    @test ä(ins) ≈ 1 + 1 * .5 / 1.05
     @test ä(ins,1) ≈ 1
-    @test ä(ins,0) ≈ 0
+    @test_throws ArgumentError ä(ins,0) 
+    @test a(ins,1) ≈ 1 * .5 / 1.05
+    @test_throws ArgumentError a(ins,0)
 
     @test A(ins) ≈ 0.5 / 1.05
     @test A(ins,1) ≈ 0.5 / 1.05
@@ -23,9 +25,11 @@
     )
 
     @test omega(ins_jl) ≈ 1
-    @test ä(ins_jl) ≈ 1 + .75 / 1.05
+    @test ä(ins_jl) ≈ 1 + 1 * .75 / 1.05
     @test ä(ins_jl,1) ≈ 1
-    @test ä(ins_jl,0) ≈ 0
+    @test a(ins_jl,1) ≈ 1 * .75 / 1.05
+    @test ä(ins_jl,2) ≈ 1 + 1 * .75 / 1.05
+    @test_throws ArgumentError ä(ins_jl,0)
 
     @test survivorship(ins_jl,1) ≈ .5 + .5 - .5 * .5
     @test A(ins_jl) ≈ .25 / 1.05
@@ -43,10 +47,13 @@ end
     )
 
     @test omega(ins) ≈ 2
-    @test ä(ins) ≈ 1 + .5 * 1 / 1.05 + .25 / 1.05 ^2
-    @test ä(ins,1) ≈ 1
-    @test ä(ins,2) ≈ 1 + .5 * 1 / 1.05
-    @test ä(ins,0) ≈ 0
+    @test ä(ins) ≈ 1 + 1 * .5 * 1 / 1.05 +  1 * .25 / 1.05 ^2
+    @test ä(ins,1) ≈ 1 
+    @test ä(ins,2) ≈ 1 + 1 * .5 * 1 / 1.05
+    @test ä(ins,3) ≈ 1 + 1 * .5 * 1 / 1.05 +  1 * .25 / 1.05 ^2
+    @test_throws ArgumentError ä(ins,0) ≈ 1
+    @test_throws ArgumentError a(ins,0) ≈ 0
+    @test a(ins,1) ≈ 1 * .5 * 1 / 1.05
 
     @test A(ins) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
     @test A(ins,1) ≈ 0.5 / 1.05
@@ -77,8 +84,11 @@ end
 
     @test omega(ins) ≈ 2
     @test ä(ins,1) ≈ 1
-    @test ä(ins,2) ≈ 1 + .5 * 1 / 1.05
-    @test ä(ins,0) ≈ 0
+    @test ä(ins,2) ≈ 1 + 1 * .5 * 1 / 1.05 
+    @test ä(ins,3) ≈ 1 + 1 * .5 * 1 / 1.05 + 1 * .25 * 1 / 1.05 ^ 2
+    @test_throws ArgumentError ä(ins,0)
+    @test_throws ArgumentError a(ins,0)
+    @test a(ins,1) ≈ 1 * .5 * 1 / 1.05 
 
     @test A(ins) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
     @test A(ins,1) ≈ 0.5 / 1.05
@@ -93,9 +103,11 @@ end
     )
 
     @test omega(ins_jl) ≈ 2
-    @test ä(ins_jl,1) ≈ 1
-    @test ä(ins_jl,2) ≈ 1 + .75 /1.05
-    @test ä(ins_jl,0) ≈ 0
+    @test ä(ins_jl,1) ≈ 1 + 1 * .75 /1.05
+    @test ä(ins_jl,2) ≈ 1 + 1 * .75 /1.05 + 1 * survivorship(ins_jl,2) / 1.05 ^ 2
+    @test_throws ArgumentError ä(ins_jl,0)
+    @test_throws ArgumentError a(ins_jl,0)
+    @test a(ins_jl,1) ≈ 1 * .75 /1.05
 
 end
 
@@ -130,14 +142,16 @@ t = UltimateMortality(maleMort)
     @test A(ins   ) ≈ 0.04223728223
     @test A(ins, 0) ≈ 0.0
     @test A(ins, 1) ≈ 0.0066571428571429
-    @test ä(ins, 0) ≈ 0.0
-    @test ä(ins, 1) ≈ 1.0
+    @test ä(ins, 0) ≈ 1.0
+    @test ä(ins, 1) ≈ 1.0 + survivorship(ins,1) / 1.05
+    @test a(ins, 0) ≈ 0.0
+    @test a(ins, 1) ≈ survivorship(ins,1) / 1.05
 
     @test A(ins, 30) ≈ 0.0137761089686975
 
     @test N(ins, 26) ≈ 5.156762988852310
     @test D(ins, 26) ≈ 0.275358702015970
-    @test ä(ins, 26) ≈  14.9562540842669000 
+    @test ä(ins, 26) ≈ 15.2316127862829
 
 
 end 
