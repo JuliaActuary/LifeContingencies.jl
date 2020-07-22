@@ -25,10 +25,10 @@ the mortality calculations
     - `A(life,n)`: Term life for `n` years
     - `ä(life)`: Life contingent annuity due
     - `ä(life,n)`: Life contingent annuity due for `n` years
-- Contains various commutaion functions such as `D(x)`,`M(x)`,`C(x)`, etc.
+- Contains various commutation functions such as `D(x)`,`M(x)`,`C(x)`, etc.
 - `SingleLife` and `JointLife` capable
 - Various interest rate mechanics (e.g. stochastic, constant, etc.)
-- More documentation available by clicking the DOCS bages at the top of this README
+- More documentation available by clicking the DOCS badges at the top of this README
 
 ## Examples
 
