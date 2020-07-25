@@ -31,7 +31,7 @@
             ins_l1 = LifeContingency(jl.lives[1],InterestRate(0.05))
             ins_l2 = LifeContingency(jl.lives[2],InterestRate(0.05))
             # problem 9.1.f
-            @test isapprox( *-, 4.5437, atol = 1e-4)
+            @test isapprox( ä(ins,5), 4.5437, atol = 1e-4)
 
             @test isapprox( ä(ins), 4.5437, atol = 1e-4)
         end

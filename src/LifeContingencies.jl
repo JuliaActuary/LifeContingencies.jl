@@ -329,9 +329,10 @@ function A(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
 end
 
 """
-    ä(lc::LifeContingency, from_time=0,to_time=nothing)
+    ä(lc::LifeContingency, npayments,start_time=0)
+    ä(lc::LifeContingency,start_time=0)
 
-Life annuity due for the life contingency `lc` with the benefit period starting at `from_time` and ending at `to_time`. If `to_time` is `nothing`, will be benefit until the end of the mortality table or interest rates.
+Life annuity due for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments`. If `npayments` is omitted, will return whole life annuity due.
 
 
 To enter the `ä` character, type `a` and then `\\ddot`.
@@ -339,39 +340,47 @@ To enter the `ä` character, type `a` and then `\\ddot`.
     in Julia.
 
 """
-ä(lc::LifeContingency, to_time=nothing) = ä(lc.life,lc,to_time)
+ä(lc::LifeContingency; start_time=0) = ä(lc.life,lc,start_time=start_time)
+ä(lc::LifeContingency,npayments; start_time=0) = ä(lc.life,lc,npayments,start_time=start_time)
 
-function ä(::SingleLife,lc::LifeContingency, to_time)
-    to_time < 0 && throw(ArgumentError("to_time must be greater than or equal to 1"))
-    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
+function ä(::SingleLife,lc::LifeContingency, npayments; start_time=0)
+    @show npayments, start_time
+    npayments == 0 && return 0.0
+    return sum(disc.(lc.int,start_time:npayments-1) .* [survivorship(lc,t) for t in start_time:npayments-1])
 end
 
-function ä(::SingleLife,lc::LifeContingency, ::Nothing)
-    to_time = omega(lc) 
-    return sum(disc.(lc.int,0:to_time) .* [survivorship(lc,t) for t in 0:to_time])
+function ä(::SingleLife,lc::LifeContingency; start_time=0)
+    npayments = omega(lc) 
+    return sum(disc.(lc.int,start_time:npayments) .* [survivorship(lc,t) for t in start_time:npayments])
 end
 
 # for joint, dispactch based on the type of insruance and assumption
-function ä(::JointLife,lc::LifeContingency, to_time) 
-    return ä(lc.life.contingency,lc.life.joint_assumption,lc,to_time)
+function ä(::JointLife,lc::LifeContingency;start_time=0) 
+    return ä(lc.life.contingency,lc.life.joint_assumption,lc,start_time=start_time)
 end
 
-function ä(::LastSurvivor,::Frasier, lc::LifeContingency, to_time)
-    to_time <= 0 && throw(ArgumentError("to_time must be greater than or equal to 1"))
-    return sum(disc.(lc.int,0:to_time-1) .* [survivorship(lc,t) for t in 0:to_time-1])
+function ä(::JointLife,lc::LifeContingency, npayments;start_time=0) 
+    return ä(lc.life.contingency,lc.life.joint_assumption,lc,npayments,start_time=start_time)
+end
+
+function ä(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;start_time=0)
+    npayments == 0 && return 0.0
+    return sum(disc.(lc.int,start_time:npayments-1) .* [survivorship(lc,t) for t in start_time:npayments-1])
 
 end
 
-function ä(::LastSurvivor,::Frasier, lc::LifeContingency, ::Nothing)
-    to_time = omega(lc) 
-    return sum(disc.(lc.int,0:to_time) .* [survivorship(lc,t) for t in 0:to_time])
+function ä(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0)
+    npayments = omega(lc) 
+    return sum(disc.(lc.int,start_time:npayments) .* [survivorship(lc,t) for t in start_time:npayments])
 
 end
 
 """
-    a(lc::LifeContingency, from_time=0,to_time=nothing)
+    a(lc::LifeContingency, npayments,start_time=0)
+    a(lc::LifeContingency, start_time=0)
 
-Life annuity immediate for the life contingency `lc` with the benefit period starting at `from_time` and ending at `to_time`. If `to_time` is `nothing`, will be benefit until the end of the mortality table or interest rates.
+Life annuity immediate for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments`. If `npayments` is omitted, will calculate the whole life immediate annuity.
+
 
 
 """
