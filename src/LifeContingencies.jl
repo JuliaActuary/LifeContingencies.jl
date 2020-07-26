@@ -405,10 +405,6 @@ Life annuity immediate for the life contingency `lc` with the benefit period sta
 a(lc::LifeContingency;start_time=0) = ä(lc,start_time=start_time) - 1 
 
 # eq 5.13 ALMCR 2nd ed
-function a(lc::LifeContingency,npayments;start_time=0) 
-    return ä(lc,npayments,start_time=start_time) - 1 + disc(lc,npayments,start_time=start_time) * survivorship(lc,npayments,start_time=start_time)
-end
-
 function a(lc::LifeContingency,npayments; start_time=0) 
     x = ä(lc,npayments;start_time=start_time)
     y = disc(lc,start_time,start_time+npayments)
@@ -450,12 +446,12 @@ function APV(lc::LifeContingency,to_time)
 end
 
 """
-    cumulative_decrement(lc::LifeContingency,to_time)
-    cumulative_decrement(lc::LifeContingency,from_time,to_time)
+    decrement(lc::LifeContingency,to_time)
+    decrement(lc::LifeContingency,from_time,to_time)
 
 Return the probablity of death for the given LifeContingency. 
 """
-mt.cumulative_decrement(lc::LifeContingency,from_time,to_time) = 1 - survivorship(lc.life,from_time,to_time)
+mt.decrement(lc::LifeContingency,from_time,to_time) = 1 - survivorship(lc.life,from_time,to_time)
 
 
 """
