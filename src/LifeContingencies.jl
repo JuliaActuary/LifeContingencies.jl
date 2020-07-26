@@ -344,14 +344,24 @@ To enter the `ä` character, type `a` and then `\\ddot`.
 ä(lc::LifeContingency,npayments; start_time=0) = ä(lc.life,lc,npayments,start_time=start_time)
 
 function ä(::SingleLife,lc::LifeContingency, npayments; start_time=0)
-    @show npayments, start_time
+    npayments -=  start_time
     npayments == 0 && return 0.0
-    return sum(disc.(lc.int,start_time:npayments-1) .* [survivorship(lc,t) for t in start_time:npayments-1])
+    
+    end_time = npayments + start_time - 1
+
+    discount_factor = disc.(lc.int,start_time:end_time)
+    pmts = [survivorship(lc,t) for t in start_time:end_time]
+
+    return sum(discount_factor .* pmts)
 end
 
 function ä(::SingleLife,lc::LifeContingency; start_time=0)
-    npayments = omega(lc) 
-    return sum(disc.(lc.int,start_time:npayments) .* [survivorship(lc,t) for t in start_time:npayments])
+    npayments = omega(lc) - start_time
+    end_time = (npayments+start_time)
+    discount_factor = disc.(lc.int,start_time:end_time)
+    pmts = [survivorship(lc,t) for t in start_time:end_time]
+
+    return sum(discount_factor .* pmts)
 end
 
 # for joint, dispactch based on the type of insruance and assumption
@@ -364,20 +374,27 @@ function ä(::JointLife,lc::LifeContingency, npayments;start_time=0)
 end
 
 function ä(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;start_time=0)
+    npayments -=  start_time
     npayments == 0 && return 0.0
-    return sum(disc.(lc.int,start_time:npayments-1) .* [survivorship(lc,t) for t in start_time:npayments-1])
+    end_time = npayments + start_time -1
+    discount_factor = disc.(lc.int,start_time:end_time)
+    pmts = [survivorship(lc,t) for t in start_time:end_time]
+    return sum( discount_factor .* pmts )
 
 end
 
 function ä(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0)
-    npayments = omega(lc) 
-    return sum(disc.(lc.int,start_time:npayments) .* [survivorship(lc,t) for t in start_time:npayments])
+    npayments = omega(lc) - start_time
+    end_time = npayments + start_time
+    discount_factor = disc.(lc.int,start_time:end_time)
+    pmts = [survivorship(lc,t) for t in start_time:end_time]
+    return sum( discount_factor .* pmts )
 
 end
 
 """
-    a(lc::LifeContingency, npayments,start_time=0)
-    a(lc::LifeContingency, start_time=0)
+    a(lc::LifeContingency, npayments; start_time=0)
+    a(lc::LifeContingency; start_time=0)
 
 Life annuity immediate for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments`. If `npayments` is omitted, will calculate the whole life immediate annuity.
 
@@ -385,15 +402,18 @@ Life annuity immediate for the life contingency `lc` with the benefit period sta
 
 """
 # eq 5.11 ALMCR 2nd ed
-a(lc::LifeContingency) = ä(lc) - 1 
+a(lc::LifeContingency;start_time=0) = ä(lc,start_time=start_time) - 1 
 
 # eq 5.13 ALMCR 2nd ed
-function a(lc::LifeContingency,to_time) 
-    return ä(lc,to_time) - 1 + disc(lc,to_time) * survivorship(lc,to_time)
+function a(lc::LifeContingency,npayments;start_time=0) 
+    return ä(lc,npayments,start_time=start_time) - 1 + disc(lc,npayments,start_time=start_time) * survivorship(lc,npayments,start_time=start_time)
 end
 
-function a(lc::LifeContingency,from_time,to_time) 
-    return ä(lc,from_time,to_time) - 1 + disc(lc,from_time,to_time) * survivorship(lc,from_time,to_time)
+function a(lc::LifeContingency,npayments; start_time=0) 
+    x = ä(lc,npayments;start_time=start_time)
+    y = disc(lc,start_time,start_time+npayments)
+    z = survivorship(lc,npayments)
+    return x - 1 + y * z
 end
 
 

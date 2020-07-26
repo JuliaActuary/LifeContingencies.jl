@@ -48,12 +48,16 @@ end
 
     @test omega(ins) ≈ 2
     @test ä(ins) ≈ 3
+    @test ä(ins;start_time=1) ≈ 2
     @test ä(ins,1) ≈ 1 
     @test ä(ins,2) ≈ 2
+    @test ä(ins,2;start_time=2) ≈ 0
     @test ä(ins,3) ≈ 3
     @test ä(ins,0) == 0
     @test a(ins,0) == 0
     @test a(ins,1) ≈ 1
+    @test a(ins,1;start_time=1) ≈ 0
+    @test a(ins;start_time=2) ≈ 0
     @test a(ins,2) ≈ 2
     @test a(ins) ≈ 2
 
