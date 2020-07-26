@@ -27,11 +27,18 @@
 
         @test insurance(ins) ≈ 0.9418373716628330
         @test annuity_due(ins) ≈ 1.2214151950805000
-
+        
         qs = t.ultimate[116:118]
         @test insurance(ins, 3) ≈ sum(qs .* [1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 1:3])
         @test annuity_due(ins, 3) ≈ sum([1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 0:2])
-
+        
+        @test LifeContingencies.V(ins,1) == reserve_premium_net(ins,1)
+        @test LifeContingencies.v(ins,1) == disc(ins,1)
+        @test LifeContingencies.A(ins) == insurance(ins)
+        @test LifeContingencies.ä(ins) == annuity_due(ins)
+        @test LifeContingencies.a(ins) == annuity_immediate(ins)
+        @test LifeContingencies.P(ins) == premium_net(ins)
+        @test LifeContingencies.ω(ins) == omega(ins)
     end
 
     @testset "issue age 30" begin

@@ -178,7 +178,6 @@ resutl = b - a
 ```
 
 If you imported `using LifeContingencies` and the package exported `a` (`annuity_immediate`) then you could have problems if you tried to do the above. To avoid this, we only export long-form functions like `annuity_immediate`. To utilize the shorthand, you can include them into your code's scope like so:
-https://docs.julialang.org/en/latest/manual/modules/#Summary-of-module-usage-1
 
 ```julia
 using LifeContingencies # brings all the default functions into your scope
@@ -192,7 +191,7 @@ using LifeContingencies # brings all the default functions into your scope
 ... # later on in the code
 LifeContingencies.ä(...) # utilize the unexported function with the module name
 ```
-
+For more on module scoping, see the [Julia Manual section](https://docs.julialang.org/en/latest/manual/modules/#Summary-of-module-usage-1).
 
 ### Actuarial notation shorthand
 

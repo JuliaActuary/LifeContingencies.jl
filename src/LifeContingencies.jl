@@ -392,7 +392,7 @@ Life annuity immediate for the life contingency `lc` with the benefit period sta
 
 """
 # eq 5.11 ALMCR 2nd ed
-a(lc::LifeContingency;start_time=0) = annuity_due(lc,start_time=start_time) - 1 
+annuity_immediate(lc::LifeContingency;start_time=0) = annuity_due(lc,start_time=start_time) - 1 
 
 # eq 5.13 ALMCR 2nd ed
 function annuity_immediate(lc::LifeContingency,npayments; start_time=0) 
