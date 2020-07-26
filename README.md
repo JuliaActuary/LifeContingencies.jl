@@ -21,8 +21,8 @@ with [Unicode support](https://docs.julialang.org/en/v1/manual/unicode-input/ind
 - Leverages [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl) for
 the mortality calculations
 - Contains common insurance calculations such as:
-    - `A(life)`: Whole life
-    - `A(life,n)`: Term life for `n` years
+    - `insurance(life)`: Whole life
+    - `insurance(life,n)`: Term life for `n` years
     - `ä(life)`: Life contingent annuity due
     - `ä(life,n)`: Life contingent annuity due for `n` years
 - Contains various commutation functions such as `D(x)`,`M(x)`,`C(x)`, etc.
@@ -52,9 +52,9 @@ lc = LifeContingency(
 )
 
 
-A(lc)        # Whole Life insurance
-A(lc,10)     # 10 year term insurance
-P(lc)        # Net whole life premium 
+insurance(lc)        # Whole Life insurance
+insurance(lc,10)     # 10 year term insurance
+premium_net(lc)        # Net whole life premium 
 V(lc,5)      # Net premium reserve for whole life insurance at time 5
 ä(lc)        # Whole life annuity due
 ä(lc, 5)     # 5 year annuity due
@@ -93,7 +93,7 @@ lc = LifeContingency(
 )
 
 term = 10
-A(lc,term) # around 0.055
+insurance(lc,term) # around 0.055
 ```
 #### Extending example to use autocorrelated interest rates
 You can use autocorrelated interest rates - substitute the following in the prior example
@@ -138,7 +138,7 @@ whole_life_costs = map(tables) do t
                 int
             )
 
-        P(lc)
+        premium_net(lc)
 
     end
 end
@@ -164,10 +164,55 @@ l2 = SingleLife(mort = m2.ultimate, issue_age = 37)
 jl = JointLife(lives=(l1, l2), contingency=LastSurvivor(), joint_assumption=Frasier())
 
 
-A(jl)   # whole life insurance
+insurance(jl)   # whole life insurance
 ...     # similar functions as shown in the first example above
 ```
+## Commutation and Unexported Function shorthand
 
+Because it's so common to use certain variables in your own code, LifeContingencies avoids exporting certain variables/functions so that it doesn't collide with your own usage. For example, you may find yourself doing something like:
+
+```julia
+a = ...
+b = ...
+resutl = b - a
+```
+
+If you imported `using LifeContingencies` and the package exported `a` (`annuity_immediate`) then you could have problems if you tried to do the above. To avoid this, we only export long-form functions like `annuity_immediate`. To utilize the shorthand, you can include them into your code's scope like so:
+
+```julia
+using LifeContingencies # brings all the default functions into your scope
+using LifeContingencies: a, ä # also brings the short-form annuity functions into scope
+```
+
+**Or** you can do the following:
+
+```julia
+using LifeContingencies # brings all the default functions into your scope
+... # later on in the code
+LifeContingencies.ä(...) # utilize the unexported function with the module name
+```
+For more on module scoping, see the [Julia Manual section](https://docs.julialang.org/en/latest/manual/modules/#Summary-of-module-usage-1).
+
+### Actuarial notation shorthand
+
+```julia
+V => reserve_premium_net
+v => disc
+A => insurance
+ä => annuity_due
+a => annuity_immediate
+P => premium_net
+ω => omega
+```
+### Commutation functions
+
+```julia
+l,
+D,
+M,
+N,
+C,
+```
 
 ## References
 
