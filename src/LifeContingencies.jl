@@ -9,31 +9,21 @@ using QuadGK
 const mt = MortalityTables
 
 export LifeContingency,
-    l,
     InterestRate,
     rate,
     APV,
-    A,
-    a,
-    ä,
-    D,
-    M,
-    N,
-    C,
-    P,
-    V,
-    disc,
-    reserve_net_premium,
-    insurance,
-    annuity_due,
-    net_premium_annual,
+    disc,    
     SingleLife, Frasier, JointLife,
     LastSurvivor,
-    omega,
     survivorship,
-    DiscountFactor
-
-
+    DiscountFactor,
+    reserve_premium_net,
+    disc,
+    insurance,
+    annuity_due,
+    annuity_immediate,
+    premium_net,
+    omega
 
 include("interest.jl")
 
@@ -272,15 +262,15 @@ E(lc::LifeContingency, t, x) = D(lc,x + t) / D(lc,x)
 
    
 """
-    A(lc::LifeContingency,from_time=0,to_time=nothing)
+    insurance(lc::LifeContingency,from_time=0,to_time=nothing)
 
 Life insurance for someone starting at `from_time` and lasting until `to_time`. If `to_time` is `nothing` (the default), will be insurance until the end of the mortality table or interest rates.
 
 Issue age is based on the `issue_age` in the LifeContingency `lc`.
 """
-A(lc::LifeContingency,to_time=nothing) = A(lc.life,lc,to_time)
+insurance(lc::LifeContingency,to_time=nothing) = insurance(lc.life,lc,to_time)
 
-function A(::SingleLife,lc::LifeContingency,to_time)
+function insurance(::SingleLife,lc::LifeContingency,to_time)
     iszero(to_time) && return 0.0 #short circuit and return 0 if there is no time elapsed
     mt = lc.life.mort
     iss_age = lc.life.issue_age
@@ -293,7 +283,7 @@ function A(::SingleLife,lc::LifeContingency,to_time)
     sum(v .* tpx  .* qx)
 end
 
-function A(::SingleLife,lc::LifeContingency,::Nothing)
+function insurance(::SingleLife,lc::LifeContingency,::Nothing)
     mt = lc.life.mort
     iss_age = lc.life.issue_age
     end_age = omega(lc) + iss_age - 1
@@ -306,11 +296,11 @@ function A(::SingleLife,lc::LifeContingency,::Nothing)
 end
 
 # for joint, dispactch based on the type of insruance and assumption
-function A(::JointLife,lc::LifeContingency, to_time) 
-    A(lc.life.contingency, lc.life.joint_assumption,lc,to_time)
+function insurance(::JointLife,lc::LifeContingency, to_time) 
+    insurance(lc.life.contingency, lc.life.joint_assumption,lc,to_time)
 end
 
-function A(::LastSurvivor,::Frasier,lc::LifeContingency, to_time)
+function insurance(::LastSurvivor,::Frasier,lc::LifeContingency, to_time)
     iszero(to_time) && return 0.0 #short circuit and return 0 if there is no time elapsed
     v = disc.(lc.int,1:to_time)
     tpx =  [survivorship(lc,t) for t in 0:to_time-1]
@@ -319,7 +309,7 @@ function A(::LastSurvivor,::Frasier,lc::LifeContingency, to_time)
     sum(v .* tpx  .* qx)
 end
 
-function A(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
+function insurance(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
     to_time = omega(lc)
     v = disc.(lc.int,1:to_time)
     tpx =  [survivorship(lc,t) for t in 0:to_time-1]
@@ -329,21 +319,21 @@ function A(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
 end
 
 """
-    ä(lc::LifeContingency, npayments,start_time=0)
-    ä(lc::LifeContingency,start_time=0)
+    annuity_due(lc::LifeContingency, npayments,start_time=0)
+    annuity_due(lc::LifeContingency,start_time=0)
 
 Life annuity due for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments`. If `npayments` is omitted, will return whole life annuity due.
 
 
-To enter the `ä` character, type `a` and then `\\ddot`.
+To enter the `annuity_due` character, type `a` and then `\\ddot`.
     See more on how to [input unicode](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
     in Julia.
 
 """
-ä(lc::LifeContingency; start_time=0) = ä(lc.life,lc,start_time=start_time)
-ä(lc::LifeContingency,npayments; start_time=0) = ä(lc.life,lc,npayments,start_time=start_time)
+annuity_due(lc::LifeContingency; start_time=0) = annuity_due(lc.life,lc,start_time=start_time)
+annuity_due(lc::LifeContingency,npayments; start_time=0) = annuity_due(lc.life,lc,npayments,start_time=start_time)
 
-function ä(::SingleLife,lc::LifeContingency, npayments; start_time=0)
+function annuity_due(::SingleLife,lc::LifeContingency, npayments; start_time=0)
     npayments -=  start_time
     npayments == 0 && return 0.0
     
@@ -355,7 +345,7 @@ function ä(::SingleLife,lc::LifeContingency, npayments; start_time=0)
     return sum(discount_factor .* pmts)
 end
 
-function ä(::SingleLife,lc::LifeContingency; start_time=0)
+function annuity_due(::SingleLife,lc::LifeContingency; start_time=0)
     npayments = omega(lc) - start_time
     end_time = (npayments+start_time)
     discount_factor = disc.(lc.int,start_time:end_time)
@@ -365,15 +355,15 @@ function ä(::SingleLife,lc::LifeContingency; start_time=0)
 end
 
 # for joint, dispactch based on the type of insruance and assumption
-function ä(::JointLife,lc::LifeContingency;start_time=0) 
+function annuity_due(::JointLife,lc::LifeContingency;start_time=0) 
     return ä(lc.life.contingency,lc.life.joint_assumption,lc,start_time=start_time)
 end
 
-function ä(::JointLife,lc::LifeContingency, npayments;start_time=0) 
+function annuity_due(::JointLife,lc::LifeContingency, npayments;start_time=0) 
     return ä(lc.life.contingency,lc.life.joint_assumption,lc,npayments,start_time=start_time)
 end
 
-function ä(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;start_time=0)
+function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;start_time=0)
     npayments -=  start_time
     npayments == 0 && return 0.0
     end_time = npayments + start_time -1
@@ -383,7 +373,7 @@ function ä(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;start_time=
 
 end
 
-function ä(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0)
+function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0)
     npayments = omega(lc) - start_time
     end_time = npayments + start_time
     discount_factor = disc.(lc.int,start_time:end_time)
@@ -393,8 +383,8 @@ function ä(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0)
 end
 
 """
-    a(lc::LifeContingency, npayments; start_time=0)
-    a(lc::LifeContingency; start_time=0)
+    annuity_immediate(lc::LifeContingency, npayments; start_time=0)
+    annuity_immediate(lc::LifeContingency; start_time=0)
 
 Life annuity immediate for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments`. If `npayments` is omitted, will calculate the whole life immediate annuity.
 
@@ -402,11 +392,11 @@ Life annuity immediate for the life contingency `lc` with the benefit period sta
 
 """
 # eq 5.11 ALMCR 2nd ed
-a(lc::LifeContingency;start_time=0) = ä(lc,start_time=start_time) - 1 
+a(lc::LifeContingency;start_time=0) = annuity_due(lc,start_time=start_time) - 1 
 
 # eq 5.13 ALMCR 2nd ed
-function a(lc::LifeContingency,npayments; start_time=0) 
-    x = ä(lc,npayments;start_time=start_time)
+function annuity_immediate(lc::LifeContingency,npayments; start_time=0) 
+    x = annuity_due(lc,npayments;start_time=start_time)
     y = disc(lc,start_time,start_time+npayments)
     z = survivorship(lc,npayments)
     return x - 1 + y * z
@@ -415,24 +405,24 @@ end
 
 
 """
-    P(lc::LifeContingency)
-    P(lc::LifeContingency,to_time)
+    premium_net(lc::LifeContingency)
+    premium_net(lc::LifeContingency,to_time)
 
 The net premium for a whole life insurance (without second argument) or a term life insurance through `to_time`.
 
 The net premium is based on 1 unit of insurance with the death benfit payable at the end of the year and assuming annual net premiums.
 """
-P(lc::LifeContingency) = A(lc) / ä(lc)
-P(lc::LifeContingency,to_time) = A(lc,to_time) / ä(lc,to_time)
+premium_net(lc::LifeContingency) = insurance(lc) / ä(lc)
+premium_net(lc::LifeContingency,to_time) = insurance(lc,to_time) / ä(lc,to_time)
 
 """
-    V(lc::LifeContingency,time)
+     reserve_premium_net(lc::LifeContingency,time)
 
 The net premium reserve at the end of year `time`.
 """
-function V(lc::LifeContingency, time) 
-    PVFB = A(lc) - A(lc,time)
-    PVFP = P(lc) * (ä(lc) - ä(lc,time))
+function  reserve_premium_net(lc::LifeContingency, time) 
+    PVFB = insurance(lc) - insurance(lc,time)
+    PVFP = premium_net(lc) * (ä(lc) - ä(lc,time))
     return (PVFB - PVFP) / APV(lc,time)
 end
 
@@ -483,11 +473,13 @@ end
 disc(lc::LifeContingency,t) = disc(lc.int,t)
 disc(lc::LifeContingency,t1,t2) = disc(lc.int,t1,t2)
 
-# aliases
-reserve_net_premium = V
-insurance = A
-annuity_due = ä
-net_premium_annual = P
-ω(x) = omega(x)
+# unexported aliases
+const V = reserve_premium_net
+const v = disc
+const A = insurance
+const a = annuity_immediate
+const ä = annuity_due
+const P = premium_net
+const ω = omega
 
 end # module

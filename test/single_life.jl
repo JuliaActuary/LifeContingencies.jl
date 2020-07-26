@@ -25,12 +25,12 @@
         @test M(ins, 1) ≈ 0.1800468954723570
         @test M(ins, 2) ≈ 0.0264364171050101
 
-        @test A(ins) ≈ 0.9418373716628330
-        @test ä(ins) ≈ 1.2214151950805000
+        @test insurance(ins) ≈ 0.9418373716628330
+        @test annuity_due(ins) ≈ 1.2214151950805000
 
         qs = t.ultimate[116:118]
-        @test A(ins, 3) ≈ sum(qs .* [1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 1:3])
-        @test ä(ins, 3) ≈ sum([1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 0:2])
+        @test insurance(ins, 3) ≈ sum(qs .* [1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 1:3])
+        @test annuity_due(ins, 3) ≈ sum([1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 0:2])
 
     end
 
@@ -62,17 +62,17 @@
         @test M(ins, 1) ≈ 0.1104702077177110
         @test M(ins, 2) ≈ 0.1100531118446950
 
-        @test A(ins) ≈ 0.1107844934319970
-        @test ä(ins) ≈ 18.6735256379281000
-        @test P(ins) ≈ 0.0059327036350854
-        @test V(ins, 1) ≈ 0.0059012862412992
-        @test V(ins, 2) ≈ 0.0119711961204193
+        @test insurance(ins) ≈ 0.1107844934319970
+        @test annuity_due(ins) ≈ 18.6735256379281000
+        @test premium_net(ins) ≈ 0.0059327036350854
+        @test  reserve_premium_net(ins, 1) ≈ 0.0059012862412992
+        @test  reserve_premium_net(ins, 2) ≈ 0.0119711961204193
 
         qs = t.select[30][30:55]
-        @test A(ins, 26) ≈ sum(qs .* [1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 1:26])
-        @test ä(ins, 26) ≈ sum([1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 0:25])
+        @test insurance(ins, 26) ≈ sum(qs .* [1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 1:26])
+        @test annuity_due(ins, 26) ≈ sum([1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 0:25])
 
-        @test P(ins, 26) ≈ A(ins, 26) /  ä(ins, 26) 
+        @test premium_net(ins, 26) ≈ insurance(ins, 26) /  annuity_due(ins, 26) 
 
     end
 end
