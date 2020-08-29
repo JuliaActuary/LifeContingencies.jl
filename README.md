@@ -61,7 +61,7 @@ ä(lc, 5)     # 5 year annuity due
 ...          # and more!
 ```
 
-### Determine Stochastic Net Premium for Term Policy
+### Net Premium for Term Policy with Stochastic rates
 Use a stochastic interest rate calculation to price a term policy:
 
 ```julia
