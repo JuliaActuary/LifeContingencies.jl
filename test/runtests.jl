@@ -1,7 +1,6 @@
 using LifeContingencies
 using LifeContingencies: l,D,M,N,C
 using Test
-import Distributions: Normal
 using MortalityTables
 
 include("interest_rates.jl")
