@@ -24,7 +24,7 @@
 
             jl = JointLife(lives=(l1, l2), contingency = LastSurvivor(), joint_assumption=Frasier())
             
-            @test isapprox( survivorship(jl, 2) , 0.9997, atol = 1e-4)
+            @test isapprox( survival(jl, 2) , 0.9997, atol = 1e-4)
             
             
             ins = LifeContingency(jl,InterestRate(0.05))
@@ -46,10 +46,10 @@
             
             @testset "independent lives" begin
                 for time in 1:40
-                    tpx = survivorship(l1,time)
-                    tpy = survivorship(l2,time)
+                    tpx = survival(l1,time)
+                    tpy = survival(l2,time)
 
-                    @test survivorship(jl, time) == tpx + tpy - tpx * tpy
+                    @test survival(jl, time) == tpx + tpy - tpx * tpy
                 end
             end
         
@@ -61,13 +61,13 @@
                 end
 
                 for time in 1:40
-                    q′ =  1 - survivorship(jl, time) / survivorship(jl, time-1)
+                    q′ =  1 - survival(jl, time) / survival(jl, time-1)
 
                     @test isapprox(q′, q_annual[time], atol = 1e-6)
                 end
 
                 for time in 1:40
-                    @test isapprox(survivorship(jl, time), 1 - q_cumulative[time], atol = 1e-6)
+                    @test isapprox(survival(jl, time), 1 - q_cumulative[time], atol = 1e-6)
                 end
             end
         end

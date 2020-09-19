@@ -31,7 +31,7 @@
     @test annuity_due(ins_jl,2) ≈ 1 + 1 * .75 / 1.05
     @test annuity_due(ins_jl,0) == 0
 
-    @test survivorship(ins_jl,1) ≈ .5 + .5 - .5 * .5
+    @test survival(ins_jl,1) ≈ .5 + .5 - .5 * .5
     @test insurance(ins_jl) ≈ .25 / 1.05
     @test insurance(ins_jl,1) ≈ 0.25 / 1.05
     @test insurance(ins_jl,0) ≈ 0
@@ -73,9 +73,9 @@ end
         InterestRate(0.00)
     )
 
-    @test survivorship(ins_jl,0) ≈ 1.0
-    @test survivorship(ins_jl,1) ≈ 1
-    @test survivorship(ins_jl,2) ≈ 1
+    @test survival(ins_jl,0) ≈ 1.0
+    @test survival(ins_jl,1) ≈ 1
+    @test survival(ins_jl,2) ≈ 1
 
 end
 
@@ -109,9 +109,9 @@ end
         InterestRate(0.05)
     )
 
-    @test survivorship(ins_jl,0) ≈ 1.0
-    @test survivorship(ins_jl,1) ≈ .5 + .5 - .5 * .5
-    @test survivorship(ins_jl,2) ≈ (.25 + .25 - .25 * .25)
+    @test survival(ins_jl,0) ≈ 1.0
+    @test survival(ins_jl,1) ≈ .5 + .5 - .5 * .5
+    @test survival(ins_jl,2) ≈ (.25 + .25 - .25 * .25)
 
 end
 
@@ -147,7 +147,7 @@ end
     @test omega(ins_jl) ≈ 2
     @test annuity_due(ins_jl,1) ≈ 1
     @test annuity_due(ins_jl,2) ≈ 1 + 1 * .75 /1.05
-    @test annuity_due(ins_jl,3) ≈ 1 + 1 * .75 /1.05 + 1 * survivorship(ins_jl,2) / 1.05 ^ 2
+    @test annuity_due(ins_jl,3) ≈ 1 + 1 * .75 /1.05 + 1 * survival(ins_jl,2) / 1.05 ^ 2
     @test annuity_due(ins_jl,0) == 0
     @test annuity_immediate(ins_jl,0) == 0
     @test annuity_immediate(ins_jl,1) ≈ 1 * .75 /1.05
@@ -187,9 +187,9 @@ t = UltimateMortality(maleMort)
     @test insurance(ins, 1) ≈ 0.0066571428571429
     @test annuity_due(ins, 0) ≈ 0.0
     @test annuity_due(ins, 1) ≈ 1.0 
-    @test annuity_due(ins, 2) ≈ 1.0 + survivorship(ins,1) / 1.05
+    @test annuity_due(ins, 2) ≈ 1.0 + survival(ins,1) / 1.05
     @test annuity_immediate(ins, 0) ≈ 0.0
-    @test annuity_immediate(ins, 1) ≈ survivorship(ins,1) / 1.05
+    @test annuity_immediate(ins, 1) ≈ survival(ins,1) / 1.05
 
     @test insurance(ins, 30) ≈ 0.0137761089686975
 
