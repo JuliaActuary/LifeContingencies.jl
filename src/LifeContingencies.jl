@@ -15,7 +15,7 @@ export LifeContingency,
     disc,    
     SingleLife, Frasier, JointLife,
     LastSurvivor,
-    survivorship,
+    survival,
     DiscountFactor,
     reserve_premium_net,
     disc,
@@ -70,7 +70,7 @@ end
 """ 
     JointAssumption()
 
-An abstract type representing the different assumed relationship between the survivorship of the lives on a JointLife. Available options to use include:
+An abstract type representing the different assumed relationship between the survival of the lives on a JointLife. Available options to use include:
 - `Frasier()`
 """
 abstract type JointAssumption end
@@ -206,20 +206,20 @@ end
 """
     D(lc::LifeContingency, to_time)
 
-``D_x`` is a retrospective actuarial commutation function which is the product of the survivorship and discount factor.
+``D_x`` is a retrospective actuarial commutation function which is the product of the survival and discount factor.
 """
 function D(lc::LifeContingency, to_time)
-    return disc(lc.int, to_time) * survivorship(lc,to_time)
+    return disc(lc.int, to_time) * survival(lc,to_time)
 end
 
 
 """
     l(lc::LifeContingency, to_time)
 
-``l_x`` is a retrospective actuarial commutation function which is the survivorship up to a certain point in time. By default, will have a unitary basis (ie `1.0`), but you can specify `basis` keyword argument to use something different (e.g. `1000` is common in the literature.)
+``l_x`` is a retrospective actuarial commutation function which is the survival up to a certain point in time. By default, will have a unitary basis (ie `1.0`), but you can specify `basis` keyword argument to use something different (e.g. `1000` is common in the literature.)
 """
 function l(lc::LifeContingency, to_time; basis=1.0)
-    return survivorship(lc.life,to_time) * basis
+    return survival(lc.life,to_time) * basis
 end
 
 """
@@ -277,7 +277,7 @@ function insurance(::SingleLife,lc::LifeContingency,to_time)
     end_age = to_time + iss_age -1
     len = end_age - iss_age
     v = disc.(lc.int,1:len+1)
-    tpx =  [survivorship(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
+    tpx =  [survival(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
     qx =   mt[iss_age:end_age]
 
     sum(v .* tpx  .* qx)
@@ -289,7 +289,7 @@ function insurance(::SingleLife,lc::LifeContingency,::Nothing)
     end_age = omega(lc) + iss_age - 1
     len = end_age - iss_age
     v = disc.(lc.int,1:len+1)
-    tpx =  [survivorship(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
+    tpx =  [survival(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
     qx =   mt[iss_age:end_age]
 
     sum(v .* tpx  .* qx)
@@ -303,8 +303,8 @@ end
 function insurance(::LastSurvivor,::Frasier,lc::LifeContingency, to_time)
     iszero(to_time) && return 0.0 #short circuit and return 0 if there is no time elapsed
     v = disc.(lc.int,1:to_time)
-    tpx =  [survivorship(lc,t) for t in 0:to_time-1]
-    qx =   [ survivorship(lc,t) - survivorship(lc,t+1) for t in 0:to_time-1]
+    tpx =  [survival(lc,t) for t in 0:to_time-1]
+    qx =   [ survival(lc,t) - survival(lc,t+1) for t in 0:to_time-1]
 
     sum(v .* tpx  .* qx)
 end
@@ -312,8 +312,8 @@ end
 function insurance(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
     to_time = omega(lc)
     v = disc.(lc.int,1:to_time)
-    tpx =  [survivorship(lc,t) for t in 0:to_time-1]
-    qx =   [ survivorship(lc,t) - survivorship(lc,t+1) for t in 0:to_time-1]
+    tpx =  [survival(lc,t) for t in 0:to_time-1]
+    qx =   [ survival(lc,t) - survival(lc,t+1) for t in 0:to_time-1]
 
     sum(v .* tpx  .* qx)
 end
@@ -340,7 +340,7 @@ function annuity_due(::SingleLife,lc::LifeContingency, npayments; start_time=0)
     end_time = npayments + start_time - 1
 
     discount_factor = disc.(lc.int,start_time:end_time)
-    pmts = [survivorship(lc,t) for t in start_time:end_time]
+    pmts = [survival(lc,t) for t in start_time:end_time]
 
     return sum(discount_factor .* pmts)
 end
@@ -349,7 +349,7 @@ function annuity_due(::SingleLife,lc::LifeContingency; start_time=0)
     npayments = omega(lc) - start_time
     end_time = (npayments+start_time)
     discount_factor = disc.(lc.int,start_time:end_time)
-    pmts = [survivorship(lc,t) for t in start_time:end_time]
+    pmts = [survival(lc,t) for t in start_time:end_time]
 
     return sum(discount_factor .* pmts)
 end
@@ -368,7 +368,7 @@ function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;st
     npayments == 0 && return 0.0
     end_time = npayments + start_time -1
     discount_factor = disc.(lc.int,start_time:end_time)
-    pmts = [survivorship(lc,t) for t in start_time:end_time]
+    pmts = [survival(lc,t) for t in start_time:end_time]
     return sum( discount_factor .* pmts )
 
 end
@@ -377,7 +377,7 @@ function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0)
     npayments = omega(lc) - start_time
     end_time = npayments + start_time
     discount_factor = disc.(lc.int,start_time:end_time)
-    pmts = [survivorship(lc,t) for t in start_time:end_time]
+    pmts = [survival(lc,t) for t in start_time:end_time]
     return sum( discount_factor .* pmts )
 
 end
@@ -398,7 +398,7 @@ annuity_immediate(lc::LifeContingency;start_time=0) = annuity_due(lc,start_time=
 function annuity_immediate(lc::LifeContingency,npayments; start_time=0) 
     x = annuity_due(lc,npayments;start_time=start_time)
     y = disc(lc,start_time,start_time+npayments)
-    z = survivorship(lc,npayments)
+    z = survival(lc,npayments)
     return x - 1 + y * z
 end
 
@@ -429,10 +429,10 @@ end
 """
     APV(lc::LifeContingency,to_time)
 
-The **actuarial present value** which is the survivorship times the discount factor for the life contingency.
+The **actuarial present value** which is the survival times the discount factor for the life contingency.
 """
 function APV(lc::LifeContingency,to_time)
-    return survivorship(lc,to_time) * disc(lc.int,to_time)
+    return survival(lc,to_time) * disc(lc.int,to_time)
 end
 
 """
@@ -441,32 +441,32 @@ end
 
 Return the probablity of death for the given LifeContingency. 
 """
-mt.decrement(lc::LifeContingency,from_time,to_time) = 1 - survivorship(lc.life,from_time,to_time)
+mt.decrement(lc::LifeContingency,from_time,to_time) = 1 - survival(lc.life,from_time,to_time)
 
 
 """
-    survivorship(lc::LifeContingency,from_time,to_time)
-    survivorship(lc::LifeContingency,to_time)
+    survival(lc::LifeContingency,from_time,to_time)
+    survival(lc::LifeContingency,to_time)
 
 Return the probablity of survival for the given LifeContingency. 
 """
-mt.survivorship(lc::LifeContingency,to_time) = survivorship(lc.life, 0, to_time)
-mt.survivorship(lc::LifeContingency,from_time,to_time) = survivorship(lc.life, from_time, to_time)
+mt.survival(lc::LifeContingency,to_time) = survival(lc.life, 0, to_time)
+mt.survival(lc::LifeContingency,from_time,to_time) = survival(lc.life, from_time, to_time)
 
-mt.survivorship(l::SingleLife,to_time) = survivorship(l,0,to_time)
-mt.survivorship(l::SingleLife,from_time,to_time) = survivorship(l.mort,l.issue_age + from_time,l.issue_age + to_time)
+mt.survival(l::SingleLife,to_time) = survival(l,0,to_time)
+mt.survival(l::SingleLife,from_time,to_time) = survival(l.mort,l.issue_age + from_time,l.issue_age + to_time)
 
-mt.survivorship(l::JointLife,to_time) = survivorship(l::JointLife,0,to_time)
-function mt.survivorship(l::JointLife,from_time,to_time) 
-    return survivorship(l.contingency,l.joint_assumption,l::JointLife,from_time,to_time)
+mt.survival(l::JointLife,to_time) = survival(l::JointLife,0,to_time)
+function mt.survival(l::JointLife,from_time,to_time) 
+    return survival(l.contingency,l.joint_assumption,l::JointLife,from_time,to_time)
 end
 
-function mt.survivorship(ins::LastSurvivor,assump::JointAssumption,l::JointLife,from_time,to_time)
+function mt.survival(ins::LastSurvivor,assump::JointAssumption,l::JointLife,from_time,to_time)
     to_time == 0 && return 1.0
     
     l1,l2 = l.lives
-    ₜpₓ = survivorship(l1.mort,l1.issue_age + from_time,l1.issue_age + to_time,l1.fractional_assump)
-    ₜpᵧ = survivorship(l2.mort,l2.issue_age + from_time,l2.issue_age + to_time,l2.fractional_assump)
+    ₜpₓ = survival(l1.mort,l1.issue_age + from_time,l1.issue_age + to_time,l1.fractional_assump)
+    ₜpᵧ = survival(l2.mort,l2.issue_age + from_time,l2.issue_age + to_time,l2.fractional_assump)
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 
