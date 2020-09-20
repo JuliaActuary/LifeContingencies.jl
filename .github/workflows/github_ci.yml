@@ -9,14 +9,19 @@ jobs:
     strategy:
       matrix:
         version:
-          - '1.4'
-          - 'nightly'
+          - '1.5'
         os:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
+        experimental: [false]
         arch:
           - x64
+        include:
+          - version: 'nightly'
+            arch: x64
+            os: ubuntu-latest
+            experimental: true
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
@@ -32,7 +37,8 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
-
+          token: ${{ secrets.CODECOV_TOKEN }}
+      
   docs:
     name: Documentation
     runs-on: ubuntu-latest
