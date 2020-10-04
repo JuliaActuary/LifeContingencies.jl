@@ -5,6 +5,7 @@ using Transducers
 using Dates
 using IterTools
 using QuadGK
+using Yields
     
 const mt = MortalityTables
 
@@ -25,7 +26,6 @@ export LifeContingency,
     premium_net,
     omega
 
-include("interest.jl")
 
 
 
@@ -153,7 +153,7 @@ end
 """
 struct LifeContingency
     life::Life
-    int::InterestRate
+    int
 end
 
 Base.broadcastable(lc::LifeContingency) = Ref(lc)
@@ -180,7 +180,7 @@ The last period that the interest rate is defined for. Assumed to be infinite (`
 function mt.omega(lc::LifeContingency)
     # if one of the omegas is infinity, that's a Float so we need
     # to narrow the type with Int
-    return Int(min(omega(lc.life), omega(lc.int)))
+    return Int(omega(lc.life))
 end
 
 function mt.omega(l::SingleLife)
@@ -191,13 +191,6 @@ function mt.omega(l::JointLife)
     return minimum( omega.(l.lives) )    
 end
 
-function mt.omega(i::ConstantInterestRate)
-    return Inf
-end
-
-function mt.omega(i::VectorInterestRate)
-    return lastindex(i.i)
-end
 
 ###################
 ## COMMUTATIONS ###
@@ -209,7 +202,7 @@ end
 ``D_x`` is a retrospective actuarial commutation function which is the product of the survival and discount factor.
 """
 function D(lc::LifeContingency, to_time)
-    return disc(lc.int, to_time) * survival(lc,to_time)
+    return discount(lc.int, to_time) * survival(lc,to_time)
 end
 
 
@@ -228,7 +221,7 @@ end
 ``C_x`` is a retrospective actuarial commutation function which is the product of the discount factor and the difference in `l` (``l_x``).
 """
 function C(lc::LifeContingency, to_time)
-    disc(lc.int, to_time+1) * (l(lc,to_time) - l(lc, to_time+1))
+    discount(lc.int, to_time+1) * (l(lc,to_time) - l(lc, to_time+1))
     
 end
 
@@ -276,7 +269,7 @@ function insurance(::SingleLife,lc::LifeContingency,to_time)
     iss_age = lc.life.issue_age
     end_age = to_time + iss_age -1
     len = end_age - iss_age
-    v = disc.(lc.int,1:len+1)
+    v = discount.(lc.int,1:len+1)
     tpx =  [survival(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
     qx =   mt[iss_age:end_age]
 
@@ -288,7 +281,7 @@ function insurance(::SingleLife,lc::LifeContingency,::Nothing)
     iss_age = lc.life.issue_age
     end_age = omega(lc) + iss_age - 1
     len = end_age - iss_age
-    v = disc.(lc.int,1:len+1)
+    v = discount.(lc.int,1:len+1)
     tpx =  [survival(mt,iss_age,att_age, lc.life.fractional_assump) for att_age in iss_age:end_age]
     qx =   mt[iss_age:end_age]
 
@@ -302,7 +295,7 @@ end
 
 function insurance(::LastSurvivor,::Frasier,lc::LifeContingency, to_time)
     iszero(to_time) && return 0.0 #short circuit and return 0 if there is no time elapsed
-    v = disc.(lc.int,1:to_time)
+    v = discount.(lc.int,1:to_time)
     tpx =  [survival(lc,t) for t in 0:to_time-1]
     qx =   [ survival(lc,t) - survival(lc,t+1) for t in 0:to_time-1]
 
@@ -311,7 +304,7 @@ end
 
 function insurance(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
     to_time = omega(lc)
-    v = disc.(lc.int,1:to_time)
+    v = discount.(lc.int,1:to_time)
     tpx =  [survival(lc,t) for t in 0:to_time-1]
     qx =   [ survival(lc,t) - survival(lc,t+1) for t in 0:to_time-1]
 
@@ -339,7 +332,7 @@ function annuity_due(::SingleLife,lc::LifeContingency, npayments; start_time=0)
     
     end_time = npayments + start_time - 1
 
-    discount_factor = disc.(lc.int,start_time:end_time)
+    discount_factor = discount.(lc.int,start_time:end_time)
     pmts = [survival(lc,t) for t in start_time:end_time]
 
     return sum(discount_factor .* pmts)
@@ -348,7 +341,7 @@ end
 function annuity_due(::SingleLife,lc::LifeContingency; start_time=0)
     npayments = omega(lc) - start_time
     end_time = (npayments+start_time)
-    discount_factor = disc.(lc.int,start_time:end_time)
+    discount_factor = discount.(lc.int,start_time:end_time)
     pmts = [survival(lc,t) for t in start_time:end_time]
 
     return sum(discount_factor .* pmts)
@@ -367,7 +360,7 @@ function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;st
     npayments -=  start_time
     npayments == 0 && return 0.0
     end_time = npayments + start_time -1
-    discount_factor = disc.(lc.int,start_time:end_time)
+    discount_factor = discount.(lc.int,start_time:end_time)
     pmts = [survival(lc,t) for t in start_time:end_time]
     return sum( discount_factor .* pmts )
 
@@ -376,7 +369,7 @@ end
 function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0)
     npayments = omega(lc) - start_time
     end_time = npayments + start_time
-    discount_factor = disc.(lc.int,start_time:end_time)
+    discount_factor = discount.(lc.int,start_time:end_time)
     pmts = [survival(lc,t) for t in start_time:end_time]
     return sum( discount_factor .* pmts )
 
@@ -397,7 +390,7 @@ annuity_immediate(lc::LifeContingency;start_time=0) = annuity_due(lc,start_time=
 # eq 5.13 ALMCR 2nd ed
 function annuity_immediate(lc::LifeContingency,npayments; start_time=0) 
     x = annuity_due(lc,npayments;start_time=start_time)
-    y = disc(lc,start_time,start_time+npayments)
+    y = discount(lc,start_time,start_time+npayments)
     z = survival(lc,npayments)
     return x - 1 + y * z
 end
@@ -432,7 +425,7 @@ end
 The **actuarial present value** which is the survival times the discount factor for the life contingency.
 """
 function APV(lc::LifeContingency,to_time)
-    return survival(lc,to_time) * disc(lc.int,to_time)
+    return survival(lc,to_time) * discount(lc.int,to_time)
 end
 
 """
@@ -470,12 +463,12 @@ function mt.survival(ins::LastSurvivor,assump::JointAssumption,l::JointLife,from
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 
-disc(lc::LifeContingency,t) = disc(lc.int,t)
-disc(lc::LifeContingency,t1,t2) = disc(lc.int,t1,t2)
+Yields.discount(lc::LifeContingency,t) = discount(lc.int,t)
+Yields.discount(lc::LifeContingency,t1,t2) = discount(lc.int,t1,t2)
 
 # unexported aliases
 const V = reserve_premium_net
-const v = disc
+const v = Yields.discount
 const A = insurance
 const a = annuity_immediate
 const ä = annuity_due
