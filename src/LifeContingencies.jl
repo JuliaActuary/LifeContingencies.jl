@@ -239,7 +239,7 @@ end
 """
 function N(lc::LifeContingency, from_time)
     range = from_time:(omega(lc)-1)
-    return reduce(+,Map(from_time->D(lc, from_time)), range)
+    return foldxt(+,Map(from_time->D(lc, from_time)), range)
 end
 
 """
@@ -250,7 +250,7 @@ Issue age is based on the issue_age in the LifeContingency `lc`.
 """
 function M(lc::LifeContingency, from_time)
     range = from_time:omega(lc)-1
-    return reduce(+,Map(from_time->C(lc, from_time)), range)
+    return foldxt(+,Map(from_time->C(lc, from_time)), range)
 end
 
 E(lc::LifeContingency, t, x) = D(lc,x + t) / D(lc,x)
