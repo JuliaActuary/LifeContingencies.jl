@@ -1,7 +1,7 @@
 @testset "Single Life" begin
     @testset "issue age 116" begin
         t = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
-        i = InterestRate(0.05)
+        i = Yields.Constant(0.05)
         ins = LifeContingency(SingleLife(mort = t.ultimate, issue_age = 116), i)
 
 
@@ -33,7 +33,7 @@
         @test annuity_due(ins, 3) ≈ sum([1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 0:2])
         
         @test LifeContingencies.V(ins,1) == reserve_premium_net(ins,1)
-        @test LifeContingencies.v(ins,1) == disc(ins,1)
+        @test LifeContingencies.v(ins,1) == Yields.discount(ins,1)
         @test LifeContingencies.A(ins) == insurance(ins)
         @test LifeContingencies.ä(ins) == annuity_due(ins)
         @test LifeContingencies.a(ins) == annuity_immediate(ins)
@@ -43,7 +43,7 @@
 
     @testset "issue age 30" begin
         t = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
-        i = InterestRate(0.05)
+        i = Yields.Constant(0.05)
         ins = LifeContingency(SingleLife(mort = t.select[30], issue_age = 30), i)
 
 

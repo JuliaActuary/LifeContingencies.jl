@@ -27,7 +27,7 @@ the mortality calculations
     - `ä(life,n)`: Life contingent annuity due for `n` years
 - Contains various commutation functions such as `D(x)`,`M(x)`,`C(x)`, etc.
 - `SingleLife` and `JointLife` capable
-- Various interest rate mechanics (e.g. stochastic, constant, etc.)
+- Interest rate mechanics via [`Yields.jl`](https://github.com/JuliaActuary/Yields.jl)
 - More documentation available by clicking the DOCS badges at the top of this README
 
 ## Examples
@@ -36,7 +36,10 @@ the mortality calculations
 Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base table and a 5% interest rate
 
 ```julia
-using LifeContingencies, MortalityTables
+
+using LifeContingencies
+using MortalityTables
+using Yields
 
 tbls = MortalityTables.tables()
 vbt2001 = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
@@ -48,7 +51,7 @@ life = SingleLife(
 
 lc = LifeContingency(
     life,
-    InterestRate(0.05)
+    Yields.Constant(0.05)
 )
 
 
@@ -76,7 +79,7 @@ vbt2001 = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker,
 σ = 0.01
 
 years = 100
-int =   InterestRate(
+int =   Yields.Constant(
             rand(
                 Normal(μ,σ),
                 years)
@@ -108,7 +111,7 @@ for i in 2:length(vec)
     vec[i] = rand(Normal(vec[i-1],σ))
 end
 
-int = InterestRate(vec)
+int = Yields.Forward(vec)
 ```
 
 ### Premium comparison across Mortality Tables
@@ -126,7 +129,7 @@ tables = [
     ]
 
 issue_ages = 30:90
-int = InterestRate(0.05)
+int = Yields.Constant(0.05)
 
 whole_life_costs = map(tables) do t
     map(issue_ages) do ia

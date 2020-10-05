@@ -4,7 +4,7 @@
             mort = UltimateMortality([0.5]),
             issue_age = 0
         ),
-        InterestRate(0.05)
+        Yields.Constant(0.05)
     )
 
     @test omega(ins) ≈ 1
@@ -21,7 +21,7 @@
 
     ins_jl = LifeContingency(
         JointLife((ins.life,ins.life),LastSurvivor(),Frasier()),
-        InterestRate(0.05)
+        Yields.Constant(0.05)
     )
 
     @test omega(ins_jl) ≈ 1
@@ -43,7 +43,7 @@ end
             mort = UltimateMortality([0.0,0.0]),
             issue_age = 0
         ),
-        InterestRate(0.00)
+        Yields.Constant(0.00)
     )
 
     @test omega(ins) ≈ 2
@@ -70,7 +70,7 @@ end
             lives = (ins.life,ins.life),
             contingency = LastSurvivor(),
             joint_assumption = Frasier()),
-        InterestRate(0.00)
+        Yields.Constant(0.00)
     )
 
     @test survival(ins_jl,0) ≈ 1.0
@@ -85,7 +85,7 @@ end
             mort = UltimateMortality([0.5,0.5]),
             issue_age = 0
         ),
-        InterestRate(0.05)
+        Yields.Constant(0.05)
     )
 
     @test omega(ins) ≈ 2
@@ -106,7 +106,7 @@ end
             lives = (ins.life,ins.life),
             contingency = LastSurvivor(),
             joint_assumption = Frasier()),
-        InterestRate(0.05)
+        Yields.Constant(0.05)
     )
 
     @test survival(ins_jl,0) ≈ 1.0
@@ -121,7 +121,7 @@ end
             mort = UltimateMortality([0.5,0.5]),
             issue_age = 0
         ),
-        InterestRate(0.05)
+        Yields.Constant(0.05)
     )
 
     @test omega(ins) ≈ 2
@@ -141,7 +141,7 @@ end
             lives = (ins.life,ins.life),
             contingency = LastSurvivor(),
             joint_assumption = Frasier()),
-        InterestRate(0.05)
+        Yields.Constant(0.05)
     )
 
     @test omega(ins_jl) ≈ 2
@@ -159,7 +159,7 @@ include("test_mortality.jl")
 t = UltimateMortality(maleMort)
 
 @testset "demo mortality" begin
-    i = InterestRate(0.05)
+    i = Yields.Constant(0.05)
     ins = LifeContingency(SingleLife(mort = t, issue_age = 0), i)
 
     @test l(ins, 0) ≈ 1.0
