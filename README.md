@@ -56,13 +56,13 @@ lc = LifeContingency(
 )
 
 
-insurance(lc)        # Whole Life insurance
-insurance(lc,10)     # 10 year term insurance
+insurance(lc)          # Whole Life insurance
+insurance(lc,10)       # 10 year term insurance
 premium_net(lc)        # Net whole life premium 
-V(lc,5)      # Net premium reserve for whole life insurance at time 5
-ä(lc)        # Whole life annuity due
-ä(lc, 5)     # 5 year annuity due
-...          # and more!
+V(lc,5)                # Net premium reserve for whole life insurance at time 5
+ä(lc)                  # Whole life annuity due
+ä(lc, 5)               # 5 year annuity due
+...                    # and more!
 ```
 
 ### Net Premium for Term Policy with Stochastic rates
