@@ -7,7 +7,8 @@
 [![lifecycle](https://img.shields.io/badge/LifeCycle-Developing-yellow)](https://www.tidyverse.org/lifecycle/)
 
 LifeContingencies is a package enabling actuarial life contingent calculations.
-The benefits are:
+
+## Features:
 
 - Integration with other JuliaActuary packages such as [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl)
 - Fast calculations, with some parts utilizing parallel processing power automatically
