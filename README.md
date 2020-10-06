@@ -80,11 +80,7 @@ vbt2001 = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker,
 σ = 0.01
 
 years = 100
-int =   Yields.Constant(
-            rand(
-                Normal(μ,σ),
-                years)
-        )
+int =   Yields.Forward(rand(Normal(μ,σ), years))
 
 life = SingleLife(
     mort = vbt2001.select[30],
