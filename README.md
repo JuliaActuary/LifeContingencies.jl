@@ -42,27 +42,28 @@ using LifeContingencies
 using MortalityTables
 using Yields
 
-tbls = MortalityTables.tables()
+# load mortality rates from MortalityTables.jl
+tbls = MortalityTables.tables()   
 vbt2001 = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
-age = 30
-life = SingleLife(
-    mort = vbt2001.select[age],
-    issue_age = age
+
+life = SingleLife(                 # The life underlying the risk
+    mort = vbt2001.select[age],    # -- Mortality rates
+    issue_age = 30                 # -- Issue Age
 )
 
-lc = LifeContingency(
-    life,
-    Yields.Constant(0.05)
+lc = LifeContingency(              # LifeContingency joins the risk with interest
+    life,                          
+    Yields.Constant(0.05)          # Using a flat 5% interest rate
 )
 
 
-insurance(lc)          # Whole Life insurance
-insurance(lc,10)       # 10 year term insurance
-premium_net(lc)        # Net whole life premium 
-V(lc,5)                # Net premium reserve for whole life insurance at time 5
-ä(lc)                  # Whole life annuity due
-ä(lc, 5)               # 5 year annuity due
-...                    # and more!
+insurance(lc)                      # Whole Life insurance
+insurance(lc,10)                   # 10 year term insurance
+premium_net(lc)                    # Net whole life premium 
+V(lc,5)                            # Net premium reserve for whole life insurance at time 5
+ä(lc)                              # Whole life annuity due
+ä(lc, 5)                           # 5 year annuity due
+...                                # and more!
 ```
 
 ### Net Premium for Term Policy with Stochastic rates
@@ -174,7 +175,7 @@ Because it's so common to use certain variables in your own code, LifeContingenc
 ```julia
 a = ...
 b = ...
-resutl = b - a
+result = b - a
 ```
 
 If you imported `using LifeContingencies` and the package exported `a` (`annuity_immediate`) then you could have problems if you tried to do the above. To avoid this, we only export long-form functions like `annuity_immediate`. To utilize the shorthand, you can include them into your code's scope like so:
