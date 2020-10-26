@@ -462,7 +462,7 @@ mt.survival(lc::LifeContingency,to_time) = survival(lc.life, 0, to_time)
 mt.survival(lc::LifeContingency,from_time,to_time) = survival(lc.life, from_time, to_time)
 
 mt.survival(l::SingleLife,to_time) = survival(l,0,to_time)
-mt.survival(l::SingleLife,from_time,to_time) = survival(l.mort,l.issue_age + from_time,l.issue_age + to_time)
+mt.survival(l::SingleLife,from_time,to_time) = survival(l.mort,l.issue_age + from_time,l.issue_age + to_time, l.fractional_assump)
 
 mt.survival(l::JointLife,to_time) = survival(l::JointLife,0,to_time)
 function mt.survival(l::JointLife,from_time,to_time) 
