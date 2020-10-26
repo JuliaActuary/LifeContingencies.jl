@@ -29,6 +29,7 @@
     @test annuity_due(ins_jl,1) ≈ 1
     @test annuity_immediate(ins_jl,1) ≈ 1 * .75 / 1.05
     @test annuity_due(ins_jl,2) ≈ 1 + 1 * .75 / 1.05
+    @test annuity_due(ins_jl,2;certain=2) ≈ 1 + 1 / 1.05 
     @test annuity_due(ins_jl,0) == 0
 
     @test survival(ins_jl,1) ≈ .5 + .5 - .5 * .5
@@ -60,6 +61,8 @@ end
     @test annuity_immediate(ins;start_time=2) ≈ 0
     @test annuity_immediate(ins,2) ≈ 2
     @test annuity_immediate(ins) ≈ 2
+    @test annuity_immediate(ins;certain=0) ≈ 2
+    @test annuity_immediate(ins;certain=2) ≈ 2
 
     @test insurance(ins) ≈ 0
     @test insurance(ins,1) ≈ 0
