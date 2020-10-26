@@ -7,6 +7,11 @@
         Yields.Constant(0.05)
     )
 
+    @test survival(ins,1) ≈ 0.5
+    @test survival(ins,0) ≈ 1.0
+    @test survival(ins.life,0,0.5) ≈ 1 - 0.5 * 0.5
+    @test survival(ins,0.5) ≈ 1 - 0.5 * 0.5
+
     @test omega(ins) ≈ 1
     @test annuity_due(ins) ≈ 1 + 1 * .5 / 1.05
     @test annuity_due(ins,1) ≈ 1
