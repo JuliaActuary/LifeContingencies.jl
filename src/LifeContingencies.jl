@@ -312,12 +312,12 @@ function insurance(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
 end
 
 """
-    annuity_due(lc::LifeContingency, npayments,start_time=0,certain=nothing,frequency=1)
+    annuity_due(lc::LifeContingency, n,start_time=0,certain=nothing,frequency=1)
     annuity_due(lc::LifeContingency,start_time=0,certain=nothing,frequency=1)
 
-Life annuity due for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments` with `frequency` payments per year of `1/frequency` amount. 
+Life annuity due for the life contingency `lc` with the benefit period starting at `start_time` and ending after `n` periods with `frequency` payments per year of `1/frequency` amount. 
     
-If `npayments` is omitted, will return whole life annuity due. 
+If `n` is omitted, will return whole life annuity due. 
 
 `certain` is the length of the certain time (which begins at `start_time`). 
 
@@ -332,14 +332,14 @@ function annuity_due(lc::LifeContingency; start_time=0, certain=nothing, frequen
     return annuity_due(lc.life,lc,start_time=start_time,certain=certain,frequency=frequency)
 end
 
-function annuity_due(lc::LifeContingency,npayments; start_time=0, certain=nothing,frequency=1) 
-    return annuity_due(lc.life,lc,npayments,start_time=start_time,certain=certain,frequency=frequency)
+function annuity_due(lc::LifeContingency,n; start_time=0, certain=nothing,frequency=1) 
+    return annuity_due(lc.life,lc,n,start_time=start_time,certain=certain,frequency=frequency)
 end
 
-function annuity_due(::SingleLife,lc::LifeContingency, npayments; start_time=0, certain=nothing,frequency=1)
-    npayments -=  start_time
-    npayments == 0 && return 0.0 # break and return if no payments to be made
-    end_time = npayments + start_time - 1
+function annuity_due(::SingleLife,lc::LifeContingency, n; start_time=0, certain=nothing,frequency=1)
+    n -=  start_time
+    n == 0 && return 0.0 # break and return if no payments to be made
+    end_time = n + start_time - 1 / frequency
     timestep = 1 / frequency
     discount_factor = discount.(lc.int,start_time:timestep:end_time)
 
@@ -353,8 +353,8 @@ function annuity_due(::SingleLife,lc::LifeContingency, npayments; start_time=0, 
 end
 
 function annuity_due(::SingleLife,lc::LifeContingency; start_time=0, certain=nothing,frequency=frequency)
-    npayments = omega(lc) - start_time
-    end_time = (npayments+start_time)
+    n = omega(lc) - start_time
+    end_time = (n+start_time)
     timestep = 1 / frequency
     discount_factor = discount.(lc.int,start_time:timestep:end_time)
     if isnothing(certain)
@@ -371,14 +371,14 @@ function annuity_due(::JointLife,lc::LifeContingency;start_time=0, certain=nothi
     return ä(lc.life.contingency,lc.life.joint_assumption,lc,start_time=start_time,certain=certain,frequency=frequency)
 end
 
-function annuity_due(::JointLife,lc::LifeContingency, npayments;start_time=0, certain=nothing,frequency=1) 
-    return ä(lc.life.contingency,lc.life.joint_assumption,lc,npayments,start_time=start_time,certain=certain,frequency=frequency)
+function annuity_due(::JointLife,lc::LifeContingency, n;start_time=0, certain=nothing,frequency=1) 
+    return ä(lc.life.contingency,lc.life.joint_assumption,lc,n,start_time=start_time,certain=certain,frequency=frequency)
 end
 
-function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;start_time=0, certain=nothing,frequency=1)
-    npayments -=  start_time
-    npayments == 0 && return 0.0
-    end_time = npayments + start_time -1
+function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency, n;start_time=0, certain=nothing,frequency=1)
+    n -=  start_time
+    n == 0 && return 0.0
+    end_time = n + start_time - 1 / frequency
     timestep = 1 / frequency
     discount_factor = discount.(lc.int,start_time:timestep:end_time)
     if isnothing(certain)
@@ -391,8 +391,8 @@ function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;st
 end
 
 function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0, certain=nothing,frequency=1)
-    npayments = omega(lc) - start_time
-    end_time = npayments + start_time
+    n = omega(lc) - start_time
+    end_time = n + start_time
     timestep = 1 / frequency
     discount_factor = discount.(lc.int,start_time:timestep:end_time)
     if isnothing(certain)
@@ -405,23 +405,21 @@ function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0,
 end
 
 """
-    annuity_immediate(lc::LifeContingency, npayments; start_time=0; certain=nothing,frequency=1)
+    annuity_immediate(lc::LifeContingency, n; start_time=0; certain=nothing,frequency=1)
     annuity_immediate(lc::LifeContingency; start_time=0,certain=nothing,frequency=1)
 
-Life annuity immediate for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments` with `frequency` payments per year of `1/frequency` amount. 
+Life annuity immediate for the life contingency `lc` with the benefit period starting at `start_time` and ending after `n` periods with `frequency` payments per year of `1/frequency` amount. 
     
-If `npayments` is omitted, will calculate the whole life immediate annuity. `certain` is the length of the certain time (which begins at `start_time`).
+If `n` is omitted, will calculate the whole life immediate annuity. `certain` is the length of the certain time (which begins at `start_time`).
 """
 function annuity_immediate(lc::LifeContingency;start_time=0, certain=nothing,frequency=1) 
-   return annuity_due(lc,start_time=start_time,certain=certain,frequency=frequency) - 1 / frequency # eq 5.11 ALMCR 2nd ed
+   return annuity_due(lc,start_time=start_time,certain=certain,frequency=frequency) - 1 / frequency  # eq 5.11 ALMCR 2nd ed
 end
 
 # eq 5.13 ALMCR 2nd ed
-function annuity_immediate(lc::LifeContingency,npayments; start_time=0,certain=nothing,frequency=1) 
-    x = annuity_due(lc,npayments;start_time=start_time,certain=certain,frequency=frequency)
-    y = discount(lc,start_time,start_time+npayments)
-    z = survival(lc,npayments)
-    return x - 1/frequency + y * z
+function annuity_immediate(lc::LifeContingency,n; start_time=0,certain=nothing,frequency=1) 
+    x = annuity_due(lc,n;start_time=start_time,certain=certain,frequency=frequency)
+    return x - 1/frequency * (1 - APV(lc,n)) # ALMCR 5.23                               
 end
 
 

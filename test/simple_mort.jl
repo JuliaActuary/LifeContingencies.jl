@@ -163,7 +163,6 @@ end
 end
 
 # assumes embedded 'testMort' table in combination with MortalityTables
-include("test_mortality.jl")
 t = UltimateMortality(maleMort)
 
 @testset "demo mortality" begin
