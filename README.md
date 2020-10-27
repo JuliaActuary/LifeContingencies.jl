@@ -41,6 +41,7 @@ Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base tab
 using LifeContingencies
 using MortalityTables
 using Yields
+import LifeConingencies: ä        # pull the shortform notation into scope
 
 # load mortality rates from MortalityTables.jl
 tbls = MortalityTables.tables()   
@@ -61,8 +62,10 @@ insurance(lc)                      # Whole Life insurance
 insurance(lc,10)                   # 10 year term insurance
 premium_net(lc)                    # Net whole life premium 
 V(lc,5)                            # Net premium reserve for whole life insurance at time 5
-ä(lc)                              # Whole life annuity due
+annuity_due(lc)                    # Whole life annuity due
+ä(lc)                              # Shortform notation
 ä(lc, 5)                           # 5 year annuity due
+ä(lc, 5, certain=5,frequency=4)    # 5 year annuity due, with 5 year certain payable 4x per year
 ...                                # and more!
 ```
 
