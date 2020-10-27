@@ -312,87 +312,114 @@ function insurance(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
 end
 
 """
-    annuity_due(lc::LifeContingency, npayments,start_time=0)
-    annuity_due(lc::LifeContingency,start_time=0)
+    annuity_due(lc::LifeContingency, n,start_time=0,certain=nothing,frequency=1)
+    annuity_due(lc::LifeContingency,start_time=0,certain=nothing,frequency=1)
 
-Life annuity due for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments`. If `npayments` is omitted, will return whole life annuity due.
+Life annuity due for the life contingency `lc` with the benefit period starting at `start_time` and ending after `n` periods with `frequency` payments per year of `1/frequency` amount. 
+    
+If `n` is omitted, will return whole life annuity due. 
 
+`certain` is the length of the certain time (which begins at `start_time`). 
+
+# Extended help
 
 To enter the `annuity_due` character, type `a` and then `\\ddot`.
     See more on how to [input unicode](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
     in Julia.
 
 """
-annuity_due(lc::LifeContingency; start_time=0) = annuity_due(lc.life,lc,start_time=start_time)
-annuity_due(lc::LifeContingency,npayments; start_time=0) = annuity_due(lc.life,lc,npayments,start_time=start_time)
+function annuity_due(lc::LifeContingency; start_time=0, certain=nothing, frequency=1) 
+    return annuity_due(lc.life,lc,start_time=start_time,certain=certain,frequency=frequency)
+end
 
-function annuity_due(::SingleLife,lc::LifeContingency, npayments; start_time=0)
-    npayments -=  start_time
-    npayments == 0 && return 0.0
-    
-    end_time = npayments + start_time - 1
+function annuity_due(lc::LifeContingency,n; start_time=0, certain=nothing,frequency=1) 
+    return annuity_due(lc.life,lc,n,start_time=start_time,certain=certain,frequency=frequency)
+end
 
-    discount_factor = discount.(lc.int,start_time:end_time)
-    pmts = [survival(lc,t) for t in start_time:end_time]
+function annuity_due(::SingleLife,lc::LifeContingency, n; start_time=0, certain=nothing,frequency=1)
+    n -=  start_time
+    n == 0 && return 0.0 # break and return if no payments to be made
+    end_time = n + start_time - 1 / frequency
+    timestep = 1 / frequency
+    discount_factor = discount.(lc.int,start_time:timestep:end_time)
+
+    if isnothing(certain)
+        pmts = [survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
+    else
+        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
+    end
 
     return sum(discount_factor .* pmts)
 end
 
-function annuity_due(::SingleLife,lc::LifeContingency; start_time=0)
-    npayments = omega(lc) - start_time
-    end_time = (npayments+start_time)
-    discount_factor = discount.(lc.int,start_time:end_time)
-    pmts = [survival(lc,t) for t in start_time:end_time]
+function annuity_due(::SingleLife,lc::LifeContingency; start_time=0, certain=nothing,frequency=frequency)
+    n = omega(lc) - start_time
+    end_time = (n+start_time)
+    timestep = 1 / frequency
+    discount_factor = discount.(lc.int,start_time:timestep:end_time)
+    if isnothing(certain)
+        pmts = [survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
+    else
+        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
+    end
 
     return sum(discount_factor .* pmts)
 end
 
 # for joint, dispactch based on the type of insruance and assumption
-function annuity_due(::JointLife,lc::LifeContingency;start_time=0) 
-    return ä(lc.life.contingency,lc.life.joint_assumption,lc,start_time=start_time)
+function annuity_due(::JointLife,lc::LifeContingency;start_time=0, certain=nothing,frequency=1) 
+    return ä(lc.life.contingency,lc.life.joint_assumption,lc,start_time=start_time,certain=certain,frequency=frequency)
 end
 
-function annuity_due(::JointLife,lc::LifeContingency, npayments;start_time=0) 
-    return ä(lc.life.contingency,lc.life.joint_assumption,lc,npayments,start_time=start_time)
+function annuity_due(::JointLife,lc::LifeContingency, n;start_time=0, certain=nothing,frequency=1) 
+    return ä(lc.life.contingency,lc.life.joint_assumption,lc,n,start_time=start_time,certain=certain,frequency=frequency)
 end
 
-function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;start_time=0)
-    npayments -=  start_time
-    npayments == 0 && return 0.0
-    end_time = npayments + start_time -1
-    discount_factor = discount.(lc.int,start_time:end_time)
-    pmts = [survival(lc,t) for t in start_time:end_time]
+function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency, n;start_time=0, certain=nothing,frequency=1)
+    n -=  start_time
+    n == 0 && return 0.0
+    end_time = n + start_time - 1 / frequency
+    timestep = 1 / frequency
+    discount_factor = discount.(lc.int,start_time:timestep:end_time)
+    if isnothing(certain)
+        pmts = [survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
+    else
+        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
+    end
     return sum( discount_factor .* pmts )
 
 end
 
-function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0)
-    npayments = omega(lc) - start_time
-    end_time = npayments + start_time
-    discount_factor = discount.(lc.int,start_time:end_time)
-    pmts = [survival(lc,t) for t in start_time:end_time]
+function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0, certain=nothing,frequency=1)
+    n = omega(lc) - start_time
+    end_time = n + start_time
+    timestep = 1 / frequency
+    discount_factor = discount.(lc.int,start_time:timestep:end_time)
+    if isnothing(certain)
+        pmts = [survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
+    else
+        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
+    end
     return sum( discount_factor .* pmts )
 
 end
 
 """
-    annuity_immediate(lc::LifeContingency, npayments; start_time=0)
-    annuity_immediate(lc::LifeContingency; start_time=0)
+    annuity_immediate(lc::LifeContingency, n; start_time=0; certain=nothing,frequency=1)
+    annuity_immediate(lc::LifeContingency; start_time=0,certain=nothing,frequency=1)
 
-Life annuity immediate for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments`. If `npayments` is omitted, will calculate the whole life immediate annuity.
-
-
-
+Life annuity immediate for the life contingency `lc` with the benefit period starting at `start_time` and ending after `n` periods with `frequency` payments per year of `1/frequency` amount. 
+    
+If `n` is omitted, will calculate the whole life immediate annuity. `certain` is the length of the certain time (which begins at `start_time`).
 """
-# eq 5.11 ALMCR 2nd ed
-annuity_immediate(lc::LifeContingency;start_time=0) = annuity_due(lc,start_time=start_time) - 1 
+function annuity_immediate(lc::LifeContingency;start_time=0, certain=nothing,frequency=1) 
+   return annuity_due(lc,start_time=start_time,certain=certain,frequency=frequency) - 1 / frequency  # eq 5.11 ALMCR 2nd ed
+end
 
 # eq 5.13 ALMCR 2nd ed
-function annuity_immediate(lc::LifeContingency,npayments; start_time=0) 
-    x = annuity_due(lc,npayments;start_time=start_time)
-    y = discount(lc,start_time,start_time+npayments)
-    z = survival(lc,npayments)
-    return x - 1 + y * z
+function annuity_immediate(lc::LifeContingency,n; start_time=0,certain=nothing,frequency=1) 
+    x = annuity_due(lc,n;start_time=start_time,certain=certain,frequency=frequency)
+    return x - 1/frequency * (1 - APV(lc,n)) # ALMCR 5.23                               
 end
 
 
@@ -447,7 +474,7 @@ mt.survival(lc::LifeContingency,to_time) = survival(lc.life, 0, to_time)
 mt.survival(lc::LifeContingency,from_time,to_time) = survival(lc.life, from_time, to_time)
 
 mt.survival(l::SingleLife,to_time) = survival(l,0,to_time)
-mt.survival(l::SingleLife,from_time,to_time) = survival(l.mort,l.issue_age + from_time,l.issue_age + to_time)
+mt.survival(l::SingleLife,from_time,to_time) = survival(l.mort,l.issue_age + from_time,l.issue_age + to_time, l.fractional_assump)
 
 mt.survival(l::JointLife,to_time) = survival(l::JointLife,0,to_time)
 function mt.survival(l::JointLife,from_time,to_time) 

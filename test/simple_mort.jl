@@ -7,6 +7,11 @@
         Yields.Constant(0.05)
     )
 
+    @test survival(ins,1) ≈ 0.5
+    @test survival(ins,0) ≈ 1.0
+    @test survival(ins.life,0,0.5) ≈ 1 - 0.5 * 0.5
+    @test survival(ins,0.5) ≈ 1 - 0.5 * 0.5
+
     @test omega(ins) ≈ 1
     @test annuity_due(ins) ≈ 1 + 1 * .5 / 1.05
     @test annuity_due(ins,1) ≈ 1
@@ -29,6 +34,7 @@
     @test annuity_due(ins_jl,1) ≈ 1
     @test annuity_immediate(ins_jl,1) ≈ 1 * .75 / 1.05
     @test annuity_due(ins_jl,2) ≈ 1 + 1 * .75 / 1.05
+    @test annuity_due(ins_jl,2;certain=2) ≈ 1 + 1 / 1.05 
     @test annuity_due(ins_jl,0) == 0
 
     @test survival(ins_jl,1) ≈ .5 + .5 - .5 * .5
@@ -60,6 +66,8 @@ end
     @test annuity_immediate(ins;start_time=2) ≈ 0
     @test annuity_immediate(ins,2) ≈ 2
     @test annuity_immediate(ins) ≈ 2
+    @test annuity_immediate(ins;certain=0) ≈ 2
+    @test annuity_immediate(ins;certain=2) ≈ 2
 
     @test insurance(ins) ≈ 0
     @test insurance(ins,1) ≈ 0
@@ -155,7 +163,6 @@ end
 end
 
 # assumes embedded 'testMort' table in combination with MortalityTables
-include("test_mortality.jl")
 t = UltimateMortality(maleMort)
 
 @testset "demo mortality" begin
