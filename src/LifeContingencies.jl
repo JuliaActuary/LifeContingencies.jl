@@ -339,9 +339,9 @@ function annuity_due(::SingleLife,lc::LifeContingency, npayments; start_time=0, 
     discount_factor = discount.(lc.int,start_time:timestep:end_time)
 
     if isnothing(certain)
-        pmts = [survival(lc,t) for t in start_time:timestep:end_time]
+        pmts = [survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
     else
-        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time]
+        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
     end
 
     return sum(discount_factor .* pmts)
@@ -353,9 +353,9 @@ function annuity_due(::SingleLife,lc::LifeContingency; start_time=0, certain=not
     timestep = 1 / frequency
     discount_factor = discount.(lc.int,start_time:timestep:end_time)
     if isnothing(certain)
-        pmts = [survival(lc,t) for t in start_time:timestep:end_time]
+        pmts = [survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
     else
-        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time]
+        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
     end
 
     return sum(discount_factor .* pmts)
@@ -377,9 +377,9 @@ function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency, npayments;st
     timestep = 1 / frequency
     discount_factor = discount.(lc.int,start_time:timestep:end_time)
     if isnothing(certain)
-        pmts = [survival(lc,t) for t in start_time:timestep:end_time]
+        pmts = [survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
     else
-        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time]
+        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
     end
     return sum( discount_factor .* pmts )
 
@@ -391,9 +391,9 @@ function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0,
     timestep = 1 / frequency
     discount_factor = discount.(lc.int,start_time:timestep:end_time)
     if isnothing(certain)
-        pmts = [survival(lc,t) for t in start_time:timestep:end_time]
+        pmts = [survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
     else
-        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time]
+        pmts = [t <= certain + start_time ? 1. : survival(lc,t) for t in start_time:timestep:end_time] ./ frequency
     end
     return sum( discount_factor .* pmts )
 
@@ -408,7 +408,7 @@ Life annuity immediate for the life contingency `lc` with the benefit period sta
 
 """
 function annuity_immediate(lc::LifeContingency;start_time=0, certain=nothing,frequency=1) 
-   return annuity_due(lc,start_time=start_time,certain=certain,frequency=frequency) - 1 # eq 5.11 ALMCR 2nd ed
+   return annuity_due(lc,start_time=start_time,certain=certain,frequency=frequency) - 1 / frequency # eq 5.11 ALMCR 2nd ed
 end
 
 # eq 5.13 ALMCR 2nd ed
@@ -416,7 +416,7 @@ function annuity_immediate(lc::LifeContingency,npayments; start_time=0,certain=n
     x = annuity_due(lc,npayments;start_time=start_time,certain=certain,frequency=frequency)
     y = discount(lc,start_time,start_time+npayments)
     z = survival(lc,npayments)
-    return x - 1 + y * z
+    return x - 1/frequency + y * z
 end
 
 
