@@ -312,11 +312,16 @@ function insurance(::LastSurvivor,::Frasier,lc::LifeContingency, ::Nothing)
 end
 
 """
-    annuity_due(lc::LifeContingency, npayments,start_time=0,certain=nothing)
-    annuity_due(lc::LifeContingency,start_time=0,certain=nothing)
+    annuity_due(lc::LifeContingency, npayments,start_time=0,certain=nothing,frequency=1)
+    annuity_due(lc::LifeContingency,start_time=0,certain=nothing,frequency=1)
 
-Life annuity due for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments`. If `npayments` is omitted, will return whole life annuity due. `certain` is the length of the certain time (which begins at `start_time`).
+Life annuity due for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments` with `frequency` payments per year of `1/frequency` amount. 
+    
+If `npayments` is omitted, will return whole life annuity due. 
 
+`certain` is the length of the certain time (which begins at `start_time`). 
+
+# Extended help
 
 To enter the `annuity_due` character, type `a` and then `\\ddot`.
     See more on how to [input unicode](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
@@ -400,12 +405,12 @@ function annuity_due(::LastSurvivor,::Frasier, lc::LifeContingency;start_time=0,
 end
 
 """
-    annuity_immediate(lc::LifeContingency, npayments; start_time=0; certain=nothing)
-    annuity_immediate(lc::LifeContingency; start_time=0,certain=nothing)
+    annuity_immediate(lc::LifeContingency, npayments; start_time=0; certain=nothing,frequency=1)
+    annuity_immediate(lc::LifeContingency; start_time=0,certain=nothing,frequency=1)
 
-Life annuity immediate for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments`. If `npayments` is omitted, will calculate the whole life immediate annuity. `certain` is the length of the certain time (which begins at `start_time`).
-
-
+Life annuity immediate for the life contingency `lc` with the benefit period starting at `start_time` and ending after `npayments` with `frequency` payments per year of `1/frequency` amount. 
+    
+If `npayments` is omitted, will calculate the whole life immediate annuity. `certain` is the length of the certain time (which begins at `start_time`).
 """
 function annuity_immediate(lc::LifeContingency;start_time=0, certain=nothing,frequency=1) 
    return annuity_due(lc,start_time=start_time,certain=certain,frequency=frequency) - 1 / frequency # eq 5.11 ALMCR 2nd ed
