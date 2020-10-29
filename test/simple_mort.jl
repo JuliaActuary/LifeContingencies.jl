@@ -15,6 +15,22 @@
     @test cashflows(ins) == benefit(ins) .* probability(ins)
     @test timepoints(ins) == [1.0,2.0]
     @test present_value(ins)  ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
+
+    # term life insurance
+    ins = Insurance(
+            SingleLife(mort = mt,issue_age = 0),
+            Yields.Constant(0.05),
+            1
+    ) 
+
+    @test survival(ins) == [1.0]
+    @test discount(ins) == [1.0 / 1.05]
+    @test benefit(ins) == [1.0]
+    @test probability(ins) == [0.5]
+    @test cashflows(ins) == [0.5]
+    @test cashflows(ins) == benefit(ins) .* probability(ins)
+    @test timepoints(ins) == [1.0]
+    @test present_value(ins)  ≈ 0.5 / 1.05
     
 end
 

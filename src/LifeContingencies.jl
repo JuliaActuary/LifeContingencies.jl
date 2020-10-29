@@ -280,7 +280,7 @@ end
 att_age_range(ins::Term) = ins.life.issue_age:(ins.n + ins.life.issue_age - 1)
 att_age_range(ins::WholeLife) = ins.life.issue_age:(omega(ins.life) + ins.life.issue_age - 1)
 
-function Yields.discount(ins::WholeLife)
+function Yields.discount(ins::Insurance)
     return Yields.discount.(ins.int,timepoints(ins))
 end
 
@@ -288,7 +288,7 @@ function benefit(ins::Insurance)
     return ones(length(att_age_range(ins)))
 end
 
-function probability(ins::WholeLife)
+function probability(ins::Insurance)
     mt = ins.life.mort
     return [survival(mt,ins.life.issue_age,att_age, ins.life.fractional_assump) * mt[att_age] for att_age in att_age_range(ins)]
 end
@@ -299,7 +299,7 @@ function cashflows(ins::Insurance)
     return [survival(mt,ins.life.issue_age,att_age, ins.life.fractional_assump) * mt[att_age] for att_age in att_age_range(ins)]
 end
 
-function timepoints(ins::WholeLife)
+function timepoints(ins::Insurance)
     return [i for (i, _) in enumerate(att_age_range(ins))]
 end
 
@@ -307,14 +307,16 @@ function ActuaryUtilities.present_value(ins)
     return present_value(ins.int,cashflows(ins),timepoints(ins))
 end
 
-Base.@kwdef struct AnnutyDue <: Insurance
-    life
-    int 
-    n=nothing 
-    start_time=0
-    certain=nothing
-    frequency=1
-end
+# struct AnnutyDue <: Insurance
+#     life
+#     int 
+#     n=nothing 
+#     start_time=0
+#     certain=nothing
+#     frequency=1
+# end
+
+# AnnuityDue(life,int;n=nothing,start_time=0,certain=nothing,frequency=1)
 
 """
     insurance(lc::LifeContingency,from_time=0,to_time=nothing)
