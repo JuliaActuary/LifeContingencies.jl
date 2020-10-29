@@ -272,47 +272,48 @@ end
 Insurance(lc,int) = WholeLife(lc,int)
 Insurance(lc,int,n) = Term(lc,int,n)
 
-function MortalityTables.survival(ins::WholeLife)
+function MortalityTables.survival(ins::Insurance)
     mt = ins.life.mort
-    iss_age = ins.life.issue_age
-    end_age = omega(ins.life) + iss_age - 1
-    return [survival(mt,iss_age,att_age, ins.life.fractional_assump) for att_age in iss_age:end_age]
+    return [survival(mt,ins.life.issue_age,att_age, ins.life.fractional_assump) for att_age in att_age_range(ins)]
 end
+
+att_age_range(ins::Term) = ins.life.issue_age:(ins.n + ins.life.issue_age - 1)
+att_age_range(ins::WholeLife) = ins.life.issue_age:(omega(ins.life) + ins.life.issue_age - 1)
 
 function Yields.discount(ins::WholeLife)
     return Yields.discount.(ins.int,timepoints(ins))
 end
 
-function benefit(ins::WholeLife)
-    mt = ins.life.mort
-    iss_age = ins.life.issue_age
-    end_age = omega(ins.life) + iss_age - 1
-    return ones( length(iss_age:end_age))
+function benefit(ins::Insurance)
+    return ones(length(att_age_range(ins)))
 end
 
 function probability(ins::WholeLife)
     mt = ins.life.mort
-    iss_age = ins.life.issue_age
-    end_age = omega(ins.life) + iss_age - 1
-    return [survival(mt,iss_age,att_age, ins.life.fractional_assump) * mt[att_age] for att_age in iss_age:end_age]
+    return [survival(mt,ins.life.issue_age,att_age, ins.life.fractional_assump) * mt[att_age] for att_age in att_age_range(ins)]
 end
 
 
-function cashflows(ins::WholeLife)
+function cashflows(ins::Insurance)
     mt = ins.life.mort
-    iss_age = ins.life.issue_age
-    end_age = omega(ins.life) + iss_age - 1
-    return [survival(mt,iss_age,att_age, ins.life.fractional_assump) * mt[att_age] for att_age in iss_age:end_age]
+    return [survival(mt,ins.life.issue_age,att_age, ins.life.fractional_assump) * mt[att_age] for att_age in att_age_range(ins)]
 end
 
 function timepoints(ins::WholeLife)
-    iss_age = ins.life.issue_age
-    end_age = omega(ins.life) + iss_age - 1
-    return [i for (i, _) in enumerate(iss_age:end_age)]
+    return [i for (i, _) in enumerate(att_age_range(ins))]
 end
 
-function ActuaryUtilities.present_value(ins::WholeLife)
+function ActuaryUtilities.present_value(ins)
     return present_value(ins.int,cashflows(ins),timepoints(ins))
+end
+
+Base.@kwdef struct AnnutyDue <: Insurance
+    life
+    int 
+    n=nothing 
+    start_time=0
+    certain=nothing
+    frequency=1
 end
 
 """
