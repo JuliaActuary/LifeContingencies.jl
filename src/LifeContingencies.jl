@@ -1,30 +1,33 @@
 module LifeContingencies
 
+using ActuaryUtilities
 using MortalityTables
 using Transducers
 using Dates
-using IterTools
-using QuadGK
 using Yields
     
 const mt = MortalityTables
 
 export LifeContingency,
-    InterestRate,
-    rate,
+    Insurance,
     APV,
-    disc,    
     SingleLife, Frasier, JointLife,
     LastSurvivor,
     survival,
-    DiscountFactor,
     reserve_premium_net,
-    disc,
     insurance,
     annuity_due,
     annuity_immediate,
     premium_net,
-    omega
+    omega,
+    survival,
+    discount,
+    benefit,
+    probability,
+    cashflows,
+    cashflows,
+    timepoints,
+    present_value
 
 
 
@@ -253,7 +256,65 @@ E(lc::LifeContingency, t, x) = D(lc,x + t) / D(lc,x)
 ### Insurances ###
 ##################
 
-   
+abstract type Insurance end
+
+struct WholeLife <: Insurance
+    life
+    int
+end
+
+struct Term <: Insurance
+    life
+    int
+    n
+end
+
+Insurance(lc,int) = WholeLife(lc,int)
+Insurance(lc,int,n) = Term(lc,int,n)
+
+function MortalityTables.survival(ins::WholeLife)
+    mt = ins.life.mort
+    iss_age = ins.life.issue_age
+    end_age = omega(ins.life) + iss_age - 1
+    return [survival(mt,iss_age,att_age, ins.life.fractional_assump) for att_age in iss_age:end_age]
+end
+
+function Yields.discount(ins::WholeLife)
+    return Yields.discount.(ins.int,timepoints(ins))
+end
+
+function benefit(ins::WholeLife)
+    mt = ins.life.mort
+    iss_age = ins.life.issue_age
+    end_age = omega(ins.life) + iss_age - 1
+    return ones( length(iss_age:end_age))
+end
+
+function probability(ins::WholeLife)
+    mt = ins.life.mort
+    iss_age = ins.life.issue_age
+    end_age = omega(ins.life) + iss_age - 1
+    return [survival(mt,iss_age,att_age, ins.life.fractional_assump) * mt[att_age] for att_age in iss_age:end_age]
+end
+
+
+function cashflows(ins::WholeLife)
+    mt = ins.life.mort
+    iss_age = ins.life.issue_age
+    end_age = omega(ins.life) + iss_age - 1
+    return [survival(mt,iss_age,att_age, ins.life.fractional_assump) * mt[att_age] for att_age in iss_age:end_age]
+end
+
+function timepoints(ins::WholeLife)
+    iss_age = ins.life.issue_age
+    end_age = omega(ins.life) + iss_age - 1
+    return [i for (i, _) in enumerate(iss_age:end_age)]
+end
+
+function ActuaryUtilities.present_value(ins::WholeLife)
+    return present_value(ins.int,cashflows(ins),timepoints(ins))
+end
+
 """
     insurance(lc::LifeContingency,from_time=0,to_time=nothing)
 
