@@ -315,12 +315,20 @@ function benefit(ins::Insurance)
     return ones(length(timepoints(ins)))
 end
 
+function benefit(ins::Annuity)
+    return ones(length(timepoints(ins))) ./ ins.frequency
+end
+
 function probability(ins::Insurance)
     return [survival(ins.life,t-1) * decrement(ins.life,t-1,t) for t in timepoints(ins)]
 end
 
 function probability(ins::Annuity)
-    return [survival(ins.life,t) for t in timepoints(ins)]
+    if isnothing(ins.certain)
+        return  [survival(ins.life,t) for t in timepoints(ins)]
+    else
+        return [t <= ins.certain + ins.start_time ? 1.0 : survival(ins.life,t) for t in timepoints(ins)]
+    end
 end
 
 
@@ -340,9 +348,8 @@ function timepoints(ins::Annuity,payable::Due)
     if isnothing(ins.n)
         end_time = omega(ins.life)
     else
-        n = ins.n - ins.start_time
-        n == 0 && return 0.0 # break and return if no payments to be made
-        end_time = n + ins.start_time - 1 / ins.frequency
+        ins.n == 0 && return 0.0 # break and return if no payments to be made
+        end_time = ins.n + ins.start_time - 1 / ins.frequency
     end
     timestep = 1 / ins.frequency
     collect(ins.start_time:timestep:end_time)
@@ -352,9 +359,8 @@ function timepoints(ins::Annuity,payable::Immediate)
     if isnothing(ins.n)
         end_time = omega(ins.life)
     else
-        n = ins.n - ins.start_time
-        n == 0 && return 0.0 # break and return if no payments to be made
-        end_time = n + ins.start_time
+        ins.n == 0 && return 0.0 # break and return if no payments to be made
+        end_time = ins.n + ins.start_time
     end
     timestep = 1 / ins.frequency
     collect((ins.start_time + timestep):timestep:end_time)

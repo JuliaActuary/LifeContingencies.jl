@@ -62,6 +62,17 @@
 
     @test present_value(ins)  ≈ 1 * .5 * 1 / 1.05
 
+    ins = AnnuityDue(
+        SingleLife(mort = mt,issue_age = 0),
+        Yields.Constant(0.05),
+        n = 1,
+        start_time=1
+    ) 
+
+    @test timepoints(ins)  == [1.0]
+    @test probability(ins)  == [0.5]
+    @test present_value(ins)  ≈ 1 * .5 * 1 / 1.05
+
 end
 
 @testset "one  year" begin
