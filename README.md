@@ -34,7 +34,9 @@ the mortality calculations
 ## Examples
 
 ###  Basic Functions
-Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base table and a 5% interest rate
+Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base table and a 5% interest rate. 
+
+First, load the packages and construct objects with the above parameters:
 
 ```julia
 
@@ -56,8 +58,11 @@ lc = LifeContingency(              # LifeContingency joins the risk with interes
     life,                          
     Yields.Constant(0.05)          # Using a flat 5% interest rate
 )
+```
 
+With the above data, we can now calculate a variety of life contingent maths:
 
+```julia
 insurance(lc)                      # Whole Life insurance
 insurance(lc,10)                   # 10 year term insurance
 premium_net(lc)                    # Net whole life premium 
@@ -66,7 +71,7 @@ annuity_due(lc)                    # Whole life annuity due
 ä(lc)                              # Shortform notation
 ä(lc, 5)                           # 5 year annuity due
 ä(lc, 5, certain=5,frequency=4)    # 5 year annuity due, with 5 year certain payable 4x per year
-...                                # and more!
+ ⋮                                  # and more!
 ```
 
 ### Net Premium for Term Policy with Stochastic rates
