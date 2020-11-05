@@ -54,6 +54,14 @@
 ) 
     @test present_value(ins)  ≈ 1 + 1 * .5 / 1.05
 
+    ins = AnnuityImmediate(
+        SingleLife(mort = mt,issue_age = 0),
+        Yields.Constant(0.05),
+        n = 1
+    ) 
+
+    @test present_value(ins)  ≈ 1 * .5 * 1 / 1.05
+
 end
 
 @testset "one  year" begin

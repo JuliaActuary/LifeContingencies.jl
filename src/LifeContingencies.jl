@@ -9,7 +9,7 @@ using Yields
 const mt = MortalityTables
 
 export LifeContingency,
-    Insurance, AnnuityDue,
+    Insurance, AnnuityDue, AnnuityImmediate,
     APV,
     SingleLife, Frasier, JointLife,
     LastSurvivor,
@@ -269,16 +269,21 @@ struct Term <: Insurance
     n
 end
 
-struct AnnuityDue <: Insurance
+struct Due end
+struct Immediate end
+struct Annuity{T} <: Insurance
     life
-    int 
+    int
+    payable::T
     n
     start_time
     certain
     frequency
 end
 
-AnnuityDue(life, int; n=nothing,start_time=0,certain=nothing,frequency=1) = AnnuityDue(life,int,n,start_time,certain,frequency)
+AnnuityDue(life, int; n=nothing,start_time=0,certain=nothing,frequency=1) = Annuity(life,int,Due(),n,start_time,certain,frequency)
+
+AnnuityImmediate(life, int; n=nothing,start_time=0,certain=nothing,frequency=1) = Annuity(life,int,Immediate(),n,start_time,certain,frequency)
 
 Insurance(lc,int) = WholeLife(lc,int)
 Insurance(lc,int,n) = Term(lc,int,n)
@@ -287,13 +292,13 @@ function MortalityTables.survival(ins::Insurance)
     return [survival(ins.life,t-1) for t in timepoints(ins)]
 end
 
-function MortalityTables.survival(ins::AnnuityDue)
+function MortalityTables.survival(ins::Annuity)
     return [survival(ins.life,t) for t in timepoints(ins)]
 end
 
 att_age_range(ins::Term) = ins.life.issue_age:(ins.n + ins.life.issue_age - 1)
 att_age_range(ins::WholeLife) = ins.life.issue_age:(omega(ins.life) + ins.life.issue_age - 1)
-function att_age_range(ins::AnnuityDue) 
+function att_age_range(ins::Annuity) 
     if isnothing(ins.n)
         last = omega(ins.life)-1 + ins.life.issue_age
     else
@@ -313,7 +318,8 @@ end
 function probability(ins::Insurance)
     return [survival(ins.life,t-1) * decrement(ins.life,t-1,t) for t in timepoints(ins)]
 end
-function probability(ins::AnnuityDue)
+
+function probability(ins::Annuity)
     return [survival(ins.life,t) for t in timepoints(ins)]
 end
 
@@ -326,7 +332,11 @@ function timepoints(ins::Insurance)
     return [i for (i, _) in enumerate(att_age_range(ins))]
 end
 
-function timepoints(ins::AnnuityDue)
+function timepoints(ins::Annuity)
+    return timepoints(ins,ins.payable)
+end
+
+function timepoints(ins::Annuity,payable::Due)
     if isnothing(ins.n)
         end_time = omega(ins.life)
     else
@@ -336,6 +346,18 @@ function timepoints(ins::AnnuityDue)
     end
     timestep = 1 / ins.frequency
     collect(ins.start_time:timestep:end_time)
+end
+
+function timepoints(ins::Annuity,payable::Immediate)
+    if isnothing(ins.n)
+        end_time = omega(ins.life)
+    else
+        n = ins.n - ins.start_time
+        n == 0 && return 0.0 # break and return if no payments to be made
+        end_time = n + ins.start_time
+    end
+    timestep = 1 / ins.frequency
+    collect((ins.start_time + timestep):timestep:end_time)
 end
 
 function ActuaryUtilities.present_value(ins)
