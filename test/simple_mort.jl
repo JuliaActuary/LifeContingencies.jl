@@ -47,6 +47,13 @@
     @test cashflows(ins) == benefit(ins) .* probability(ins)
     @test present_value(ins)  ≈ 1 + 1 * .5 / 1.05 +  1 * .25 / 1.05 ^2
 
+    ins = AnnuityDue(
+        SingleLife(mort = mt,issue_age = 0),
+        Yields.Constant(0.05),
+        n = 2
+) 
+    @test present_value(ins)  ≈ 1 + 1 * .5 / 1.05
+
 end
 
 @testset "one  year" begin

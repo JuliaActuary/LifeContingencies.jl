@@ -269,16 +269,16 @@ struct Term <: Insurance
     n
 end
 
-Base.@kwdef struct AnnuityDue <: Insurance
+struct AnnuityDue <: Insurance
     life
     int 
-    n=nothing 
-    start_time=0
-    certain=nothing
-    frequency=1
+    n
+    start_time
+    certain
+    frequency
 end
 
-AnnuityDue(life, int) =AnnuityDue(;life,int)
+AnnuityDue(life, int; n=nothing,start_time=0,certain=nothing,frequency=1) = AnnuityDue(life,int,n,start_time,certain,frequency)
 
 Insurance(lc,int) = WholeLife(lc,int)
 Insurance(lc,int,n) = Term(lc,int,n)
