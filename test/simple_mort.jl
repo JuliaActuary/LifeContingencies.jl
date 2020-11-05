@@ -7,13 +7,13 @@
             Yields.Constant(0.05)
     ) 
 
+    @test timepoints(ins) == [1.0,2.0]
     @test survival(ins) == [1.0,0.5]
     @test discount(ins) == [1.0 / 1.05, 1 / 1.05^2]
     @test benefit(ins) == [1.0,1.0]
     @test probability(ins) == [0.5,0.25]
     @test cashflows(ins) == [0.5,0.25]
     @test cashflows(ins) == benefit(ins) .* probability(ins)
-    @test timepoints(ins) == [1.0,2.0]
     @test present_value(ins)  ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
 
     # term life insurance
@@ -32,6 +32,21 @@
     @test timepoints(ins) == [1.0]
     @test present_value(ins)  ≈ 0.5 / 1.05
     
+    # annuity due
+    ins = AnnuityDue(
+            SingleLife(mort = mt,issue_age = 0),
+            Yields.Constant(0.05)
+    ) 
+
+    @test survival(ins) == [1.0,0.5,.25]
+    @test discount(ins) == [1.0, 1 / 1.05^1, 1 / 1.05^2]
+    @test benefit(ins) == [1.0,1.0,1.0]
+    @test timepoints(ins) == [0.0,1.0,2.0]  
+    @test probability(ins) == [1.,0.5,0.25]
+    @test cashflows(ins) == [1.0,0.5,0.25]
+    @test cashflows(ins) == benefit(ins) .* probability(ins)
+    @test present_value(ins)  ≈ 1 + 1 * .5 / 1.05 +  1 * .25 / 1.05 ^2
+
 end
 
 @testset "one  year" begin
