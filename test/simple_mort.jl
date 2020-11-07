@@ -90,9 +90,9 @@ end
     @test survival(ins,0.5) ≈ 1 - 0.5 * 0.5
 
     @test omega(ins) ≈ 1
-    @test annuity_due(ins) ≈ 1 + 1 * .5 / 1.05
-    @test annuity_due(ins,1) ≈ 1
-    @test annuity_due(ins,0) == 0
+    @test present_value(AnnuityDue(ins)) ≈ 1 + 1 * .5 / 1.05
+    @test present_value(AnnuityDue(ins,n=1)) ≈ 1
+    @test present_value(AnnuityDue(ins,n=0)) == 0
     @test annuity_immediate(ins,1) ≈ 1 * .5 / 1.05
     @test annuity_immediate(ins,0) == 0
 
@@ -107,12 +107,12 @@ end
     )
 
     @test omega(ins_jl) ≈ 1
-    @test annuity_due(ins_jl) ≈ 1 + 1 * .75 / 1.05
-    @test annuity_due(ins_jl,1) ≈ 1
+    @test present_value(AnnuityDue(ins_jl)) ≈ 1 + 1 * .75 / 1.05
+    @test present_value(AnnuityDue(ins_jl,n=1)) ≈ 1
     @test annuity_immediate(ins_jl,1) ≈ 1 * .75 / 1.05
-    @test annuity_due(ins_jl,2) ≈ 1 + 1 * .75 / 1.05
-    @test annuity_due(ins_jl,2;certain=2) ≈ 1 + 1 / 1.05 
-    @test annuity_due(ins_jl,0) == 0
+    @test present_value(AnnuityDue(ins_jl,n=2)) ≈ 1 + 1 * .75 / 1.05
+    @test present_value(AnnuityDue(ins_jl,n=2;certain=2)) ≈ 1 + 1 / 1.05 
+    @test present_value(AnnuityDue(ins_jl,n=0)) == 0
 
     @test survival(ins_jl,1) ≈ .5 + .5 - .5 * .5
     @test insurance(ins_jl) ≈ .25 / 1.05
@@ -130,13 +130,13 @@ end
     )
 
     @test omega(ins) ≈ 2
-    @test annuity_due(ins) ≈ 3
-    @test annuity_due(ins;start_time=1) ≈ 2
-    @test annuity_due(ins,1) ≈ 1 
-    @test annuity_due(ins,2) ≈ 2
-    @test annuity_due(ins,2;start_time=2) ≈ 0
-    @test annuity_due(ins,3) ≈ 3
-    @test annuity_due(ins,0) == 0
+    @test present_value(AnnuityDue(ins)) ≈ 3
+    @test present_value(AnnuityDue(ins;start_time=1)) ≈ 2
+    @test present_value(AnnuityDue(ins,n=1)) ≈ 1 
+    @test present_value(AnnuityDue(ins,n=2)) ≈ 2
+    @test_throws BoundsError present_value(AnnuityDue(ins,n=2;start_time=2))
+    @test present_value(AnnuityDue(ins,n=3)) ≈ 3
+    @test present_value(AnnuityDue(ins,n=0)) == 0
     @test annuity_immediate(ins,0) == 0
     @test annuity_immediate(ins,1) ≈ 1
     @test annuity_immediate(ins,1;start_time=1) ≈ 0
@@ -174,11 +174,11 @@ end
     )
 
     @test omega(ins) ≈ 2
-    @test annuity_due(ins) ≈ 1 + 1 * .5 * 1 / 1.05 +  1 * .25 / 1.05 ^2
-    @test annuity_due(ins,1) ≈ 1 
-    @test annuity_due(ins,2) ≈ 1 + 1 * .5 * 1 / 1.05
-    @test annuity_due(ins,3) ≈ 1 + 1 * .5 * 1 / 1.05 +  1 * .25 / 1.05 ^2
-    @test annuity_due(ins,0) ≈ 0
+    @test present_value(AnnuityDue(ins)) ≈ 1 + 1 * .5 * 1 / 1.05 +  1 * .25 / 1.05 ^2
+    @test present_value(AnnuityDue(ins,n=1)) ≈ 1 
+    @test present_value(AnnuityDue(ins,n=2)) ≈ 1 + 1 * .5 * 1 / 1.05
+    @test present_value(AnnuityDue(ins,n=3)) ≈ 1 + 1 * .5 * 1 / 1.05 +  1 * .25 / 1.05 ^2
+    @test present_value(AnnuityDue(ins,n=0)) ≈ 0
     @test annuity_immediate(ins,0) ≈ 0
     @test annuity_immediate(ins,1) ≈ 1 * .5 * 1 / 1.05
 
@@ -210,10 +210,10 @@ end
     )
 
     @test omega(ins) ≈ 2
-    @test annuity_due(ins,1) ≈ 1
-    @test annuity_due(ins,2) ≈ 1 + 1 * .5 * 1 / 1.05 
-    @test annuity_due(ins,3) ≈ 1 + 1 * .5 * 1 / 1.05 + 1 * .25 * 1 / 1.05 ^ 2
-    @test annuity_due(ins,0) == 0
+    @test present_value(AnnuityDue(ins,n=1)) ≈ 1
+    @test present_value(AnnuityDue(ins,n=2)) ≈ 1 + 1 * .5 * 1 / 1.05 
+    @test present_value(AnnuityDue(ins,n=3)) ≈ 1 + 1 * .5 * 1 / 1.05 + 1 * .25 * 1 / 1.05 ^ 2
+    @test present_value(AnnuityDue(ins,n=0)) == 0
     @test annuity_immediate(ins,0) == 0
     @test annuity_immediate(ins,1) ≈ 1 * .5 * 1 / 1.05 
 
@@ -230,10 +230,10 @@ end
     )
 
     @test omega(ins_jl) ≈ 2
-    @test annuity_due(ins_jl,1) ≈ 1
-    @test annuity_due(ins_jl,2) ≈ 1 + 1 * .75 /1.05
-    @test annuity_due(ins_jl,3) ≈ 1 + 1 * .75 /1.05 + 1 * survival(ins_jl,2) / 1.05 ^ 2
-    @test annuity_due(ins_jl,0) == 0
+    @test present_value(AnnuityDue(ins_jl,n=1)) ≈ 1
+    @test present_value(AnnuityDue(ins_jl,n=2)) ≈ 1 + 1 * .75 /1.05
+    @test present_value(AnnuityDue(ins_jl,n=3)) ≈ 1 + 1 * .75 /1.05 + 1 * survival(ins_jl,2) / 1.05 ^ 2
+    @test present_value(AnnuityDue(ins_jl,n=0)) == 0
     @test annuity_immediate(ins_jl,0) == 0
     @test annuity_immediate(ins_jl,1) ≈ 1 * .75 /1.05
 
@@ -269,9 +269,9 @@ t = UltimateMortality(maleMort)
     @test insurance(ins   ) ≈ 0.04223728223
     @test insurance(ins, 0) ≈ 0.0
     @test insurance(ins, 1) ≈ 0.0066571428571429
-    @test annuity_due(ins, 0) ≈ 0.0
-    @test annuity_due(ins, 1) ≈ 1.0 
-    @test annuity_due(ins, 2) ≈ 1.0 + survival(ins,1) / 1.05
+    @test present_value(AnnuityDue(ins, n=0)) ≈ 0.0
+    @test present_value(AnnuityDue(ins, n=1)) ≈ 1.0 
+    @test present_value(AnnuityDue(ins, n=2)) ≈ 1.0 + survival(ins,1) / 1.05
     @test annuity_immediate(ins, 0) ≈ 0.0
     @test annuity_immediate(ins, 1) ≈ survival(ins,1) / 1.05
 
@@ -279,7 +279,7 @@ t = UltimateMortality(maleMort)
 
     @test N(ins, 26) ≈ 5.156762988852310
     @test D(ins, 26) ≈ 0.275358702015970
-    @test annuity_due(ins, 26) ≈ 14.9562540842669
+    @test present_value(AnnuityDue(ins, n=26)) ≈ 14.9562540842669
 
 
 

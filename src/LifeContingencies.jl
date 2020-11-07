@@ -269,21 +269,53 @@ struct Term <: Insurance
     n
 end
 
+Insurance(lc::LifeContingency) = WholeLife(lc.life,lc.int)
+Insurance(lc::LifeContingency,n) = Term(lc.life,lc.int,n)
+
 struct Due end
 struct Immediate end
-struct Annuity{T} <: Insurance
+struct Annuity <: Insurance
     life
     int
-    payable::T
+    payable
     n
     start_time
     certain
     frequency
 end
 
-AnnuityDue(life, int; n=nothing,start_time=0,certain=nothing,frequency=1) = Annuity(life,int,Due(),n,start_time,certain,frequency)
+struct ZeroBenefit <: Insurance
+    life
+    int
+end
 
-AnnuityImmediate(life, int; n=nothing,start_time=0,certain=nothing,frequency=1) = Annuity(life,int,Immediate(),n,start_time,certain,frequency)
+function ZeroBenefit(lc::LifeContingency) 
+    return ZeroBenefit(lc.life,lc.int)
+end
+
+function AnnuityDue(life, int; n=nothing,start_time=0,certain=nothing,frequency=1) 
+    if ~isnothing(n) && n < 1
+        return ZeroBenefit(life,int)
+    else
+        Annuity(life,int,Due(),n,start_time,certain,frequency)
+    end
+end
+
+function AnnuityDue(lc::LifeContingency; n=nothing,start_time=0,certain=nothing,frequency=1) 
+    return AnnuityDue(lc.life,lc.int;n,start_time,certain,frequency)
+end
+
+function AnnuityImmediate(life, int; n=nothing,start_time=0,certain=nothing,frequency=1) 
+    if ~isnothing(n) && n < 1
+        return ZeroBenefit(life,int)
+    else
+        return Annuity(life,int,Immediate(),n,start_time,certain,frequency)
+    end
+end
+
+function AnnuityImmediate(lc::LifeContingency; n=nothing,start_time=0,certain=nothing,frequency=1)  
+    return AnnuityImmediate(lc.life,lc.int;n,start_time,certain,frequency)
+end
 
 Insurance(lc,int) = WholeLife(lc,int)
 Insurance(lc,int,n) = Term(lc,int,n)
@@ -315,12 +347,20 @@ function benefit(ins::Insurance)
     return ones(length(timepoints(ins)))
 end
 
+function benefit(ins::ZeroBenefit)
+    return zeros(length(timepoints(ins)))
+end
+
 function benefit(ins::Annuity)
     return ones(length(timepoints(ins))) ./ ins.frequency
 end
 
 function probability(ins::Insurance)
     return [survival(ins.life,t-1) * decrement(ins.life,t-1,t) for t in timepoints(ins)]
+end
+
+function probability(ins::ZeroBenefit)
+    return ones(length(timepoints(ins)))
 end
 
 function probability(ins::Annuity)
@@ -340,6 +380,10 @@ function timepoints(ins::Insurance)
     return [i for (i, _) in enumerate(att_age_range(ins))]
 end
 
+function timepoints(ins::ZeroBenefit)
+    return [0.]
+end
+
 function timepoints(ins::Annuity)
     return timepoints(ins,ins.payable)
 end
@@ -348,7 +392,6 @@ function timepoints(ins::Annuity,payable::Due)
     if isnothing(ins.n)
         end_time = omega(ins.life)
     else
-        ins.n == 0 && return 0.0 # break and return if no payments to be made
         end_time = ins.n + ins.start_time - 1 / ins.frequency
     end
     timestep = 1 / ins.frequency
@@ -359,7 +402,7 @@ function timepoints(ins::Annuity,payable::Immediate)
     if isnothing(ins.n)
         end_time = omega(ins.life)
     else
-        ins.n == 0 && return 0.0 # break and return if no payments to be made
+        ins.n == 0 && return nothing # break and return if no payments to be made
         end_time = ins.n + ins.start_time
     end
     timestep = 1 / ins.frequency
