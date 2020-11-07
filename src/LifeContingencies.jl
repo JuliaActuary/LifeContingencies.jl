@@ -402,10 +402,10 @@ function timepoints(ins::Annuity,payable::Immediate)
     if isnothing(ins.n)
         end_time = omega(ins.life)
     else
-        ins.n == 0 && return nothing # break and return if no payments to be made
         end_time = ins.n + ins.start_time
     end
     timestep = 1 / ins.frequency
+    end_time = max(ins.start_time + timestep,end_time) # return at least one timepoint to avoid returning empty array
     collect((ins.start_time + timestep):timestep:end_time)
 end
 

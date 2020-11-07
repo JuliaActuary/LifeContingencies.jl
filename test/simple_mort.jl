@@ -93,8 +93,8 @@ end
     @test present_value(AnnuityDue(ins)) ≈ 1 + 1 * .5 / 1.05
     @test present_value(AnnuityDue(ins,n=1)) ≈ 1
     @test present_value(AnnuityDue(ins,n=0)) == 0
-    @test annuity_immediate(ins,1) ≈ 1 * .5 / 1.05
-    @test annuity_immediate(ins,0) == 0
+    @test present_value(AnnuityImmediate(ins,n=1)) ≈ 1 * .5 / 1.05
+    @test present_value(AnnuityImmediate(ins,n=0)) == 0
 
     @test insurance(ins) ≈ 0.5 / 1.05
     @test insurance(ins,1) ≈ 0.5 / 1.05
@@ -109,7 +109,7 @@ end
     @test omega(ins_jl) ≈ 1
     @test present_value(AnnuityDue(ins_jl)) ≈ 1 + 1 * .75 / 1.05
     @test present_value(AnnuityDue(ins_jl,n=1)) ≈ 1
-    @test annuity_immediate(ins_jl,1) ≈ 1 * .75 / 1.05
+    @test present_value(AnnuityImmediate(ins_jl,n=1)) ≈ 1 * .75 / 1.05
     @test present_value(AnnuityDue(ins_jl,n=2)) ≈ 1 + 1 * .75 / 1.05
     @test present_value(AnnuityDue(ins_jl,n=2;certain=2)) ≈ 1 + 1 / 1.05 
     @test present_value(AnnuityDue(ins_jl,n=0)) == 0
@@ -137,14 +137,14 @@ end
     @test_throws BoundsError present_value(AnnuityDue(ins,n=2;start_time=2))
     @test present_value(AnnuityDue(ins,n=3)) ≈ 3
     @test present_value(AnnuityDue(ins,n=0)) == 0
-    @test annuity_immediate(ins,0) == 0
-    @test annuity_immediate(ins,1) ≈ 1
-    @test annuity_immediate(ins,1;start_time=1) ≈ 0
-    @test annuity_immediate(ins;start_time=2) ≈ 0
-    @test annuity_immediate(ins,2) ≈ 2
-    @test annuity_immediate(ins) ≈ 2
-    @test annuity_immediate(ins;certain=0) ≈ 2
-    @test annuity_immediate(ins;certain=2) ≈ 2
+    @test present_value(AnnuityImmediate(ins,n=0)) == 0
+    @test present_value(AnnuityImmediate(ins,n=1)) ≈ 1
+    @test present_value(AnnuityImmediate(ins,n=1;start_time=1)) ≈ 1
+    @test_throws BoundsError  present_value(AnnuityImmediate(ins;start_time=2))
+    @test present_value(AnnuityImmediate(ins,n=2)) ≈ 2
+    @test present_value(AnnuityImmediate(ins)) ≈ 2
+    @test present_value(AnnuityImmediate(ins;certain=0)) ≈ 2
+    @test present_value(AnnuityImmediate(ins;certain=2)) ≈ 2
 
     @test insurance(ins) ≈ 0
     @test insurance(ins,1) ≈ 0
@@ -179,8 +179,8 @@ end
     @test present_value(AnnuityDue(ins,n=2)) ≈ 1 + 1 * .5 * 1 / 1.05
     @test present_value(AnnuityDue(ins,n=3)) ≈ 1 + 1 * .5 * 1 / 1.05 +  1 * .25 / 1.05 ^2
     @test present_value(AnnuityDue(ins,n=0)) ≈ 0
-    @test annuity_immediate(ins,0) ≈ 0
-    @test annuity_immediate(ins,1) ≈ 1 * .5 * 1 / 1.05
+    @test present_value(AnnuityImmediate(ins,n=0)) ≈ 0
+    @test present_value(AnnuityImmediate(ins,n=1)) ≈ 1 * .5 * 1 / 1.05
 
     @test insurance(ins) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
     @test insurance(ins,1) ≈ 0.5 / 1.05
@@ -214,8 +214,8 @@ end
     @test present_value(AnnuityDue(ins,n=2)) ≈ 1 + 1 * .5 * 1 / 1.05 
     @test present_value(AnnuityDue(ins,n=3)) ≈ 1 + 1 * .5 * 1 / 1.05 + 1 * .25 * 1 / 1.05 ^ 2
     @test present_value(AnnuityDue(ins,n=0)) == 0
-    @test annuity_immediate(ins,0) == 0
-    @test annuity_immediate(ins,1) ≈ 1 * .5 * 1 / 1.05 
+    @test present_value(AnnuityImmediate(ins,n=0)) == 0
+    @test present_value(AnnuityImmediate(ins,n=1)) ≈ 1 * .5 * 1 / 1.05 
 
     @test insurance(ins) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
     @test insurance(ins,1) ≈ 0.5 / 1.05
@@ -234,8 +234,8 @@ end
     @test present_value(AnnuityDue(ins_jl,n=2)) ≈ 1 + 1 * .75 /1.05
     @test present_value(AnnuityDue(ins_jl,n=3)) ≈ 1 + 1 * .75 /1.05 + 1 * survival(ins_jl,2) / 1.05 ^ 2
     @test present_value(AnnuityDue(ins_jl,n=0)) == 0
-    @test annuity_immediate(ins_jl,0) == 0
-    @test annuity_immediate(ins_jl,1) ≈ 1 * .75 /1.05
+    @test present_value(AnnuityImmediate(ins_jl,n=0)) == 0
+    @test present_value(AnnuityImmediate(ins_jl,n=1)) ≈ 1 * .75 /1.05
 
 end
 
@@ -272,8 +272,8 @@ t = UltimateMortality(maleMort)
     @test present_value(AnnuityDue(ins, n=0)) ≈ 0.0
     @test present_value(AnnuityDue(ins, n=1)) ≈ 1.0 
     @test present_value(AnnuityDue(ins, n=2)) ≈ 1.0 + survival(ins,1) / 1.05
-    @test annuity_immediate(ins, 0) ≈ 0.0
-    @test annuity_immediate(ins, 1) ≈ survival(ins,1) / 1.05
+    @test present_value(AnnuityImmediate(ins, n=0)) ≈ 0.0
+    @test present_value(AnnuityImmediate(ins, n=1)) ≈ survival(ins,1) / 1.05
 
     @test insurance(ins, 30) ≈ 0.0137761089686975
 
