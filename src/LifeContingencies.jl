@@ -45,7 +45,7 @@ abstract type Life end
         fractional_assump::MortalityTables.DeathDistribution
     end
 
-A `Life` object containing the necessary assumptions for contingent maths related to a single life. Use with a `LifeContingency` to do many actuaral present value calculations. 
+A `Life` object containing the necessary assumptions for contingent maths related to a single life. Use with a `LifeContingency` to do many actuarial present value calculations. 
 
 Keyword arguments:
 - `mort` pass a mortality vector, which is an array of applicable mortality rates indexed by attained age
@@ -117,7 +117,7 @@ struct LastSurvivor <: Contingency end
         joint_assumption
     end
 
-    A `Life` object containing the necessary assumptions for contingent maths related to a joint life insurance. Use with a `LifeContingency` to do many actuaral present value calculations. 
+    A `Life` object containing the necessary assumptions for contingent maths related to a joint life insurance. Use with a `LifeContingency` to do many actuarial present value calculations. 
 
 Keyword arguments:
 - `lives` is a tuple of two `SingleLife`s
@@ -381,6 +381,11 @@ function AnnuityImmediate(lc::LifeContingency; n=nothing,start_time=0,certain=no
 end
 
 
+"""
+    survival(Insurance)
+
+The survorship vector for the given insurance.
+"""
 function MortalityTables.survival(ins::Insurance)
     return [survival(ins.life,t-1) for t in timepoints(ins)]
 end
@@ -389,10 +394,22 @@ function MortalityTables.survival(ins::Annuity)
     return [survival(ins.life,t) for t in timepoints(ins)]
 end
 
+
+"""
+    discount(Insurance)
+
+The discount vector for the given insurance.
+"""
 function Yields.discount(ins::Insurance)
     return Yields.discount.(ins.int,timepoints(ins))
 end
 
+
+"""
+    benefit(Insurance)
+
+The unit benefit vector for the given insurance.
+"""
 function benefit(ins::Insurance)
     return ones(length(timepoints(ins)))
 end
@@ -405,6 +422,12 @@ function benefit(ins::Annuity)
     return ones(length(timepoints(ins))) ./ ins.frequency
 end
 
+
+"""
+    survival(Insurance)
+
+The vector of contingent benefit probabilities for the given insurance.
+"""
 function probability(ins::Insurance)
     return [survival(ins.life,t-1) * decrement(ins.life,t-1,t) for t in timepoints(ins)]
 end
@@ -422,10 +445,21 @@ function probability(ins::Annuity)
 end
 
 
+"""
+    cashflows(Insurance)
+
+The vector of decremented benefit cashflows for the given insurance.
+"""
 function cashflows(ins::Insurance)
    return probability(ins) .* benefit(ins)
 end
 
+
+"""
+    timepoints(Insurance)
+
+The vector of times corresponding to the cashflow vector for the given insurance.
+"""
 function timepoints(ins::Insurance)
     return collect(1:omega(ins.life))
 end
@@ -463,6 +497,11 @@ function timepoints(ins::Annuity,payable::Immediate)
     collect((ins.start_time + timestep):timestep:end_time)
 end
 
+"""
+    present_value(Insurance)
+
+The actuarial present value of the given insurance.
+"""
 function ActuaryUtilities.present_value(ins)
     return present_value(ins.int,cashflows(ins),timepoints(ins))
 end
