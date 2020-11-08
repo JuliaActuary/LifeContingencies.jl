@@ -269,6 +269,24 @@ struct Term <: Insurance
     n
 end
 
+"""
+    Insurance(lc::LifeContingency; n=nothing)
+    Insurance(life,interest; n=nothing)
+
+Life insurance with a term period of `n`. If `n` is `nothing`, then whole life insurance.
+
+Issue age is based on the `issue_age` in the LifeContingency `lc`.
+
+# Examples
+
+```
+ins = Insurance(
+    SingleLife(mort = UltimateMortality([0.5,0.5]),issue_age = 0),
+    Yields.Constant(0.05),
+    n = 1
+) 
+```
+"""
 Insurance(lc::LifeContingency; n=nothing) = Insurance(lc.life,lc.int;n)
 
 function Insurance(lc,int;n=nothing)
