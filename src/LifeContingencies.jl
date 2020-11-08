@@ -269,13 +269,12 @@ struct Term <: Insurance
     n
 end
 
-Insurance(lc::LifeContingency) = Insurance(lc.life,lc.int)
-Insurance(lc::LifeContingency,n) = Insurance(lc.life,lc.int,n)
+Insurance(lc::LifeContingency; n=nothing) = Insurance(lc.life,lc.int;n)
 
-Insurance(lc,int) = WholeLife(lc,int)
-
-function Insurance(lc,int,n) 
-    if n < 1
+function Insurance(lc,int;n=nothing)
+    if isnothing(n)
+        return WholeLife(lc,int)
+    elseif n < 1
         return ZeroBenefit(lc,int)
     else
         Term(lc,int,n)

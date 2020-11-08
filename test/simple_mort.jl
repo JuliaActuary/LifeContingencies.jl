@@ -20,7 +20,7 @@
     ins = Insurance(
             SingleLife(mort = mt,issue_age = 0),
             Yields.Constant(0.05),
-            1
+            n=1
     ) 
 
     @test survival(ins) == [1.0]
@@ -97,8 +97,8 @@ end
     @test present_value(AnnuityImmediate(ins,n=0)) == 0
 
     @test present_value(Insurance(ins)) ≈ 0.5 / 1.05
-    @test present_value(Insurance(ins,1)) ≈ 0.5 / 1.05
-    @test present_value(Insurance(ins,0)) ≈ 0
+    @test present_value(Insurance(ins,n=1)) ≈ 0.5 / 1.05
+    @test present_value(Insurance(ins,n=0)) ≈ 0
 
 
     ins_jl = LifeContingency(
@@ -116,8 +116,8 @@ end
 
     @test survival(ins_jl,1) ≈ .5 + .5 - .5 * .5
     @test present_value(Insurance(ins_jl)) ≈ .25 / 1.05
-    @test present_value(Insurance(ins_jl,1)) ≈ 0.25 / 1.05
-    @test present_value(Insurance(ins_jl,0)) ≈ 0
+    @test present_value(Insurance(ins_jl,n=1)) ≈ 0.25 / 1.05
+    @test present_value(Insurance(ins_jl,n=0)) ≈ 0
 end
 
 @testset "two year no discount" begin
@@ -147,8 +147,8 @@ end
     @test present_value(AnnuityImmediate(ins;certain=2)) ≈ 2
 
     @test present_value(Insurance(ins)) ≈ 0
-    @test present_value(Insurance(ins,1)) ≈ 0
-    @test present_value(Insurance(ins,0)) ≈ 0
+    @test present_value(Insurance(ins,n=1)) ≈ 0
+    @test present_value(Insurance(ins,n=0)) ≈ 0
 
     ins_jl = LifeContingency(
         JointLife(
@@ -183,8 +183,8 @@ end
     @test present_value(AnnuityImmediate(ins,n=1)) ≈ 1 * .5 * 1 / 1.05
 
     @test present_value(Insurance(ins)) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
-    @test present_value(Insurance(ins,1)) ≈ 0.5 / 1.05
-    @test present_value(Insurance(ins,0)) ≈ 0
+    @test present_value(Insurance(ins,n=1)) ≈ 0.5 / 1.05
+    @test present_value(Insurance(ins,n=0)) ≈ 0
 
     ins_jl = LifeContingency(
         JointLife(
@@ -218,8 +218,8 @@ end
     @test present_value(AnnuityImmediate(ins,n=1)) ≈ 1 * .5 * 1 / 1.05 
 
     @test present_value(Insurance(ins)) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
-    @test present_value(Insurance(ins,1)) ≈ 0.5 / 1.05
-    @test present_value(Insurance(ins,0)) ≈ 0
+    @test present_value(Insurance(ins,n=1)) ≈ 0.5 / 1.05
+    @test present_value(Insurance(ins,n=0)) ≈ 0
 
     ins_jl = LifeContingency(
         JointLife(
@@ -267,15 +267,15 @@ t = UltimateMortality(maleMort)
     @test M(ins, 2) ≈ 0.0351775312392208
 
     @test present_value(Insurance(ins   )) ≈ 0.04223728223
-    @test present_value(Insurance(ins, 0)) ≈ 0.0
-    @test present_value(Insurance(ins, 1)) ≈ 0.0066571428571429
+    @test present_value(Insurance(ins, n=0)) ≈ 0.0
+    @test present_value(Insurance(ins, n=1)) ≈ 0.0066571428571429
     @test present_value(AnnuityDue(ins, n=0)) ≈ 0.0
     @test present_value(AnnuityDue(ins, n=1)) ≈ 1.0 
     @test present_value(AnnuityDue(ins, n=2)) ≈ 1.0 + survival(ins,1) / 1.05
     @test present_value(AnnuityImmediate(ins, n=0)) ≈ 0.0
     @test present_value(AnnuityImmediate(ins, n=1)) ≈ survival(ins,1) / 1.05
 
-    @test present_value(Insurance(ins, 30)) ≈ 0.0137761089686975
+    @test present_value(Insurance(ins, n=30)) ≈ 0.0137761089686975
 
     @test N(ins, 26) ≈ 5.156762988852310
     @test D(ins, 26) ≈ 0.275358702015970
