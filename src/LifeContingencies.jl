@@ -516,17 +516,17 @@ The net premium for a whole life insurance (without second argument) or a term l
 
 The net premium is based on 1 unit of insurance with the death benfit payable at the end of the year and assuming annual net premiums.
 """
-premium_net(lc::LifeContingency) = insurance(lc) / ä(lc)
-premium_net(lc::LifeContingency,to_time) = insurance(lc,to_time) / ä(lc,to_time)
+premium_net(lc::LifeContingency) = A(lc) / ä(lc)
+premium_net(lc::LifeContingency,to_time) = A(lc,to_time) / ä(lc,to_time)
 
 """
      reserve_premium_net(lc::LifeContingency,time)
 
 The net premium reserve at the end of year `time`.
 """
-function  reserve_premium_net(lc::LifeContingency, time) 
-    PVFB = insurance(lc) - insurance(lc,time)
-    PVFP = premium_net(lc) * (ä(lc) - ä(lc,time))
+function  reserve_premium_net(lc::LifeContingency, time)
+    PVFB = A(lc) - A(lc,n=time)
+    PVFP = premium_net(lc) * (ä(lc) - ä(lc,n=time))
     return (PVFB - PVFP) / APV(lc,time)
 end
 
@@ -577,12 +577,16 @@ end
 Yields.discount(lc::LifeContingency,t) = discount(lc.int,t)
 Yields.discount(lc::LifeContingency,t1,t2) = discount(lc.int,t1,t2)
 
+# function compostion with kwargs. 
+# https://stackoverflow.com/questions/64740010/how-to-alias-composite-function-with-keyword-arguments
+⋄(f, g) = (x...; kw...)->f(g(x...; kw...))
+
 # unexported aliases
 const V = reserve_premium_net
 const v = Yields.discount
-const A = insurance
-const a = annuity_immediate
-const ä = annuity_due
+const A = present_value ⋄ Insurance
+const a = present_value ⋄ AnnuityImmediate
+const ä = present_value ⋄ AnnuityDue
 const P = premium_net
 const ω = omega
 

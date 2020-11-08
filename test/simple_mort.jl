@@ -15,6 +15,7 @@
     @test cashflows(ins) == [0.5,0.25]
     @test cashflows(ins) == benefit(ins) .* probability(ins)
     @test present_value(ins)  ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
+    @test present_value(ins) ≈ LifeContingencies.A(ins.life,ins.int)
 
     # term life insurance
     ins = Insurance(

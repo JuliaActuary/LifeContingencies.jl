@@ -2,43 +2,43 @@
     @testset "issue age 116" begin
         t = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
         i = Yields.Constant(0.05)
-        ins = LifeContingency(SingleLife(mort = t.ultimate, issue_age = 116), i)
+        lc = LifeContingency(SingleLife(mort = t.ultimate, issue_age = 116), i)
 
 
-        @test l(ins, 0) ≈ 1.0
-        @test l(ins, 1) ≈ 0.200120000000000
-        @test l(ins, 2) ≈ 0.030764447600000
+        @test l(lc, 0) ≈ 1.0
+        @test l(lc, 1) ≈ 0.200120000000000
+        @test l(lc, 2) ≈ 0.030764447600000
 
-        @test D(ins, 0) ≈ 1.0
-        @test D(ins, 1) ≈ 0.190590476190476
-        @test D(ins, 2) ≈ 0.027904260861678
+        @test D(lc, 0) ≈ 1.0
+        @test D(lc, 1) ≈ 0.190590476190476
+        @test D(lc, 2) ≈ 0.027904260861678
 
-        @test N(ins, 0) ≈ 1.221415195080500
-        @test N(ins, 1) ≈ 0.221415195080502
-        @test N(ins, 2) ≈ 0.030824718890026
+        @test N(lc, 0) ≈ 1.221415195080500
+        @test N(lc, 1) ≈ 0.221415195080502
+        @test N(lc, 2) ≈ 0.030824718890026
 
-        @test C(ins, 0) ≈ 0.761790476190476000
-        @test C(ins, 1) ≈ 0.153610478367347000
-        @test C(ins, 2) ≈ 0.023794627623916200
+        @test C(lc, 0) ≈ 0.761790476190476000
+        @test C(lc, 1) ≈ 0.153610478367347000
+        @test C(lc, 2) ≈ 0.023794627623916200
 
-        @test M(ins, 0) ≈ 0.9418373716628330
-        @test M(ins, 1) ≈ 0.1800468954723570
-        @test M(ins, 2) ≈ 0.0264364171050101
+        @test M(lc, 0) ≈ 0.9418373716628330
+        @test M(lc, 1) ≈ 0.1800468954723570
+        @test M(lc, 2) ≈ 0.0264364171050101
 
-        @test present_value(Insurance(ins)) ≈ 0.9418373716628330
-        @test present_value(AnnuityDue(ins)) ≈ 1.2214151950805000
+        @test present_value(Insurance(lc)) ≈ 0.9418373716628330
+        @test present_value(AnnuityDue(lc)) ≈ 1.2214151950805000
         
         qs = t.ultimate[116:118]
-        @test present_value(Insurance(ins, n=3)) ≈ sum(qs .* [1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 1:3])
-        @test present_value(AnnuityDue(ins, n=3)) ≈ sum([1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 0:2])
+        @test present_value(Insurance(lc, n=3)) ≈ sum(qs .* [1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 1:3])
+        @test present_value(AnnuityDue(lc, n=3)) ≈ sum([1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 0:2])
         
-        @test LifeContingencies.V(ins,1) == reserve_premium_net(ins,1)
-        @test LifeContingencies.v(ins,1) == Yields.discount(ins,1)
-        @test LifeContingencies.A(ins) == present_value(Insurance(ins))
-        @test LifeContingencies.ä(ins) == present_value(AnnuityDue(ins))
-        @test LifeContingencies.a(ins) == present_value(AnnuityImmediate(ins))
-        @test LifeContingencies.P(ins) == premium_net(ins)
-        @test LifeContingencies.ω(ins) == omega(ins)
+        @test LifeContingencies.V(lc,1) == reserve_premium_net(lc,1)
+        @test LifeContingencies.v(lc,1) == Yields.discount(lc,1)
+        @test LifeContingencies.A(lc) == present_value(Insurance(lc))
+        @test LifeContingencies.ä(lc) == present_value(AnnuityDue(lc))
+        @test LifeContingencies.a(lc) == present_value(AnnuityImmediate(lc))
+        @test LifeContingencies.P(lc) == premium_net(lc)
+        @test LifeContingencies.ω(lc) == omega(lc)
     end
 
     @testset "issue age 30" begin
@@ -79,7 +79,7 @@
         @test present_value(Insurance(ins, n=26)) ≈ sum(qs .* [1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 1:26])
         @test present_value(AnnuityDue(ins, n=26)) ≈ sum([1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 0:25])
 
-        @test premium_net(ins, 26) ≈ insurance(ins, 26) /  annuity_due(ins, 26) 
+        @test premium_net(ins, 26) ≈ LifeContingencies.A(ins, 26) /  LifeContingencies.ä(ins, 26) 
 
     end
 end
