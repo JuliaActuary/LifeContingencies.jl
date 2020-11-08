@@ -258,6 +258,8 @@ E(lc::LifeContingency, t, x) = D(lc,x + t) / D(lc,x)
 
 abstract type Insurance end
 
+LifeContingency(ins::Insurance) = LifeContingency(ins.life,ins.int)
+
 struct WholeLife <: Insurance
     life
     int
