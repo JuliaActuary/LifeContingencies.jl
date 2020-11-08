@@ -269,8 +269,18 @@ struct Term <: Insurance
     n
 end
 
-Insurance(lc::LifeContingency) = WholeLife(lc.life,lc.int)
-Insurance(lc::LifeContingency,n) = Term(lc.life,lc.int,n)
+Insurance(lc::LifeContingency) = Insurance(lc.life,lc.int)
+Insurance(lc::LifeContingency,n) = Insurance(lc.life,lc.int,n)
+
+Insurance(lc,int) = WholeLife(lc,int)
+
+function Insurance(lc,int,n) 
+    if n < 1
+        return ZeroBenefit(lc,int)
+    else
+        Term(lc,int,n)
+    end
+end
 
 struct Due end
 struct Immediate end
@@ -317,8 +327,6 @@ function AnnuityImmediate(lc::LifeContingency; n=nothing,start_time=0,certain=no
     return AnnuityImmediate(lc.life,lc.int;n,start_time,certain,frequency)
 end
 
-Insurance(lc,int) = WholeLife(lc,int)
-Insurance(lc,int,n) = Term(lc,int,n)
 
 function MortalityTables.survival(ins::Insurance)
     return [survival(ins.life,t-1) for t in timepoints(ins)]
@@ -326,17 +334,6 @@ end
 
 function MortalityTables.survival(ins::Annuity)
     return [survival(ins.life,t) for t in timepoints(ins)]
-end
-
-att_age_range(ins::Term) = ins.life.issue_age:(ins.n + ins.life.issue_age - 1)
-att_age_range(ins::WholeLife) = ins.life.issue_age:(omega(ins.life) + ins.life.issue_age - 1)
-function att_age_range(ins::Annuity) 
-    if isnothing(ins.n)
-        last = omega(ins.life)-1 + ins.life.issue_age
-    else
-        last = ins.life.issue_age + ins.n
-    end
-    return ins.life.issue_age:last
 end
 
 function Yields.discount(ins::Insurance)
@@ -377,7 +374,11 @@ function cashflows(ins::Insurance)
 end
 
 function timepoints(ins::Insurance)
-    return [i for (i, _) in enumerate(att_age_range(ins))]
+    return collect(1:omega(ins.life))
+end
+
+function timepoints(ins::Term)
+    return collect(1:min(omega(ins.life),ins.n))
 end
 
 function timepoints(ins::ZeroBenefit)

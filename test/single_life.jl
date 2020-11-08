@@ -25,18 +25,18 @@
         @test M(ins, 1) ≈ 0.1800468954723570
         @test M(ins, 2) ≈ 0.0264364171050101
 
-        @test insurance(ins) ≈ 0.9418373716628330
-        @test annuity_due(ins) ≈ 1.2214151950805000
+        @test present_value(Insurance(ins)) ≈ 0.9418373716628330
+        @test present_value(AnnuityDue(ins)) ≈ 1.2214151950805000
         
         qs = t.ultimate[116:118]
-        @test insurance(ins, 3) ≈ sum(qs .* [1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 1:3])
-        @test annuity_due(ins, 3) ≈ sum([1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 0:2])
+        @test present_value(Insurance(ins, 3)) ≈ sum(qs .* [1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 1:3])
+        @test present_value(AnnuityDue(ins, n=3)) ≈ sum([1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 0:2])
         
         @test LifeContingencies.V(ins,1) == reserve_premium_net(ins,1)
         @test LifeContingencies.v(ins,1) == Yields.discount(ins,1)
-        @test LifeContingencies.A(ins) == insurance(ins)
-        @test LifeContingencies.ä(ins) == annuity_due(ins)
-        @test LifeContingencies.a(ins) == annuity_immediate(ins)
+        @test LifeContingencies.A(ins) == present_value(Insurance(ins))
+        @test LifeContingencies.ä(ins) == present_value(AnnuityDue(ins))
+        @test LifeContingencies.a(ins) == present_value(AnnuityImmediate(ins))
         @test LifeContingencies.P(ins) == premium_net(ins)
         @test LifeContingencies.ω(ins) == omega(ins)
     end
@@ -69,15 +69,15 @@
         @test M(ins, 1) ≈ 0.1104702077177110
         @test M(ins, 2) ≈ 0.1100531118446950
 
-        @test insurance(ins) ≈ 0.1107844934319970
-        @test annuity_due(ins) ≈ 18.6735256379281000
+        @test present_value(Insurance(ins)) ≈ 0.1107844934319970
+        @test present_value(AnnuityDue(ins)) ≈ 18.6735256379281000
         @test premium_net(ins) ≈ 0.0059327036350854
-        @test  reserve_premium_net(ins, 1) ≈ 0.0059012862412992
-        @test  reserve_premium_net(ins, 2) ≈ 0.0119711961204193
+        @test reserve_premium_net(ins, 1) ≈ 0.0059012862412992
+        @test reserve_premium_net(ins, 2) ≈ 0.0119711961204193
 
         qs = t.select[30][30:55]
-        @test insurance(ins, 26) ≈ sum(qs .* [1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 1:26])
-        @test annuity_due(ins, 26) ≈ sum([1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 0:25])
+        @test present_value(Insurance(ins, 26)) ≈ sum(qs .* [1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 1:26])
+        @test present_value(AnnuityDue(ins, n=26)) ≈ sum([1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 0:25])
 
         @test premium_net(ins, 26) ≈ insurance(ins, 26) /  annuity_due(ins, 26) 
 

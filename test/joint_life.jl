@@ -31,9 +31,9 @@
             ins_l1 = LifeContingency(jl.lives[1],Yields.Constant(0.05))
             ins_l2 = LifeContingency(jl.lives[2],Yields.Constant(0.05))
             # problem 9.1.f
-            @test isapprox( annuity_due(ins,5), 4.5437, atol = 1e-4)
+            @test isapprox( present_value(AnnuityDue(ins,n=5)), 4.5437, atol = 1e-4)
 
-            @test isapprox( annuity_due(ins), 4.5437, atol = 1e-4)
+            @test isapprox( present_value(AnnuityDue(ins)), 4.5437, atol = 1e-4)
         end
     
         @testset "CIA tables" begin
