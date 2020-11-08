@@ -284,6 +284,7 @@ end
 
 struct Due end
 struct Immediate end
+
 struct Annuity <: Insurance
     life
     int
@@ -303,6 +304,23 @@ function ZeroBenefit(lc::LifeContingency)
     return ZeroBenefit(lc.life,lc.int)
 end
 
+"""
+    AnnuityDue(lc::LifeContingency; n=nothing, start_time=0; certain=nothing,frequency=1)
+    AnnuityDue(life, interest; n=nothing, start_time=0; certain=nothing,frequency=1)
+
+Annuity due with the benefit period starting at `start_time` and ending after `n` periods with `frequency` payments per year of `1/frequency` amount and a `certain` period with non-contingent payments. 
+
+# Examples
+
+```
+ins = AnnuityDue(
+    SingleLife(mort = UltimateMortality([0.5,0.5]),issue_age = 0),
+    Yields.Constant(0.05),
+    n = 1
+) 
+```
+
+"""
 function AnnuityDue(life, int; n=nothing,start_time=0,certain=nothing,frequency=1) 
     if ~isnothing(n) && n < 1
         return ZeroBenefit(life,int)
@@ -315,6 +333,24 @@ function AnnuityDue(lc::LifeContingency; n=nothing,start_time=0,certain=nothing,
     return AnnuityDue(lc.life,lc.int;n,start_time,certain,frequency)
 end
 
+
+"""
+    AnnuityImmediate(lc::LifeContingency; n=nothing, start_time=0; certain=nothing,frequency=1)
+    AnnuityImmediate(life, interest; n=nothing, start_time=0; certain=nothing,frequency=1)
+
+Annuity immediate with the benefit period starting at `start_time` and ending after `n` periods with `frequency` payments per year of `1/frequency` amount and a `certain` period with non-contingent payments. 
+
+# Examples
+
+```
+ins = AnnuityImmediate(
+    SingleLife(mort = UltimateMortality([0.5,0.5]),issue_age = 0),
+    Yields.Constant(0.05),
+    n = 1
+) 
+```
+
+"""
 function AnnuityImmediate(life, int; n=nothing,start_time=0,certain=nothing,frequency=1) 
     if ~isnothing(n) && n < 1
         return ZeroBenefit(life,int)
