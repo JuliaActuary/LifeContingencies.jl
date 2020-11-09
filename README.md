@@ -57,8 +57,8 @@ yield = Yields.Constant(0.05)      # Using a flat 5% interest rate
 lc = LifeContingency(life, yield)  # LifeContingency joins the risk with interest
 
 
-ins = Insurance(lc)                      # Whole Life insurance
-ins = Insurance(life, yield)             # alternate way to construct
+ins = Insurance(lc)                # Whole Life insurance
+ins = Insurance(life, yield)       # alternate way to construct
 ```
 
 With the above life contingent data, we can calculate vectors of relevant information:
@@ -86,8 +86,8 @@ Insurance(lc,n=10)                   # 10 year term insurance
 AnnuityImmediate(lc)               # Whole life annuity due
 AnnuityDue(lc)                     # Whole life annuity due
 ä(lc)                              # Shortform notation
-ä(lc, n=5)                           # 5 year annuity due
-ä(lc, n=5, certain=5,frequency=4)    # 5 year annuity due, with 5 year certain payable 4x per year
+ä(lc, n=5)                         # 5 year annuity due
+ä(lc, n=5, certain=5,frequency=4)  # 5 year annuity due, with 5 year certain payable 4x per year
 ...                                # and more!
 ```
 
