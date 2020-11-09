@@ -8,12 +8,11 @@
 
 LifeContingencies is a package enabling actuarial life contingent calculations.
 
-## Features:
+## Features
 
 - Integration with other JuliaActuary packages such as [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl)
 - Fast calculations, with some parts utilizing parallel processing power automatically
-- Use functions that look more like the math you are used to (e.g. `A`, `ä`)
-with [Unicode support](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
+- Use functions that look more like the math you are used to (e.g. `A`, `ä`) with [Unicode support](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
 - All of the power, speed, convenience, tooling, and ecosystem of Julia
 - Flexible and modular modeling approach
 
@@ -22,10 +21,10 @@ with [Unicode support](https://docs.julialang.org/en/v1/manual/unicode-input/ind
 - Leverages [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl) for
 the mortality calculations
 - Contains common insurance calculations such as:
-    - `insurance(life)`: Whole life
-    - `insurance(life,n)`: Term life for `n` years
-    - `ä(life)`: Life contingent annuity due
-    - `ä(life,n)`: Life contingent annuity due for `n` years
+  - `Insurance(life,yield)`: Whole life
+  - `Insurance(life,yield,n)`: Term life for `n` years
+  - `ä(life,yield)`: Life contingent annuity due
+  - `ä(life,yield)`: Life contingent annuity due for `n` years
 - Contains various commutation functions such as `D(x)`,`M(x)`,`C(x)`, etc.
 - `SingleLife` and `JointLife` capable
 - Interest rate mechanics via [`Yields.jl`](https://github.com/JuliaActuary/Yields.jl)
@@ -33,7 +32,8 @@ the mortality calculations
 
 ## Examples
 
-###  Basic Functions
+### Basic Functions
+
 Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base table and a 5% interest rate
 
 ```julia
@@ -41,10 +41,10 @@ Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base tab
 using LifeContingencies
 using MortalityTables
 using Yields
-import LifeConingencies: ä        # pull the shortform notation into scope
+import LifeConingencies: V, ä      # pull the shortform notation into scope
 
 # load mortality rates from MortalityTables.jl
-tbls = MortalityTables.tables()   
+tbls = MortalityTables.tables()
 vbt2001 = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
 
 life = SingleLife(                 # The life underlying the risk
@@ -52,20 +52,42 @@ life = SingleLife(                 # The life underlying the risk
     issue_age = 30                 # -- Issue Age
 )
 
-lc = LifeContingency(              # LifeContingency joins the risk with interest
-    life,                          
-    Yields.Constant(0.05)          # Using a flat 5% interest rate
-)
+yield = Yields.Constant(0.05)      # Using a flat 5% interest rate
+
+lc = LifeContingency(life, yield)  # LifeContingency joins the risk with interest
 
 
-insurance(lc)                      # Whole Life insurance
-insurance(lc,10)                   # 10 year term insurance
+ins = Insurance(lc)                      # Whole Life insurance
+ins = Insurance(life, yield)             # alternate way to construct
+```
+
+With the above life contingent data, we can calculate vectors of relevant information:
+
+```julia
+cashflows(ins)                     # A vector of the unit cashflows
+timepoints(ins)                    # The timepoints associated with the cashflows
+survival(ins)                      # The survival vector
+benefit(ins)                       # The unit benefit vector
+probability(ins)                   # The probability of beneift payment
+```
+
+Or calculate summary scalars:
+
+```julia
+present_value(ins)                 # The actuarial present value
 premium_net(lc)                    # Net whole life premium 
 V(lc,5)                            # Net premium reserve for whole life insurance at time 5
-annuity_due(lc)                    # Whole life annuity due
+```
+
+Other types of life contingent benefits:
+
+```julia
+Insurance(lc,n=10)                   # 10 year term insurance
+AnnuityImmediate(lc)               # Whole life annuity due
+AnnuityDue(lc)                     # Whole life annuity due
 ä(lc)                              # Shortform notation
-ä(lc, 5)                           # 5 year annuity due
-ä(lc, 5, certain=5,frequency=4)    # 5 year annuity due, with 5 year certain payable 4x per year
+ä(lc, n=5)                           # 5 year annuity due
+ä(lc, n=5, certain=5,frequency=4)    # 5 year annuity due, with 5 year certain payable 4x per year
 ...                                # and more!
 ```
 
@@ -91,15 +113,12 @@ life = SingleLife(
     issue_age = 30
 )
 
-lc = LifeContingency(
-    life,
-    int
-)
-
 term = 10
-insurance(lc,term) # around 0.055
+Insurance(lc, n=term) # around 0.055
 ```
+
 #### Extending example to use autocorrelated interest rates
+
 You can use autocorrelated interest rates - substitute the following in the prior example
 using the ability to self reference:
 
@@ -168,9 +187,10 @@ l2 = SingleLife(mort = m2.ultimate, issue_age = 37)
 jl = JointLife(lives=(l1, l2), contingency=LastSurvivor(), joint_assumption=Frasier())
 
 
-insurance(jl)   # whole life insurance
-...     # similar functions as shown in the first example above
+Insurance(jl)      # whole life insurance
+...                # similar functions as shown in the first example above
 ```
+
 ## Commutation and Unexported Function shorthand
 
 Because it's so common to use certain variables in your own code, LifeContingencies avoids exporting certain variables/functions so that it doesn't collide with your own usage. For example, you may find yourself doing something like:
@@ -195,6 +215,7 @@ using LifeContingencies # brings all the default functions into your scope
 ... # later on in the code
 LifeContingencies.ä(...) # utilize the unexported function with the module name
 ```
+
 For more on module scoping, see the [Julia Manual section](https://docs.julialang.org/en/latest/manual/modules/#Summary-of-module-usage-1).
 
 ### Actuarial notation shorthand
