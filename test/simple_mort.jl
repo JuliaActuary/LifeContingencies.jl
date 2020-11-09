@@ -17,6 +17,12 @@
     @test present_value(ins)  ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05 ^ 2
     @test present_value(ins) ≈ LifeContingencies.A(ins.life,ins.int)
 
+    # basic life contingency tests
+    @test survival(LifeContingency(ins),0,1) ≈ 0.5
+    @test survival(LifeContingency(ins),0,2) ≈ 0.25
+    @test discount(LifeContingency(ins),0,1) ≈ 1/1.05
+    @test discount(LifeContingency(ins),0,2) ≈ 1/1.05^2
+
     # term life insurance
     ins = Insurance(
             SingleLife(mort = mt,issue_age = 0),
