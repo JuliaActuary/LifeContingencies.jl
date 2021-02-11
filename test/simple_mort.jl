@@ -7,6 +7,8 @@
             Yields.Constant(0.05)
     ) 
 
+    @test all(survival(SingleLife(mort = mt,issue_age = 0)) .== [1.0, 0.5,0.25])
+
     @test timepoints(ins) == [1.0,2.0]
     @test survival(ins) == [1.0,0.5]
     @test discount(ins) == [1.0 / 1.05, 1 / 1.05^2]
@@ -122,6 +124,7 @@ end
     @test present_value(AnnuityDue(ins_jl,n=0)) == 0
 
     @test survival(ins_jl,1) ≈ .5 + .5 - .5 * .5
+    @test all(survival(JointLife((ins.life,ins.life),LastSurvivor(),Frasier())) .== [1.,.75])
     @test present_value(Insurance(ins_jl)) ≈ .25 / 1.05
     @test present_value(Insurance(ins_jl,n=1)) ≈ 0.25 / 1.05
     @test present_value(Insurance(ins_jl,n=0)) ≈ 0
