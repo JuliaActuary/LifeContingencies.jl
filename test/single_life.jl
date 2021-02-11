@@ -44,7 +44,12 @@
     @testset "issue age 30" begin
         t = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
         i = Yields.Constant(0.05)
-        ins = LifeContingency(SingleLife(mort = t.select[30], issue_age = 30), i)
+        life = SingleLife(mort = t.select[30], issue_age = 30)
+        ins = LifeContingency(life, i)
+
+        @test life.issue_age == SingleLife(mort = t.select[30]).issue_age
+        @test life.issue_age == SingleLife(t.select[30]).issue_age
+        @test life.issue_age == SingleLife(t.select,issue_age= 30).issue_age
 
 
         @test l(ins, 0) ≈ 1.0

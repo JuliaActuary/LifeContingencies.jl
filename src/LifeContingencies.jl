@@ -63,11 +63,30 @@ Keyword arguments:
         issue_age  = 30          
     )
 """
-Base.@kwdef struct SingleLife <: Life
+struct SingleLife <: Life
     mort
-    issue_age::Int
-    alive=true
-    fractional_assump = mt.Uniform()
+    issue_age
+    alive
+    fractional_assump
+end
+
+function SingleLife(;mort,issue_age=nothing,alive=true,fractional_assump = mt.Uniform())
+    return SingleLife(mort;issue_age,alive,fractional_assump)
+end
+
+function SingleLife(mort;issue_age=nothing,alive=true,fractional_assump = mt.Uniform())
+    if isnothing(issue_age)
+        issue_age = firstindex(mort)
+    end
+
+    if !(eltype(mort) <: Real)
+        # most likely case is that mort is an array of vectors
+        # use issue age to select the right one (assuming indexed with issue age
+        return SingleLife(mort[issue_age],issue_age,alive,fractional_assump)
+    else
+        return SingleLife(mort,issue_age,alive,fractional_assump)
+    end
+        
 end
 
 """ 
@@ -396,7 +415,6 @@ function MortalityTables.survival(ins::Annuity)
     return [survival(ins.life,t) for t in timepoints(ins)]
 end
 
-
 """
     discount(Insurance)
 
@@ -426,7 +444,7 @@ end
 
 
 """
-    survival(Insurance)
+    probability(Insurance)
 
 The vector of contingent benefit probabilities for the given insurance.
 """
@@ -558,7 +576,17 @@ mt.survival(lc::LifeContingency,to_time) = survival(lc.life, 0, to_time)
 mt.survival(lc::LifeContingency,from_time,to_time) = survival(lc.life, from_time, to_time)
 
 mt.survival(l::SingleLife,to_time) = survival(l,0,to_time)
-mt.survival(l::SingleLife,from_time,to_time) = survival(l.mort,l.issue_age + from_time,l.issue_age + to_time, l.fractional_assump)
+mt.survival(l::SingleLife,from_time,to_time) =survival(l.mort,l.issue_age + from_time,l.issue_age + to_time, l.fractional_assump)
+
+"""
+    surival(life)
+
+Return a survival vector for the given life.
+"""
+function mt.survival(l::Life) 
+    ω =   omega(l)
+    return [survival(l,t) for t in 0:ω]
+end
 
 mt.survival(l::JointLife,to_time) = survival(l::JointLife,0,to_time)
 function mt.survival(l::JointLife,from_time,to_time) 
