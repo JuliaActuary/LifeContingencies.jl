@@ -44,8 +44,7 @@ using Yields
 import LifeConingencies: V, ä      # pull the shortform notation into scope
 
 # load mortality rates from MortalityTables.jl
-tbls = MortalityTables.tables()
-vbt2001 = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
+vbt2001 = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
 
 issue_age = 30
 life = SingleLife(                 # The life underlying the risk
@@ -108,8 +107,7 @@ Use a stochastic interest rate calculation to price a term policy:
 using LifeContingencies, MortalityTables
 using Distributions
 
-tbls = MortalityTables.tables()
-vbt2001 = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
+vbt2001 = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
 
 # use an interest rate that's normally distirbuted
 μ = 0.05
@@ -151,11 +149,10 @@ Compare the cost of annual premium, whole life insurance between multiple tables
 ```julia
 using LifeContingencies, MortalityTables, Plots
 
-tbls = MortalityTables.tables()
 tables = [
-    tbls["1980 CET - Male Nonsmoker, ANB"],
-    tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"],
-    tbls["2015 VBT Male Non-Smoker RR100 ANB"],
+    MortalityTables.table("1980 CET - Male Nonsmoker, ANB"),
+    MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"),
+    MortalityTables.table("2015 VBT Male Non-Smoker RR100 ANB"),
     ]
 
 issue_ages = 30:90
@@ -189,8 +186,8 @@ display(plt)
 ### Joint Life
 
 ```julia
-m1 = tbls["1986-92 CIA – Male Smoker, ANB"]
-m2 = tbls["1986-92 CIA – Female Nonsmoker, ANB"]
+m1 = MortalityTables.table("1986-92 CIA – Male Smoker, ANB")
+m2 = MortalityTables.table("1986-92 CIA – Female Nonsmoker, ANB")
 l1 = SingleLife(mort = m1.ultimate, issue_age = 40)
 l2 = SingleLife(mort = m2.ultimate, issue_age = 37)
 
@@ -239,6 +236,7 @@ a => present value of AnnuityImmediate
 P => premium_net
 ω => omega
 ```
+
 ### Commutation functions
 
 ```julia

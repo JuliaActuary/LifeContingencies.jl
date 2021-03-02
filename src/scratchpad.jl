@@ -18,10 +18,9 @@ interest_rate = 0.04
 # projection_scale = :G2
 # age_rule = :ANB
 
-tables = MortalityTables.tables()
 
-mort = tables[mort_table_name]
-imp = tables[improv_table]
+mort = MortalityTables.table(mort_table_name)
+imp = MortalityTables.table(improv_table)
 
 table_end = omega(mort)
 

@@ -37,8 +37,8 @@
         end
     
         @testset "CIA tables" begin
-            m1 = tbls["1986-92 CIA – Male Smoker, ANB"]
-            m2 = tbls["1986-92 CIA – Female Nonsmoker, ANB"]
+            m1 = MortalityTables.table("1986-92 CIA – Male Smoker, ANB")
+            m2 = MortalityTables.table("1986-92 CIA – Female Nonsmoker, ANB")
             l1 = SingleLife(mort = m1.ultimate, issue_age = 40)
             l2 = SingleLife(mort = m2.ultimate, issue_age = 37)
 
