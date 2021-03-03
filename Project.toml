@@ -1,7 +1,7 @@
 name = "LifeContingencies"
 uuid = "c8f0d631-89cd-4a1f-93d0-7542c3692561"
 authors = ["Alec Loudenback"]
-version = "1.0.2"
+version = "1.0.3"
 
 [deps]
 ActuaryUtilities = "bdd23359-8b1c-4f88-b89b-d11982a786f4"
@@ -12,7 +12,7 @@ Yields = "d7e99b2f-e7f3-4d9e-9f01-2338fc023ad3"
 
 [compat]
 ActuaryUtilities = "^0.6, ^1"
-MortalityTables = "^0.12, ^1"
+MortalityTables = "^0.12, ^1, ^2"
 Transducers = "^0.4"
 Yields = "^0.2"
 julia = "^1.5"

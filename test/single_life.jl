@@ -1,6 +1,6 @@
 @testset "Single Life" begin
     @testset "issue age 116" begin
-        t = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
+        t = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
         i = Yields.Constant(0.05)
         lc = LifeContingency(SingleLife(mort = t.ultimate, issue_age = 116), i)
 
@@ -42,7 +42,7 @@
     end
 
     @testset "issue age 30" begin
-        t = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
+        t = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
         i = Yields.Constant(0.05)
         life = SingleLife(mort = t.select[30], issue_age = 30)
         ins = LifeContingency(life, i)

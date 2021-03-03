@@ -55,8 +55,7 @@ Keyword arguments:
 
 # Examples
     using MortalityTables
-    tbls = MortalityTables.tables()
-    mort = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
+    mort = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
 
     SingleLife(
         mort       = mort.select[30], 
@@ -145,8 +144,7 @@ Keyword arguments:
 
 # Examples
     using MortalityTables
-    tbls = MortalityTables.tables()
-    mort = tbls["2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"]
+    mort = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
 
     l1 = SingleLife(
         mort       = mort.select[30], 
