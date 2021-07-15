@@ -41,7 +41,7 @@ Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base tab
 using LifeContingencies
 using MortalityTables
 using Yields
-import LifeConingencies: V, ä      # pull the shortform notation into scope
+import LifeContingencies: V, ä      # pull the shortform notation into scope
 
 # load mortality rates from MortalityTables.jl
 vbt2001 = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
