@@ -69,7 +69,8 @@ struct SingleLife <: Life
     fractional_assump
 end
 
-function SingleLife(;mort,issue_age=nothing,alive=true,fractional_assump = mt.Uniform())
+function SingleLife(;mort=nothing,issue_age=nothing,alive=true,fractional_assump = mt.Uniform())
+    isnothing(mort) || ArgumentError("Need to pass a mortality vector to `mort` argument.")
     return SingleLife(mort;issue_age,alive,fractional_assump)
 end
 
