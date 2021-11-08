@@ -41,7 +41,7 @@ Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base tab
 using LifeContingencies
 using MortalityTables
 using Yields
-import LifeContingencies: V, ä      # pull the shortform notation into scope
+import LifeContingencies: V, ä     # pull the shortform notation into scope
 
 # load mortality rates from MortalityTables.jl
 vbt2001 = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
@@ -67,7 +67,7 @@ cashflows(ins)                     # A vector of the unit cashflows
 timepoints(ins)                    # The timepoints associated with the cashflows
 survival(ins)                      # The survival vector
 benefit(ins)                       # The unit benefit vector
-probability(ins)                   # The probability of beneift payment
+probability(ins)                   # The probability of benefit payment
 ```
 
 Or calculate summary scalars:
@@ -81,7 +81,7 @@ V(lc,5)                            # Net premium reserve for whole life insuranc
 Other types of life contingent benefits:
 
 ```julia
-Insurance(lc,n=10)                   # 10 year term insurance
+Insurance(lc,n=10)                 # 10 year term insurance
 AnnuityImmediate(lc)               # Whole life annuity due
 AnnuityDue(lc)                     # Whole life annuity due
 ä(lc)                              # Shortform notation
@@ -116,10 +116,7 @@ vbt2001 = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate 
 years = 100
 int =   Yields.Forward(rand(Normal(μ,σ), years))
 
-life = SingleLife(
-    mort = vbt2001.select[30],
-    issue_age = 30
-)
+life = SingleLife(mort = vbt2001.select[30], issue_age = 30)
 
 term = 10
 Insurance(lc, n=term) # around 0.055
@@ -133,10 +130,10 @@ using the ability to self reference:
 ```julia
 σ = 0.01
 initial_rate = 0.05
-vec = fill(initial_rate,years)
+vec = fill(initial_rate, years)
 
 for i in 2:length(vec)
-    vec[i] = rand(Normal(vec[i-1],σ))
+    vec[i] = rand(Normal(vec[i-1], σ))
 end
 
 int = Yields.Forward(vec)
@@ -160,24 +157,19 @@ int = Yields.Constant(0.05)
 
 whole_life_costs = map(tables) do t
     map(issue_ages) do ia
-        lc = LifeContingency(
-                SingleLife(
-                    mort=t.ultimate,
-                    issue_age=ia
-                ),
-                int
-            )
-
+        lc = LifeContingency(SingleLife(mort = t.ultimate, issue_age = ia), int)
         premium_net(lc)
 
     end
 end
 
 plt = plot(ylabel="Annual Premium per unit", xlabel="Issue Age",
-            legend=:topleft, legendfontsize=8,size=(800,600))
+           legend=:topleft, legendfontsize=8,size=(800,600))
+
 for (i,t) in enumerate(tables)
-    plot!(plt,issue_ages,whole_life_costs[i], label="$(t.d.name)")
+    plot!(plt,issue_ages,whole_life_costs[i], label="$(t.metadata.name)")
 end
+
 display(plt)
 ```
 ![Comparison of three different mortality tables' effect on insurance cost](https://user-images.githubusercontent.com/711879/85190836-cb539800-b281-11ea-96b0-e3f3eab59449.png)
