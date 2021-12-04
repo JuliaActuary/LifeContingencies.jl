@@ -62,11 +62,11 @@ Keyword arguments:
         issue_age  = 30          
     )
 """
-struct SingleLife <: Life
-    mort
-    issue_age
-    alive
-    fractional_assump
+struct SingleLife{M,D} <: Life
+    mort::M
+    issue_age::Int
+    alive::Bool
+    fractional_assump::D
 end
 
 function SingleLife(; mort, issue_age = nothing, alive = true, fractional_assump = mt.Uniform())
@@ -161,10 +161,10 @@ Keyword arguments:
         joint_assumption = Frasier()
     )
 """
-Base.@kwdef struct JointLife <: Life
+Base.@kwdef struct JointLife{C<:Contingency,J<:JointAssumption} <: Life
     lives::Tuple{SingleLife,SingleLife}
-    contingency::Contingency = LastSurvivor()
-    joint_assumption::JointAssumption = Frasier()
+    contingency::C = LastSurvivor()
+    joint_assumption::J = Frasier()
 end
 
 """
@@ -279,15 +279,15 @@ abstract type Insurance end
 
 LifeContingency(ins::Insurance) = LifeContingency(ins.life, ins.int)
 
-struct WholeLife <: Insurance
-    life
-    int
+struct WholeLife{L,Y} <: Insurance
+    life::L
+    int::Y
 end
 
-struct Term <: Insurance
-    life
-    int
-    n
+struct Term{L,Y} <: Insurance
+    life::L
+    int::Y
+    n::Int
 end
 
 """
@@ -320,22 +320,23 @@ function Insurance(lc, int; n = nothing)
     end
 end
 
-struct Due end
-struct Immediate end
+abstract type AnnuityKind end
+struct Due <: AnnuityKind end
+struct Immediate <: AnnuityKind end
 
-struct Annuity <: Insurance
-    life
-    int
-    payable
-    n
-    start_time
-    certain
-    frequency
+struct Annuity{L,Y,K<:AnnuityKind} <: Insurance
+    life::L
+    int::Y
+    payable::K
+    n::Union{Nothing,Int}
+    start_time::Int
+    certain::Union{Nothing,Int}
+    frequency::Int
 end
 
-struct ZeroBenefit <: Insurance
-    life
-    int
+struct ZeroBenefit{L,Y} <: Insurance
+    life::L
+    int::Y
 end
 
 function ZeroBenefit(lc::LifeContingency)
@@ -474,11 +475,9 @@ end
 
 The vector of decremented benefit cashflows for the given insurance.
 """
-function cashflows(ins::Insurance)
-    ben = Iterators.repeated(benefit(ins))
-    return Iterators.map(zip(probability(ins), ben)) do (p, b)
-        p * b
-    end
+@inline function cashflows(ins::Insurance)
+    return Iterators.map(p -> p * benefit(ins), probability(ins))
+
 end
 
 
@@ -531,7 +530,7 @@ end
 
 The actuarial present value of the given insurance.
 """
-function ActuaryUtilities.present_value(ins)
+function ActuaryUtilities.present_value(ins::T) where {T<:Insurance}
     return present_value(ins.int, cashflows(ins), timepoints(ins))
 end
 
