@@ -252,7 +252,8 @@ end
 """
 function N(lc::LifeContingency, from_time)
     range = from_time:(omega(lc)-1)
-    return foldxt(+,Map(from_time->D(lc, from_time)), range)
+    vals = Iterators.map(from_time -> D(lc, from_time), range)
+    return sum(vals)
 end
 
 """
@@ -263,7 +264,8 @@ Issue age is based on the issue_age in the LifeContingency `lc`.
 """
 function M(lc::LifeContingency, from_time)
     range = from_time:omega(lc)-1
-    return foldxt(+, Map(from_time -> C(lc, from_time)), range)
+    vals = Iterators.map(from_time -> C(lc, from_time), range)
+    return sum(vals)
 end
 
 E(lc::LifeContingency, t, x) = D(lc, x + t) / D(lc, x)
@@ -406,11 +408,11 @@ end
 The survorship vector for the given insurance.
 """
 function MortalityTables.survival(ins::Insurance)
-    return [survival(ins.life, t - 1) for t in timepoints(ins)]
+    return Iterators.map(t -> survival(ins.life, t - 1), timepoints(ins))
 end
 
 function MortalityTables.survival(ins::Annuity)
-    return [survival(ins.life, t) for t in timepoints(ins)]
+    return Iterators.map(t -> survival(ins.life, t), timepoints(ins))
 end
 
 """
@@ -419,25 +421,25 @@ end
 The discount vector for the given insurance.
 """
 function Yields.discount(ins::Insurance)
-    return Yields.discount.(ins.int, timepoints(ins))
+    return Iterators.map(t -> Yields.discount.(ins.int, t), timepoints(ins))
 end
 
 
 """
     benefit(Insurance)
 
-The unit benefit vector for the given insurance.
+The unit benefit for the given insurance.
 """
 function benefit(ins::Insurance)
-    return ones(length(timepoints(ins)))
+    return 1.0
 end
 
 function benefit(ins::ZeroBenefit)
-    return zeros(length(timepoints(ins)))
+    return 0.0
 end
 
 function benefit(ins::Annuity)
-    return ones(length(timepoints(ins))) ./ ins.frequency
+    return 1.0 / ins.frequency
 end
 
 
@@ -447,18 +449,22 @@ end
 The vector of contingent benefit probabilities for the given insurance.
 """
 function probability(ins::Insurance)
-    return [survival(ins.life, t - 1) * decrement(ins.life, t - 1, t) for t in timepoints(ins)]
+    return Iterators.map(timepoints(ins)) do t
+        survival(ins.life, t - 1) * decrement(ins.life, t - 1, t)
+    end
 end
 
 function probability(ins::ZeroBenefit)
-    return ones(length(timepoints(ins)))
+    return Iterators.repeated(1.0, length(timepoints(ins)))
 end
 
 function probability(ins::Annuity)
     if isnothing(ins.certain)
-        return [survival(ins.life, t) for t in timepoints(ins)]
+        return Iterators.map(t -> survival(ins.life, t), timepoints(ins))
     else
-        return [t <= ins.certain + ins.start_time ? 1.0 : survival(ins.life, t) for t in timepoints(ins)]
+        return Iterators.map(timepoints(ins)) do t
+            t <= ins.certain + ins.start_time ? 1.0 : survival(ins.life, t)
+        end
     end
 end
 
@@ -469,7 +475,9 @@ end
 The vector of decremented benefit cashflows for the given insurance.
 """
 function cashflows(ins::Insurance)
-    return probability(ins) .* benefit(ins)
+    return Iterators.map(zip(probability(ins), benefit(ins))) do (p, b)
+        p * b
+    end
 end
 
 
@@ -479,15 +487,15 @@ end
 The vector of times corresponding to the cashflow vector for the given insurance.
 """
 function timepoints(ins::Insurance)
-    return collect(1:omega(ins.life))
+    return 1:omega(ins.life)
 end
 
 function timepoints(ins::Term)
-    return collect(1:min(omega(ins.life), ins.n))
+    return 1:min(omega(ins.life), ins.n)
 end
 
 function timepoints(ins::ZeroBenefit)
-    return [0.0]
+    return Iterators.repeated(0.0, 1)
 end
 
 function timepoints(ins::Annuity)
@@ -501,7 +509,8 @@ function timepoints(ins::Annuity, payable::Due)
         end_time = ins.n + ins.start_time - 1 / ins.frequency
     end
     timestep = 1 / ins.frequency
-    collect(ins.start_time:timestep:end_time)
+
+    return ins.start_time:timestep:end_time
 end
 
 function timepoints(ins::Annuity, payable::Immediate)
@@ -512,7 +521,8 @@ function timepoints(ins::Annuity, payable::Immediate)
     end
     timestep = 1 / ins.frequency
     end_time = max(ins.start_time + timestep, end_time) # return at least one timepoint to avoid returning empty array
-    collect((ins.start_time+timestep):timestep:end_time)
+
+    return ((ins.start_time+timestep):timestep:end_time)
 end
 
 """
@@ -568,7 +578,7 @@ mt.decrement(lc::LifeContingency, from_time, to_time) = 1 - survival(lc.life, fr
     survival(lc::LifeContingency,from_time,to_time)
     survival(lc::LifeContingency,to_time)
 
-Return the probablity of survival for the given LifeContingency. 
+Return the probability of survival for the given LifeContingency. 
 """
 mt.survival(lc::LifeContingency, to_time) = survival(lc.life, 0, to_time)
 mt.survival(lc::LifeContingency, from_time, to_time) = survival(lc.life, from_time, to_time)
@@ -577,7 +587,7 @@ mt.survival(l::SingleLife, to_time) = survival(l, 0, to_time)
 mt.survival(l::SingleLife, from_time, to_time) = survival(l.mort, l.issue_age + from_time, l.issue_age + to_time, l.fractional_assump)
 
 """
-    surival(life)
+    survival(life)
 
 Return a survival vector for the given life.
 """
