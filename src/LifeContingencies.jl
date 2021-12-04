@@ -475,7 +475,8 @@ end
 The vector of decremented benefit cashflows for the given insurance.
 """
 function cashflows(ins::Insurance)
-    return Iterators.map(zip(probability(ins), benefit(ins))) do (p, b)
+    ben = Iterators.repeated(benefit(ins))
+    return Iterators.map(zip(probability(ins), ben)) do (p, b)
         p * b
     end
 end

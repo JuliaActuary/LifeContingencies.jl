@@ -12,7 +12,7 @@
     @test [timepoints(ins)...] == [1.0, 2.0]
     @test [survival(ins)...] == [1.0, 0.5]
     @test [discount(ins)...] == [1.0 / 1.05, 1 / 1.05^2]
-    @test [benefit(ins)...] == [1.0, 1.0]
+    @test benefit(ins) == 1.0
     @test [probability(ins)...] == [0.5, 0.25]
     @test [cashflows(ins)...] == [0.5, 0.25]
     @test [cashflows(ins)...] == benefit(ins) .* probability(ins)
@@ -32,13 +32,13 @@
         n = 1
     )
 
-    @test survival(ins) == [1.0]
-    @test discount(ins) == [1.0 / 1.05]
-    @test benefit(ins) == [1.0]
-    @test probability(ins) == [0.5]
-    @test cashflows(ins) == [0.5]
-    @test cashflows(ins) == benefit(ins) .* probability(ins)
-    @test timepoints(ins) == [1.0]
+    @test [survival(ins)...] == [1.0]
+    @test [discount(ins)...] == [1.0 / 1.05]
+    @test benefit(ins) == 1.0
+    @test [probability(ins)...] == [0.5]
+    @test [cashflows(ins)...] == [0.5]
+    @test [cashflows(ins)...] == benefit(ins) .* probability(ins)
+    @test [timepoints(ins)...] == [1.0]
     @test present_value(ins) ≈ 0.5 / 1.05
 
     # annuity due
@@ -47,13 +47,13 @@
         Yields.Constant(0.05)
     )
 
-    @test survival(ins) == [1.0, 0.5, 0.25]
-    @test discount(ins) == [1.0, 1 / 1.05^1, 1 / 1.05^2]
-    @test benefit(ins) == [1.0, 1.0, 1.0]
-    @test timepoints(ins) == [0.0, 1.0, 2.0]
-    @test probability(ins) == [1.0, 0.5, 0.25]
-    @test cashflows(ins) == [1.0, 0.5, 0.25]
-    @test cashflows(ins) == benefit(ins) .* probability(ins)
+    @test [survival(ins)...] == [1.0, 0.5, 0.25]
+    @test [discount(ins)...] == [1.0, 1 / 1.05^1, 1 / 1.05^2]
+    @test benefit(ins) == 1.0
+    @test [timepoints(ins)...] == [0.0, 1.0, 2.0]
+    @test [probability(ins)...] == [1.0, 0.5, 0.25]
+    @test [cashflows(ins)...] == [1.0, 0.5, 0.25]
+    @test [cashflows(ins)...] == benefit(ins) .* probability(ins)
     @test present_value(ins) ≈ 1 + 1 * 0.5 / 1.05 + 1 * 0.25 / 1.05^2
 
     ins = AnnuityDue(
@@ -79,7 +79,7 @@
     )
 
     @test timepoints(ins) == [1.0]
-    @test probability(ins) == [0.5]
+    @test [probability(ins)...] == [0.5]
     @test present_value(ins) ≈ 1 * 0.5 * 1 / 1.05
 
 end
