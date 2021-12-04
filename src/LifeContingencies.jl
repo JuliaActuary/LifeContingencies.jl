@@ -603,16 +603,13 @@ end
 Yields.discount(lc::LifeContingency, t) = discount(lc.int, t)
 Yields.discount(lc::LifeContingency, t1, t2) = discount(lc.int, t1, t2)
 
-# function compostion with kwargs. 
-# https://stackoverflow.com/questions/64740010/how-to-alias-composite-function-with-keyword-arguments
-⋄(f, g) = (x...; kw...) -> f(g(x...; kw...))
 
 # unexported aliases
 const V = reserve_premium_net
 const v = Yields.discount
-const A = present_value ⋄ Insurance
-const a = present_value ⋄ AnnuityImmediate
-const ä = present_value ⋄ AnnuityDue
+const A = present_value ∘ Insurance
+const a = present_value ∘ AnnuityImmediate
+const ä = present_value ∘ AnnuityDue
 const P = premium_net
 const ω = omega
 
