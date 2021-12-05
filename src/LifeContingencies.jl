@@ -310,13 +310,13 @@ ins = Insurance(
 """
 Insurance(lc::LifeContingency; n = nothing) = Insurance(lc.life, lc.int; n)
 
-function Insurance(lc, int; n = nothing)
+function Insurance(life, int; n::Union{Int,Nothing} = nothing)
     if isnothing(n)
-        return WholeLife(lc, int)
+        return WholeLife(life, int)
     elseif n < 1
-        return ZeroBenefit(lc, int)
+        return ZeroBenefit(life, int)
     else
-        Term(lc, int, n)
+        Term(life, int, n)
     end
 end
 
