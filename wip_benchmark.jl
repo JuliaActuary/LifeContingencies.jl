@@ -19,5 +19,4 @@ lc = LifeContingency(life, yield)  # LifeContingency joins the risk with interes
 @benchmark LifeContingencies.N(lc, 10)
 
 ins = Insurance(lc)
-
 premium_net(lc)
