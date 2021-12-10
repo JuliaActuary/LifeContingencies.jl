@@ -171,9 +171,9 @@ end
     struct LifeContingency
         life::Life
 """
-struct LifeContingency
-    life::Life
-    int
+struct LifeContingency{L,Y}
+    life::L
+    int::Y
 end
 
 Base.broadcastable(lc::LifeContingency) = Ref(lc)
@@ -277,7 +277,9 @@ E(lc::LifeContingency, t, x) = D(lc, x + t) / D(lc, x)
 
 abstract type Insurance end
 
-LifeContingency(ins::Insurance) = LifeContingency(ins.life, ins.int)
+function LifeContingency(ins::I) where {I<:Insurance}
+    LifeContingency(ins.life, ins.int)
+end
 
 struct WholeLife{L,Y} <: Insurance
     life::L
@@ -308,32 +310,43 @@ ins = Insurance(
 ) 
 ```
 """
-Insurance(lc::LifeContingency; n = nothing) = Insurance(lc.life, lc.int; n)
+Insurance(lc::LifeContingency, n) = Insurance(lc.life, lc.int, n)
+Insurance(lc::LifeContingency) = Insurance(lc.life, lc.int)
 
-function Insurance(life, int; n::Union{Int,Nothing} = nothing)
-    if isnothing(n)
-        return WholeLife(life, int)
-    elseif n < 1
-        return ZeroBenefit(life, int)
-    else
-        Term(life, int, n)
-    end
+function Insurance(life, int, n::Int)
+    return Term(life, int, n)
+end
+function Insurance(life, int)
+    return WholeLife(life, int)
 end
 
 abstract type AnnuityKind end
 struct Due <: AnnuityKind end
 struct Immediate <: AnnuityKind end
 
-struct Annuity{L,Y,K<:AnnuityKind} <: Insurance
+abstract type AnnuityPayable end
+abstract type AnnuityCertain <: AnnuityPayable end
+
+struct TermCertain <: AnnuityCertain
+    term::Int
+    certain::Int
+end
+struct LifeCertain <: AnnuityCertain
+    certain::Int
+end
+struct TermAnnuity <: AnnuityPayable
+    term::Int
+end
+struct LifeAnnuity <: AnnuityPayable end
+
+struct Annuity{L,Y,K<:AnnuityKind,P<:AnnuityPayable} <: Insurance
     life::L
     int::Y
-    payable::K
-    n::Union{Nothing,Int}
+    kind::K
+    payable::P
     start_time::Int
-    certain::Union{Nothing,Int}
     frequency::Int
 end
-
 struct ZeroBenefit{L,Y} <: Insurance
     life::L
     int::Y
@@ -358,20 +371,31 @@ ins = AnnuityDue(
     n = 1
 ) 
 ```
-
+#TODO update docs
 """
-function AnnuityDue(life, int; n = nothing, start_time = 0, certain = nothing, frequency = 1)
-    if ~isnothing(n) && n < 1
-        return ZeroBenefit(life, int)
+function AnnuityDue(life, int, n; certain = nothing, start_time = 0, frequency = 1)
+    if isnothing(certain)
+        Annuity(life, int, Due(), TermAnnuity(n), start_time, frequency)
     else
-        Annuity(life, int, Due(), n, start_time, certain, frequency)
+        Annuity(life, int, Due(), TermCertain(n, certain), start_time, frequency)
     end
 end
 
-function AnnuityDue(lc::LifeContingency; n = nothing, start_time = 0, certain = nothing, frequency = 1)
-    return AnnuityDue(lc.life, lc.int; n, start_time, certain, frequency)
+function AnnuityDue(life, int; certain = nothing, start_time = 0, frequency = 1)
+    if isnothing(certain)
+        Annuity(life, int, Due(), LifeAnnuity(), start_time, frequency)
+    else
+        Annuity(life, int, Due(), LifeCertain(certain), start_time, frequency)
+    end
 end
 
+function AnnuityDue(lc::L, n; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
+    return AnnuityDue(lc.life, lc.int, n; certain, start_time, frequency)
+end
+
+function AnnuityDue(lc::L; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
+    return AnnuityDue(lc.life, lc.int; certain, start_time, frequency)
+end
 
 """
     AnnuityImmediate(lc::LifeContingency; n=nothing, start_time=0; certain=nothing,frequency=1)
@@ -406,9 +430,9 @@ end
 """
     survival(Insurance)
 
-The survorship vector for the given insurance.
+The survivorship vector for the given insurance.
 """
-function MortalityTables.survival(ins::Insurance)
+function MortalityTables.survival(ins::I) where {I<:Insurance}
     return Iterators.map(t -> survival(ins.life, t - 1), timepoints(ins))
 end
 
@@ -421,7 +445,7 @@ end
 
 The discount vector for the given insurance.
 """
-function Yields.discount(ins::Insurance)
+function Yields.discount(ins::I) where {I<:Insurance}
     return Iterators.map(t -> Yields.discount.(ins.int, t), timepoints(ins))
 end
 
@@ -431,7 +455,7 @@ end
 
 The unit benefit for the given insurance.
 """
-function benefit(ins::Insurance)
+function benefit(ins::I) where {I<:Insurance}
     return 1.0
 end
 
@@ -449,7 +473,9 @@ end
 
 The vector of contingent benefit probabilities for the given insurance.
 """
-function probability(ins::Insurance)
+function probability(ins::I) where {I<:Insurance}
+    # f(t) = survival(ins.life, 0, t) * (1 - survival(lc.life, t - 1, t))
+    # f(t) = (survival(ins.life, 0, t) - survival(ins.life, 0, t) * survival(lc.life, t - 1, t))
     return Iterators.map(timepoints(ins)) do t
         survival(ins.life, t - 1) * decrement(ins.life, t - 1, t)
     end
@@ -460,12 +486,16 @@ function probability(ins::ZeroBenefit)
 end
 
 function probability(ins::Annuity)
-    if isnothing(ins.certain)
-        return Iterators.map(t -> survival(ins.life, t), timepoints(ins))
-    else
-        return Iterators.map(timepoints(ins)) do t
-            t <= ins.certain + ins.start_time ? 1.0 : survival(ins.life, t)
-        end
+    return probability(ins.payable, ins)
+end
+
+function probability(ap::AP, ins::Annuity) where {AP<:AnnuityPayable}
+    return Iterators.map(t -> survival(ins.life, t), timepoints(ins))
+end
+
+function probability(ap::AP, ins::Annuity) where {AP<:AnnuityCertain}
+    return Iterators.map(timepoints(ins)) do t
+        t <= ap.certain + ins.start_time ? 1.0 : survival(ins.life, t)
     end
 end
 
@@ -475,7 +505,7 @@ end
 
 The vector of decremented benefit cashflows for the given insurance.
 """
-@inline function cashflows(ins::Insurance)
+@inline function cashflows(ins::I) where {I<:Insurance}
     return Iterators.map(p -> p * benefit(ins), probability(ins))
 
 end
@@ -486,11 +516,11 @@ end
 
 The vector of times corresponding to the cashflow vector for the given insurance.
 """
-function timepoints(ins::Insurance)
+function timepoints(ins::Insurance)::UnitRange{Int64}
     return 1:omega(ins.life)
 end
 
-function timepoints(ins::Term)
+function timepoints(ins::Term)::UnitRange{Int64}
     return 1:min(omega(ins.life), ins.n)
 end
 
@@ -499,21 +529,40 @@ function timepoints(ins::ZeroBenefit)
 end
 
 function timepoints(ins::Annuity)
-    return timepoints(ins, ins.payable)
+    return timepoints(ins, ins.kind)
 end
 
-function timepoints(ins::Annuity, payable::Due)
-    if isnothing(ins.n)
-        end_time = omega(ins.life)
-    else
-        end_time = ins.n + ins.start_time - 1 / ins.frequency
-    end
-    timestep = 1 / ins.frequency
+function timepoints(ins::Annuity, ::Due)
+    return timepoints(ins.payable, ins, Due())
+end
 
+function timepoints(ap::LifeCertain, ins::Annuity, ::Due)
+    end_time = omega(ins.life)
+    timestep = 1 / ins.frequency
     return ins.start_time:timestep:end_time
 end
 
-function timepoints(ins::Annuity, payable::Immediate)
+function timepoints(ap::LifeAnnuity, ins::Annuity, ::Due)
+    # same timepoints as LifeCertain
+    end_time = omega(ins.life)
+    timestep = 1 / ins.frequency
+    return ins.start_time:timestep:end_time
+end
+
+function timepoints(ap::TermCertain, ins::Annuity, ::Due)
+    end_time = ap.n + ins.start_time - 1 / ins.frequency
+    timestep = 1 / ins.frequency
+    return ins.start_time:timestep:end_time
+end
+
+function timepoints(ap::TermAnnuity, ins::Annuity, ::Due)
+    # same timepoints as 
+    end_time = ap.n + ins.start_time - 1 / ins.frequency
+    timestep = 1 / ins.frequency
+    return ins.start_time:timestep:end_time
+end
+
+function timepoints(ins::Annuity, ::Immediate)
     if isnothing(ins.n)
         end_time = omega(ins.life)
     else
@@ -531,7 +580,11 @@ end
 The actuarial present value of the given insurance.
 """
 function ActuaryUtilities.present_value(ins::T) where {T<:Insurance}
-    return present_value(ins.int, cashflows(ins), timepoints(ins))
+    cfs = cashflows(ins)
+    times = timepoints(ins)
+    yield = ins.int
+    pv = present_value(yield, cfs, times)
+    return pv
 end
 
 """
@@ -542,7 +595,11 @@ The net premium for a whole life insurance (without second argument) or a term l
 
 The net premium is based on 1 unit of insurance with the death benfit payable at the end of the year and assuming annual net premiums.
 """
-premium_net(lc::LifeContingency) = A(lc) / ä(lc)
+function premium_net(lc::LifeContingency)
+    ins = A(lc)
+    ann = ä(lc)
+    return ins / ann
+end
 premium_net(lc::LifeContingency, to_time) = A(lc, to_time) / ä(lc, to_time)
 
 """
@@ -591,9 +648,9 @@ mt.survival(l::SingleLife, from_time, to_time) = survival(l.mort, l.issue_age + 
 
 Return a survival vector for the given life.
 """
-function mt.survival(l::Life)
+function mt.survival(l::L) where {L<:Life}
     ω = omega(l)
-    return [survival(l, t) for t = 0:ω]
+    return Iterators.map(t -> survival(l, t), 0:ω)
 end
 
 mt.survival(l::JointLife, to_time) = survival(l::JointLife, 0, to_time)
@@ -617,9 +674,9 @@ Yields.discount(lc::LifeContingency, t1, t2) = discount(lc.int, t1, t2)
 # unexported aliases
 const V = reserve_premium_net
 const v = Yields.discount
-const A = present_value ∘ Insurance
-const a = present_value ∘ AnnuityImmediate
-const ä = present_value ∘ AnnuityDue
+A(x) = present_value(Insurance(x))
+a = present_value ∘ AnnuityImmediate
+ä(x) = present_value(AnnuityDue(x))
 const P = premium_net
 const ω = omega
 
