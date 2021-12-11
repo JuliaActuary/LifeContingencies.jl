@@ -39,7 +39,7 @@ abstract type Life end
 
 """
     struct SingleLife
-        mort
+        mortality
         issue_age::Int
         alive::Bool
         fractional_assump::MortalityTables.DeathDistribution
@@ -48,14 +48,14 @@ abstract type Life end
 A `Life` object containing the necessary assumptions for contingent maths related to a single life. Use with a `LifeContingency` to do many actuarial present value calculations. 
 
 Keyword arguments:
-- `mort` pass a mortality vector, which is an array of applicable mortality rates indexed by attained age
+- `mortality` pass a mortality vector, which is an array of applicable mortality rates indexed by attained age
 - `issue_age` is the assumed issue age for the `SingleLife` and is the basis of many contingency calculations.
 - `alive` Default value is `true`. Useful for joint insurances with different status on the lives insured.
 - `fractional_assump`. Default value is `Uniform()`. This is a `DeathDistribution` from the `MortalityTables.jl` package and is the assumption to use for non-integer ages/times.
 
 # Examples
     using MortalityTables
-    mort = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
+    mortality = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
 
     SingleLife(
         mort       = mort.select[30], 
@@ -63,27 +63,27 @@ Keyword arguments:
     )
 """
 struct SingleLife{M,D} <: Life
-    mort::M
+    mortality::M
     issue_age::Int
     alive::Bool
     fractional_assump::D
 end
 
-function SingleLife(; mort, issue_age = nothing, alive = true, fractional_assump = mt.Uniform())
-    return SingleLife(mort; issue_age, alive, fractional_assump)
+function SingleLife(; mortality, issue_age = nothing, alive = true, fractional_assump = mt.Uniform())
+    return SingleLife(mortality; issue_age, alive, fractional_assump)
 end
 
-function SingleLife(mort; issue_age = nothing, alive = true, fractional_assump = mt.Uniform())
+function SingleLife(mortality; issue_age = nothing, alive = true, fractional_assump = mt.Uniform())
     if isnothing(issue_age)
-        issue_age = firstindex(mort)
+        issue_age = firstindex(mortality)
     end
 
-    if !(eltype(mort) <: Real)
-        # most likely case is that mort is an array of vectors
+    if !(eltype(mortality) <: Real)
+        # most likely case is that mortality is an array of vectors
         # use issue age to select the right one (assuming indexed with issue age
-        return SingleLife(mort[issue_age], issue_age, alive, fractional_assump)
+        return SingleLife(mortality[issue_age], issue_age, alive, fractional_assump)
     else
-        return SingleLife(mort, issue_age, alive, fractional_assump)
+        return SingleLife(mortality, issue_age, alive, fractional_assump)
     end
 
 end
@@ -99,7 +99,7 @@ abstract type JointAssumption end
 """ 
     Frasier()
 
-The assumption of independnt lives in a joint life calculation.
+The assumption of independent lives in a joint life calculation.
 Is a subtype of `JointAssumption`.
 """
 struct Frasier <: JointAssumption end
@@ -144,14 +144,14 @@ Keyword arguments:
 
 # Examples
     using MortalityTables
-    mort = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
+    mortality = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
 
     l1 = SingleLife(
-        mort       = mort.select[30], 
+        mortality       = mortality.select[30], 
         issue_age  = 30          
     )
     l2 = SingleLife(
-        mort       = mort.select[30], 
+        mortality       = mortality.select[30], 
         issue_age  = 30          
     )
 
@@ -204,7 +204,7 @@ function mt.omega(lc::LifeContingency)
 end
 
 function mt.omega(l::SingleLife)
-    return mt.omega(l.mort) - l.issue_age + 1
+    return mt.omega(l.mortality) - l.issue_age + 1
 end
 
 function mt.omega(l::JointLife)
@@ -289,14 +289,16 @@ end
 struct Term{L,Y} <: Insurance
     life::L
     int::Y
-    n::Int
+    term::Int
 end
 
 """
-    Insurance(lc::LifeContingency; n=nothing)
-    Insurance(life,interest; n=nothing)
+    Insurance(lc::LifeContingency, term)
+    Insurance(life,interest, term)
+    Insurance(lc::LifeContingency)
+    Insurance(life,interest)
 
-Life insurance with a term period of `n`. If `n` is `nothing`, then whole life insurance.
+Life insurance with a term period of `term`. If `term` is `nothing`, then whole life insurance.
 
 Issue age is based on the `issue_age` in the LifeContingency `lc`.
 
@@ -304,17 +306,18 @@ Issue age is based on the `issue_age` in the LifeContingency `lc`.
 
 ```
 ins = Insurance(
-    SingleLife(mort = UltimateMortality([0.5,0.5]),issue_age = 0),
+    SingleLife(mortality = UltimateMortality([0.5,0.5]),issue_age = 0),
     Yields.Constant(0.05),
-    n = 1
+    1           # 1 year term
 ) 
 ```
 """
-Insurance(lc::LifeContingency, n) = Insurance(lc.life, lc.int, n)
+Insurance(lc::LifeContingency, term) = Insurance(lc.life, lc.int, term)
 Insurance(lc::LifeContingency) = Insurance(lc.life, lc.int)
 
-function Insurance(life, int, n::Int)
-    return Term(life, int, n)
+function Insurance(life, int, term::Int)
+    term < 1 && return ZeroBenefit(life, int)
+    return Term(life, int, term)
 end
 function Insurance(life, int)
     return WholeLife(life, int)
@@ -366,18 +369,19 @@ Annuity due with the benefit period starting at `start_time` and ending after `n
 
 ```
 ins = AnnuityDue(
-    SingleLife(mort = UltimateMortality([0.5,0.5]),issue_age = 0),
+    SingleLife(mortality = UltimateMortality([0.5,0.5]),issue_age = 0),
     Yields.Constant(0.05),
-    n = 1
+    1, # term of policy
 ) 
 ```
 #TODO update docs
 """
-function AnnuityDue(life, int, n; certain = nothing, start_time = 0, frequency = 1)
+function AnnuityDue(life, int, term; certain = nothing, start_time = 0, frequency = 1)
+    term < 1 && return ZeroBenefit(life, int)
     if isnothing(certain)
-        Annuity(life, int, Due(), TermAnnuity(n), start_time, frequency)
+        Annuity(life, int, Due(), TermAnnuity(term), start_time, frequency)
     else
-        Annuity(life, int, Due(), TermCertain(n, certain), start_time, frequency)
+        Annuity(life, int, Due(), TermCertain(term, certain), start_time, frequency)
     end
 end
 
@@ -389,8 +393,8 @@ function AnnuityDue(life, int; certain = nothing, start_time = 0, frequency = 1)
     end
 end
 
-function AnnuityDue(lc::L, n; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
-    return AnnuityDue(lc.life, lc.int, n; certain, start_time, frequency)
+function AnnuityDue(lc::L, term; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
+    return AnnuityDue(lc.life, lc.int, term; certain, start_time, frequency)
 end
 
 function AnnuityDue(lc::L; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
@@ -398,32 +402,45 @@ function AnnuityDue(lc::L; certain = nothing, start_time = 0, frequency = 1) whe
 end
 
 """
-    AnnuityImmediate(lc::LifeContingency; n=nothing, start_time=0; certain=nothing,frequency=1)
-    AnnuityImmediate(life, interest; n=nothing, start_time=0; certain=nothing,frequency=1)
+    AnnuityImmediate(lc::LifeContingency; term=nothing, start_time=0; certain=nothing,frequency=1)
+    AnnuityImmediate(life, interest; term=nothing, start_time=0; certain=nothing,frequency=1)
 
-Annuity immediate with the benefit period starting at `start_time` and ending after `n` periods with `frequency` payments per year of `1/frequency` amount and a `certain` period with non-contingent payments. 
+Annuity immediate with the benefit period starting at `start_time` and ending after `term` periods with `frequency` payments per year of `1/frequency` amount and a `certain` period with non-contingent payments. 
 
 # Examples
 
 ```
 ins = AnnuityImmediate(
-    SingleLife(mort = UltimateMortality([0.5,0.5]),issue_age = 0),
+    SingleLife(mortality = UltimateMortality([0.5,0.5]),issue_age = 0),
     Yields.Constant(0.05),
-    n = 1
+    1 # term of policy
 ) 
 ```
 
 """
-function AnnuityImmediate(life, int; n = nothing, start_time = 0, certain = nothing, frequency = 1)
-    if ~isnothing(n) && n < 1
-        return ZeroBenefit(life, int)
+function AnnuityImmediate(life, int, term; certain = nothing, start_time = 0, frequency = 1)
+    term < 1 && return ZeroBenefit(life, int)
+    if isnothing(certain)
+        Annuity(life, int, Immediate(), TermAnnuity(term), start_time, frequency)
     else
-        return Annuity(life, int, Immediate(), n, start_time, certain, frequency)
+        Annuity(life, int, Immediate(), TermCertain(term, certain), start_time, frequency)
     end
 end
 
-function AnnuityImmediate(lc::LifeContingency; n = nothing, start_time = 0, certain = nothing, frequency = 1)
-    return AnnuityImmediate(lc.life, lc.int; n, start_time, certain, frequency)
+function AnnuityImmediate(life, int; certain = nothing, start_time = 0, frequency = 1)
+    if isnothing(certain)
+        Annuity(life, int, Immediate(), LifeAnnuity(), start_time, frequency)
+    else
+        Annuity(life, int, Immediate(), LifeCertain(certain), start_time, frequency)
+    end
+end
+
+function AnnuityImmediate(lc::L, term; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
+    return AnnuityImmediate(lc.life, lc.int, term; certain, start_time, frequency)
+end
+
+function AnnuityImmediate(lc::L; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
+    return AnnuityImmediate(lc.life, lc.int; certain, start_time, frequency)
 end
 
 
@@ -505,9 +522,9 @@ end
 
 The vector of decremented benefit cashflows for the given insurance.
 """
-@inline function cashflows(ins::I) where {I<:Insurance}
-    return Iterators.map(p -> p * benefit(ins), probability(ins))
-
+function cashflows(ins::I) where {I<:Insurance}
+    b = benefit(ins)
+    return Iterators.map(p -> p * b, probability(ins))
 end
 
 
@@ -521,7 +538,7 @@ function timepoints(ins::Insurance)::UnitRange{Int64}
 end
 
 function timepoints(ins::Term)::UnitRange{Int64}
-    return 1:min(omega(ins.life), ins.n)
+    return 1:min(omega(ins.life), ins.term)
 end
 
 function timepoints(ins::ZeroBenefit)
@@ -532,8 +549,8 @@ function timepoints(ins::Annuity)
     return timepoints(ins, ins.kind)
 end
 
-function timepoints(ins::Annuity, ::Due)
-    return timepoints(ins.payable, ins, Due())
+function timepoints(ins::Annuity, kind::K) where {K<:AnnuityKind}
+    return timepoints(ins.payable, ins, kind)
 end
 
 function timepoints(ap::LifeCertain, ins::Annuity, ::Due)
@@ -550,28 +567,46 @@ function timepoints(ap::LifeAnnuity, ins::Annuity, ::Due)
 end
 
 function timepoints(ap::TermCertain, ins::Annuity, ::Due)
-    end_time = ap.n + ins.start_time - 1 / ins.frequency
+    end_time = ap.term + ins.start_time - 1 / ins.frequency
     timestep = 1 / ins.frequency
     return ins.start_time:timestep:end_time
 end
 
 function timepoints(ap::TermAnnuity, ins::Annuity, ::Due)
     # same timepoints as 
-    end_time = ap.n + ins.start_time - 1 / ins.frequency
+    end_time = ap.term + ins.start_time - 1 / ins.frequency
     timestep = 1 / ins.frequency
     return ins.start_time:timestep:end_time
 end
 
-function timepoints(ins::Annuity, ::Immediate)
-    if isnothing(ins.n)
-        end_time = omega(ins.life)
-    else
-        end_time = ins.n + ins.start_time
-    end
+function timepoints(ap::LifeCertain, ins::Annuity, ::Immediate)
+    end_time = omega(ins.life)
     timestep = 1 / ins.frequency
     end_time = max(ins.start_time + timestep, end_time) # return at least one timepoint to avoid returning empty array
+    return (ins.start_time+timestep):timestep:end_time
+end
 
-    return ((ins.start_time+timestep):timestep:end_time)
+function timepoints(ap::LifeAnnuity, ins::Annuity, ::Immediate)
+    # same timepoints as LifeCertain
+    end_time = omega(ins.life)
+    timestep = 1 / ins.frequency
+    end_time = max(ins.start_time + timestep, end_time) # return at least one timepoint to avoid returning empty array
+    return (ins.start_time+timestep):timestep:end_time
+end
+
+function timepoints(ap::TermCertain, ins::Annuity, ::Immediate)
+    end_time = ap.term + ins.start_time
+    timestep = 1 / ins.frequency
+    end_time = max(ins.start_time + timestep, end_time) # return at least one timepoint to avoid returning empty array
+    return (ins.start_time+timestep):timestep:end_time
+end
+
+function timepoints(ap::TermAnnuity, ins::Annuity, ::Immediate)
+    # same timepoints as 
+    end_time = ap.term + ins.start_time
+    timestep = 1 / ins.frequency
+    end_time = max(ins.start_time + timestep, end_time) # return at least one timepoint to avoid returning empty array
+    return (ins.start_time+timestep):timestep:end_time
 end
 
 """
@@ -596,10 +631,9 @@ The net premium for a whole life insurance (without second argument) or a term l
 The net premium is based on 1 unit of insurance with the death benfit payable at the end of the year and assuming annual net premiums.
 """
 function premium_net(lc::LifeContingency)
-    ins = A(lc)
-    ann = ä(lc)
-    return ins / ann
+    return A(lc) / ä(lc)
 end
+
 premium_net(lc::LifeContingency, to_time) = A(lc, to_time) / ä(lc, to_time)
 
 """
@@ -608,8 +642,8 @@ premium_net(lc::LifeContingency, to_time) = A(lc, to_time) / ä(lc, to_time)
 The net premium reserve at the end of year `time`.
 """
 function reserve_premium_net(lc::LifeContingency, time)
-    PVFB = A(lc) - A(lc, n = time)
-    PVFP = premium_net(lc) * (ä(lc) - ä(lc, n = time))
+    PVFB = A(lc) - A(lc, time)
+    PVFP = premium_net(lc) * (ä(lc) - ä(lc, time))
     return (PVFB - PVFP) / APV(lc, time)
 end
 
@@ -641,7 +675,7 @@ mt.survival(lc::LifeContingency, to_time) = survival(lc.life, 0, to_time)
 mt.survival(lc::LifeContingency, from_time, to_time) = survival(lc.life, from_time, to_time)
 
 mt.survival(l::SingleLife, to_time) = survival(l, 0, to_time)
-mt.survival(l::SingleLife, from_time, to_time) = survival(l.mort, l.issue_age + from_time, l.issue_age + to_time, l.fractional_assump)
+mt.survival(l::SingleLife, from_time, to_time) = survival(l.mortality, l.issue_age + from_time, l.issue_age + to_time, l.fractional_assump)
 
 """
     survival(life)
@@ -662,8 +696,8 @@ function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, f
     to_time == 0 && return 1.0
 
     l1, l2 = l.lives
-    ₜpₓ = survival(l1.mort, l1.issue_age + from_time, l1.issue_age + to_time, l1.fractional_assump)
-    ₜpᵧ = survival(l2.mort, l2.issue_age + from_time, l2.issue_age + to_time, l2.fractional_assump)
+    ₜpₓ = survival(l1.mortality, l1.issue_age + from_time, l1.issue_age + to_time, l1.fractional_assump)
+    ₜpᵧ = survival(l2.mortality, l2.issue_age + from_time, l2.issue_age + to_time, l2.fractional_assump)
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 
@@ -674,9 +708,12 @@ Yields.discount(lc::LifeContingency, t1, t2) = discount(lc.int, t1, t2)
 # unexported aliases
 const V = reserve_premium_net
 const v = Yields.discount
-A(x) = present_value(Insurance(x))
-a = present_value ∘ AnnuityImmediate
-ä(x) = present_value(AnnuityDue(x))
+# A(args) = present_value(Insurance(args))
+# a(args, kwargs) = present_value(AnnuityImmediate(args...; kwargs...))
+# ä(args) = present_value(AnnuityDue(args))
+const A = present_value ∘ Insurance
+const a = present_value ∘ AnnuityImmediate
+const ä = present_value ∘ AnnuityDue
 const P = premium_net
 const ω = omega
 
