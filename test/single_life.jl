@@ -2,7 +2,7 @@
     @testset "issue age 116" begin
         t = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
         i = Yields.Constant(0.05)
-        lc = LifeContingency(SingleLife(mort = t.ultimate, issue_age = 116), i)
+        lc = LifeContingency(SingleLife(mortality = t.ultimate, issue_age = 116), i)
 
 
         @test l(lc, 0) ≈ 1.0
@@ -27,13 +27,13 @@
 
         @test present_value(Insurance(lc)) ≈ 0.9418373716628330
         @test present_value(AnnuityDue(lc)) ≈ 1.2214151950805000
-        
+
         qs = t.ultimate[116:118]
-        @test present_value(Insurance(lc, n=3)) ≈ sum(qs .* [1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 1:3])
-        @test present_value(AnnuityDue(lc, n=3)) ≈ sum([1;cumprod(1 .- qs[1:2])] .* [1.05 ^ -t for t in 0:2])
-        
-        @test LifeContingencies.V(lc,1) == reserve_premium_net(lc,1)
-        @test LifeContingencies.v(lc,1) == Yields.discount(lc,1)
+        @test present_value(Insurance(lc, 3)) ≈ sum(qs .* [1; cumprod(1 .- qs[1:2])] .* [1.05^-t for t = 1:3])
+        @test present_value(AnnuityDue(lc, 3)) ≈ sum([1; cumprod(1 .- qs[1:2])] .* [1.05^-t for t = 0:2])
+
+        @test LifeContingencies.V(lc, 1) == reserve_premium_net(lc, 1)
+        @test LifeContingencies.v(lc, 1) == Yields.discount(lc, 1)
         @test LifeContingencies.A(lc) == present_value(Insurance(lc))
         @test LifeContingencies.ä(lc) == present_value(AnnuityDue(lc))
         @test LifeContingencies.a(lc) == present_value(AnnuityImmediate(lc))
@@ -44,12 +44,12 @@
     @testset "issue age 30" begin
         t = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
         i = Yields.Constant(0.05)
-        life = SingleLife(mort = t.select[30], issue_age = 30)
+        life = SingleLife(mortality = t.select[30], issue_age = 30)
         ins = LifeContingency(life, i)
 
-        @test life.issue_age == SingleLife(mort = t.select[30]).issue_age
+        @test life.issue_age == SingleLife(mortality = t.select[30]).issue_age
         @test life.issue_age == SingleLife(t.select[30]).issue_age
-        @test life.issue_age == SingleLife(t.select,issue_age= 30).issue_age
+        @test life.issue_age == SingleLife(t.select, issue_age = 30).issue_age
 
 
         @test l(ins, 0) ≈ 1.0
@@ -81,10 +81,10 @@
         @test reserve_premium_net(ins, 2) ≈ 0.0119711961204193
 
         qs = t.select[30][30:55]
-        @test present_value(Insurance(ins, n=26)) ≈ sum(qs .* [1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 1:26])
-        @test present_value(AnnuityDue(ins, n=26)) ≈ sum([1;cumprod(1 .- qs[1:25])] .* [1.05 ^ -t for t in 0:25])
+        @test present_value(Insurance(ins, 26)) ≈ sum(qs .* [1; cumprod(1 .- qs[1:25])] .* [1.05^-t for t = 1:26])
+        @test present_value(AnnuityDue(ins, 26)) ≈ sum([1; cumprod(1 .- qs[1:25])] .* [1.05^-t for t = 0:25])
 
-        @test premium_net(ins, 26) ≈ LifeContingencies.A(ins, 26) /  LifeContingencies.ä(ins, 26) 
+        @test premium_net(ins, 26) ≈ LifeContingencies.A(ins, 26) / LifeContingencies.ä(ins, 26)
 
     end
 end
