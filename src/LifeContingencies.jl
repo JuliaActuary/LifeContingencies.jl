@@ -69,7 +69,8 @@ struct SingleLife <: Life
     fractional_assump
 end
 
-function SingleLife(;mort,issue_age=nothing,alive=true,fractional_assump = mt.Uniform())
+function SingleLife(;mort=nothing,issue_age=nothing,alive=true,fractional_assump = mt.Uniform())
+    isnothing(mort) || ArgumentError("Need to pass a mortality vector to `mort` argument.")
     return SingleLife(mort;issue_age,alive,fractional_assump)
 end
 
@@ -99,7 +100,7 @@ abstract type JointAssumption end
 """ 
     Frasier()
 
-The assumption of independnt lives in a joint life calculation.
+The assumption of independent lives in a joint life calculation.
 Is a subtype of `JointAssumption`.
 """
 struct Frasier <: JointAssumption end
@@ -252,7 +253,7 @@ end
 """
 function N(lc::LifeContingency, from_time)
     range = from_time:(omega(lc)-1)
-    return foldxt(+,Map(from_time->D(lc, from_time)), range)
+    return foldxt(+,range |> Map(from_time->D(lc, from_time)))
 end
 
 """
@@ -263,7 +264,7 @@ Issue age is based on the issue_age in the LifeContingency `lc`.
 """
 function M(lc::LifeContingency, from_time)
     range = from_time:omega(lc)-1
-    return foldxt(+,Map(from_time->C(lc, from_time)), range)
+    return foldxt(+,range |> Map(from_time->C(lc, from_time)))
 end
 
 E(lc::LifeContingency, t, x) = D(lc,x + t) / D(lc,x)
@@ -403,7 +404,7 @@ end
 """
     survival(Insurance)
 
-The survorship vector for the given insurance.
+The survivorship vector for the given insurance.
 """
 function MortalityTables.survival(ins::Insurance)
     return [survival(ins.life,t-1) for t in timepoints(ins)]
@@ -530,7 +531,7 @@ end
 
 The net premium for a whole life insurance (without second argument) or a term life insurance through `to_time`.
 
-The net premium is based on 1 unit of insurance with the death benfit payable at the end of the year and assuming annual net premiums.
+The net premium is based on 1 unit of insurance with the death benefit payable at the end of the year and assuming annual net premiums.
 """
 premium_net(lc::LifeContingency) = A(lc) / ä(lc)
 premium_net(lc::LifeContingency,to_time) = A(lc,to_time) / ä(lc,to_time)
@@ -559,7 +560,7 @@ end
     decrement(lc::LifeContingency,to_time)
     decrement(lc::LifeContingency,from_time,to_time)
 
-Return the probablity of death for the given LifeContingency. 
+Return the probability of death for the given LifeContingency. 
 """
 mt.decrement(lc::LifeContingency,from_time,to_time) = 1 - survival(lc.life,from_time,to_time)
 
@@ -568,7 +569,7 @@ mt.decrement(lc::LifeContingency,from_time,to_time) = 1 - survival(lc.life,from_
     survival(lc::LifeContingency,from_time,to_time)
     survival(lc::LifeContingency,to_time)
 
-Return the probablity of survival for the given LifeContingency. 
+Return the probability of survival for the given LifeContingency. 
 """
 mt.survival(lc::LifeContingency,to_time) = survival(lc.life, 0, to_time)
 mt.survival(lc::LifeContingency,from_time,to_time) = survival(lc.life, from_time, to_time)
@@ -577,7 +578,7 @@ mt.survival(l::SingleLife,to_time) = survival(l,0,to_time)
 mt.survival(l::SingleLife,from_time,to_time) =survival(l.mort,l.issue_age + from_time,l.issue_age + to_time, l.fractional_assump)
 
 """
-    surival(life)
+    survival(life)
 
 Return a survival vector for the given life.
 """
@@ -603,11 +604,11 @@ end
 Yields.discount(lc::LifeContingency,t) = discount(lc.int,t)
 Yields.discount(lc::LifeContingency,t1,t2) = discount(lc.int,t1,t2)
 
-# function compostion with kwargs. 
+# function composition with kwargs. 
 # https://stackoverflow.com/questions/64740010/how-to-alias-composite-function-with-keyword-arguments
 ⋄(f, g) = (x...; kw...)->f(g(x...; kw...))
 
-# unexported aliases
+# un-exported aliases
 const V = reserve_premium_net
 const v = Yields.discount
 const A = present_value ⋄ Insurance
