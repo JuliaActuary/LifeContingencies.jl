@@ -14,11 +14,7 @@ Yields = "d7e99b2f-e7f3-4d9e-9f01-2338fc023ad3"
 ActuaryUtilities = "^2,^3"
 MortalityTables = "^0.12, ^1, ^2"
 Transducers = "^0.4"
-<<<<<<< HEAD
 Yields = "^1.0"
-=======
-Yields = "^0.2,^0.3,^0.4, 0.5, 0.6, 0.7, 0.8, 0.9"
->>>>>>> lazy
 julia = "^1.6"
 
 [extras]
