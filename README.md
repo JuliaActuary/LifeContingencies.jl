@@ -70,6 +70,8 @@ benefit(ins)                       # The unit benefit vector
 probability(ins)                   # The probability of benefit payment
 ```
 
+Some of the above will return lazy results. For example, `cashflows(ins)` will return a `Generator` which can be efficiently used in most places you'd use a vector of cashflows (e.g. `pv(...)` or `sum(...)`) but has the advantage of being non-allocating (less memory used, faster computations). To get a computed vector instead of the generator, simply call `collect(...)` on the result: `collect(cashflows(ins))`.
+
 Or calculate summary scalars:
 
 ```julia
@@ -81,12 +83,12 @@ V(lc,5)                            # Net premium reserve for whole life insuranc
 Other types of life contingent benefits:
 
 ```julia
-Insurance(lc,n=10)                 # 10 year term insurance
+Insurance(lc,10)                 # 10 year term insurance
 AnnuityImmediate(lc)               # Whole life annuity due
 AnnuityDue(lc)                     # Whole life annuity due
 ä(lc)                              # Shortform notation
-ä(lc, n=5)                         # 5 year annuity due
-ä(lc, n=5, certain=5,frequency=4)  # 5 year annuity due, with 5 year certain payable 4x per year
+ä(lc, 5)                           # 5 year annuity due
+ä(lc, 5, certain=5,frequency=4)    # 5 year annuity due, with 5 year certain payable 4x per year
 ...                                # and more!
 ```
 
@@ -96,7 +98,7 @@ ä(lc, n=5, certain=5,frequency=4)  # 5 year annuity due, with 5 year certain p
 SingleLife(vbt2001.select[50])                 # no keywords, just a mortality vector
 SingleLife(vbt2001.select[50],issue_age = 60)  # select at 50, but now 60
 SingleLife(vbt2001.select,issue_age = 50)      # use issue_age to pick the right select vector
-SingleLife(mort=vbt2001.select,issue_age = 50) # mort can also be a keyword
+SingleLife(mortality=vbt2001.select,issue_age = 50) # mort can also be a keyword
 
 ```
 
@@ -116,10 +118,10 @@ vbt2001 = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate 
 years = 100
 int =   Yields.Forward(rand(Normal(μ,σ), years))
 
-life = SingleLife(mort = vbt2001.select[30], issue_age = 30)
+life = SingleLife(mortality = vbt2001.select[30], issue_age = 30)
 
 term = 10
-Insurance(lc, n=term) # around 0.055
+LifeContingencies.A(lc, term) # around 0.055
 ```
 
 #### Extending example to use autocorrelated interest rates
@@ -157,7 +159,7 @@ int = Yields.Constant(0.05)
 
 whole_life_costs = map(tables) do t
     map(issue_ages) do ia
-        lc = LifeContingency(SingleLife(mort = t.ultimate, issue_age = ia), int)
+        lc = LifeContingency(SingleLife(mortality = t.ultimate, issue_age = ia), int)
         premium_net(lc)
 
     end
@@ -180,14 +182,14 @@ display(plt)
 ```julia
 m1 = MortalityTables.table("1986-92 CIA – Male Smoker, ANB")
 m2 = MortalityTables.table("1986-92 CIA – Female Nonsmoker, ANB")
-l1 = SingleLife(mort = m1.ultimate, issue_age = 40)
-l2 = SingleLife(mort = m2.ultimate, issue_age = 37)
+l1 = SingleLife(mortality = m1.ultimate, issue_age = 40)
+l2 = SingleLife(mortality = m2.ultimate, issue_age = 37)
 
 jl = JointLife(lives=(l1, l2), contingency=LastSurvivor(), joint_assumption=Frasier())
 
 
-Insurance(jl)      # whole life insurance
-...                # similar functions as shown in the first example above
+Insurance(jl,Yields.Constant(0.05))      # whole life insurance
+...                                      # similar functions as shown in the first example above
 ```
 
 ## Commutation and Unexported Function shorthand

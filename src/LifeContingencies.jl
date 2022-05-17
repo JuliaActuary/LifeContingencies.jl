@@ -374,7 +374,6 @@ ins = AnnuityDue(
     1, # term of policy
 ) 
 ```
-#TODO update docs
 """
 function AnnuityDue(life, int, term; certain = nothing, start_time = 0, frequency = 1)
     term < 1 && return ZeroBenefit(life, int)
@@ -448,6 +447,8 @@ end
     survival(Insurance)
 
 The survivorship vector for the given insurance.
+
+To get the fully computed and allocated vector, call `collect(survival(...))`.
 """
 function MortalityTables.survival(ins::I) where {I<:Insurance}
     return Iterators.map(t -> survival(ins.life, t - 1), timepoints(ins))
@@ -461,6 +462,8 @@ end
     discount(Insurance)
 
 The discount vector for the given insurance.
+
+To get the fully computed and allocated vector, call `collect(discount(...))`.
 """
 function Yields.discount(ins::I) where {I<:Insurance}
     return Iterators.map(t -> Yields.discount.(ins.int, t), timepoints(ins))
@@ -489,10 +492,10 @@ end
     probability(Insurance)
 
 The vector of contingent benefit probabilities for the given insurance.
+
+To get the fully computed and allocated vector, call `collect(probability(...))`.
 """
 function probability(ins::I) where {I<:Insurance}
-    # f(t) = survival(ins.life, 0, t) * (1 - survival(lc.life, t - 1, t))
-    # f(t) = (survival(ins.life, 0, t) - survival(ins.life, 0, t) * survival(lc.life, t - 1, t))
     return Iterators.map(timepoints(ins)) do t
         survival(ins.life, t - 1) * decrement(ins.life, t - 1, t)
     end
@@ -520,7 +523,9 @@ end
 """
     cashflows(Insurance)
 
-The vector of decremented benefit cashflows for the given insurance.
+The vector of decremented benefit cashflows for the given insurance. 
+
+To get the fully computed and allocated vector, call `collect(cashflows(...))`.
 """
 function cashflows(ins::I) where {I<:Insurance}
     b = benefit(ins)
@@ -532,6 +537,8 @@ end
     timepoints(Insurance)
 
 The vector of times corresponding to the cashflow vector for the given insurance.
+
+To get the fully computed and allocated vector, call `collect(timepoints(...))`.
 """
 function timepoints(ins::Insurance)::UnitRange{Int64}
     return 1:omega(ins.life)
