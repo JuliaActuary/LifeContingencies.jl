@@ -22,8 +22,8 @@ the mortality calculations
 - Contains common insurance calculations such as:
   - `Insurance(life,yield)`: Whole life
   - `Insurance(life,yield,n)`: Term life for `n` years
-  - `ä(life,yield)`: `present_value` of Life contingent annuity
-  - `ä(life,yield)`: `present_value` of Life contingent annuity due for `n` years
+  - `ä(life,yield)`: `present_value` of life-contingent annuity
+  - `ä(life,yield,n)`: `present_value` of life-contingent annuity due for `n` years
 - Contains various commutation functions such as `D(x)`,`M(x)`,`C(x)`, etc.
 - `SingleLife` and `JointLife` capable
 - Interest rate mechanics via [`Yields.jl`](https://github.com/JuliaActuary/Yields.jl)
