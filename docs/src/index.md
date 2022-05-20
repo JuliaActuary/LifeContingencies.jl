@@ -245,3 +245,13 @@ C,
 - Life Insurance Mathematics, Gerber
 - [Actuarial Mathematics and Life-Table Statistics, Slud](http://www2.math.umd.edu/~slud/s470/BookChaps/Chp6.pdf)
 - [Commutation Functions, MacDonald](http://www.macs.hw.ac.uk/~angus/papers/eas_offprints/commfunc.pdf)
+
+```@raw html
+<script>
+    window.goatcounter = {
+        path: function(p) { return location.host + p }
+    }
+</script>
+<script data-goatcounter="https://juliaactuary.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+```
