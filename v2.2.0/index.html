@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · LifeContingencies.jl</title><script data-outdated-warner src="assets/warner.js"></script><link rel="canonical" href="https://JuliaActuary.github.io/Yields.jl/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.044/juliamono.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.svg" alt="LifeContingencies.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>LifeContingencies.jl</a></span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Home</a><ul class="internal"><li><a class="tocitem" href="#Features"><span>Features</span></a></li><li><a class="tocitem" href="#Package-Overview"><span>Package Overview</span></a></li><li><a class="tocitem" href="#Examples"><span>Examples</span></a></li><li><a class="tocitem" href="#Commutation-and-Unexported-Function-shorthand"><span>Commutation and Unexported Function shorthand</span></a></li><li><a class="tocitem" href="#References"><span>References</span></a></li></ul></li><li><a class="tocitem" href="api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Home</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Home</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/JuliaActuary/LifeContingencies.jl/blob/master/docs/src/index.md#L" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="LifeContingencies.jl"><a class="docs-heading-anchor" href="#LifeContingencies.jl">LifeContingencies.jl</a><a id="LifeContingencies.jl-1"></a><a class="docs-heading-anchor-permalink" href="#LifeContingencies.jl" title="Permalink"></a></h1><p><a href="https://JuliaActuary.github.io/LifeContingencies.jl/stable/"><img src="https://img.shields.io/badge/docs-stable-blue.svg" alt="Stable"/></a>  <a href="https://JuliaActuary.github.io/LifeContingencies.jl/dev/"><img src="https://img.shields.io/badge/docs-dev-blue.svg" alt="Dev"/></a> <img src="https://github.com/JuliaActuary/LifeContingencies.jl/workflows/CI/badge.svg" alt/> <a href="https://codecov.io/gh/JuliaActuary/LifeContingencies.jl"><img src="https://codecov.io/gh/JuliaActuary/LifeContingencies.jl/branch/master/graph/badge.svg" alt="codecov"/></a></p><p>LifeContingencies is a package enabling actuarial life contingent calculations.</p><h2 id="Features"><a class="docs-heading-anchor" href="#Features">Features</a><a id="Features-1"></a><a class="docs-heading-anchor-permalink" href="#Features" title="Permalink"></a></h2><ul><li>Integration with other JuliaActuary packages such as <a href="https://github.com/JuliaActuary/MortalityTables.jl">MortalityTables.jl</a></li><li>Fast calculations, with some parts utilizing parallel processing power automatically</li><li>Use functions that look more like the math you are used to (e.g. <code>A</code>, <code>ä</code>) with <a href="https://docs.julialang.org/en/v1/manual/unicode-input/index.html">Unicode support</a></li><li>All of the power, speed, convenience, tooling, and ecosystem of Julia</li><li>Flexible and modular modeling approach</li></ul><h2 id="Package-Overview"><a class="docs-heading-anchor" href="#Package-Overview">Package Overview</a><a id="Package-Overview-1"></a><a class="docs-heading-anchor-permalink" href="#Package-Overview" title="Permalink"></a></h2><ul><li>Leverages <a href="https://github.com/JuliaActuary/MortalityTables.jl">MortalityTables.jl</a> for</li></ul><p>the mortality calculations</p><ul><li>Contains common insurance calculations such as:<ul><li><code>Insurance(life,yield)</code>: Whole life</li><li><code>Insurance(life,yield,n)</code>: Term life for <code>n</code> years</li><li><code>ä(life,yield)</code>: <code>present_value</code> of life-contingent annuity</li><li><code>ä(life,yield,n)</code>: <code>present_value</code> of life-contingent annuity due for <code>n</code> years</li></ul></li><li>Contains various commutation functions such as <code>D(x)</code>,<code>M(x)</code>,<code>C(x)</code>, etc.</li><li><code>SingleLife</code> and <code>JointLife</code> capable</li><li>Interest rate mechanics via <a href="https://github.com/JuliaActuary/Yields.jl"><code>Yields.jl</code></a></li><li>More documentation available by clicking the DOCS badges at the top of this README</li></ul><h2 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h2><h3 id="Basic-Functions"><a class="docs-heading-anchor" href="#Basic-Functions">Basic Functions</a><a id="Basic-Functions-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-Functions" title="Permalink"></a></h3><p>Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base table and a 5% interest rate</p><pre><code class="language-julia hljs">
+using LifeContingencies
+using MortalityTables
+using Yields
+import LifeContingencies: V, ä     # pull the shortform notation into scope
+
+# load mortality rates from MortalityTables.jl
+vbt2001 = MortalityTables.table(&quot;2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB&quot;)
+
+issue_age = 30
+life = SingleLife(                 # The life underlying the risk
+    mort = vbt2001.select[issue_age],    # -- Mortality rates
+)
+
+yield = Yields.Constant(0.05)      # Using a flat 5% interest rate
+
+lc = LifeContingency(life, yield)  # LifeContingency joins the risk with interest
+
+
+ins = Insurance(lc)                # Whole Life insurance
+ins = Insurance(life, yield)       # alternate way to construct</code></pre><p>With the above life contingent data, we can calculate vectors of relevant information:</p><pre><code class="language-julia hljs">cashflows(ins)                     # A vector of the unit cashflows
+timepoints(ins)                    # The timepoints associated with the cashflows
+survival(ins)                      # The survival vector
+benefit(ins)                       # The unit benefit vector
+probability(ins)                   # The probability of benefit payment</code></pre><p>Some of the above will return lazy results. For example, <code>cashflows(ins)</code> will return a <code>Generator</code> which can be efficiently used in most places you&#39;d use a vector of cashflows (e.g. <code>pv(...)</code> or <code>sum(...)</code>) but has the advantage of being non-allocating (less memory used, faster computations). To get a computed vector instead of the generator, simply call <code>collect(...)</code> on the result: <code>collect(cashflows(ins))</code>.</p><p>Or calculate summary scalars:</p><pre><code class="language-julia hljs">present_value(ins)                 # The actuarial present value
+premium_net(lc)                    # Net whole life premium 
+V(lc,5)                            # Net premium reserve for whole life insurance at time 5</code></pre><p>Other types of life contingent benefits:</p><pre><code class="language-julia hljs">Insurance(lc,10)                 # 10 year term insurance
+AnnuityImmediate(lc)               # Whole life annuity due
+AnnuityDue(lc)                     # Whole life annuity due
+ä(lc)                              # Shortform notation
+ä(lc, 5)                           # 5 year annuity due
+ä(lc, 5, certain=5,frequency=4)    # 5 year annuity due, with 5 year certain payable 4x per year
+...                                # and more!</code></pre><h4 id="Constructing-Lives"><a class="docs-heading-anchor" href="#Constructing-Lives">Constructing Lives</a><a id="Constructing-Lives-1"></a><a class="docs-heading-anchor-permalink" href="#Constructing-Lives" title="Permalink"></a></h4><pre><code class="language-julia hljs">SingleLife(vbt2001.select[50])                 # no keywords, just a mortality vector
+SingleLife(vbt2001.select[50],issue_age = 60)  # select at 50, but now 60
+SingleLife(vbt2001.select,issue_age = 50)      # use issue_age to pick the right select vector
+SingleLife(mortality=vbt2001.select,issue_age = 50) # mort can also be a keyword
+</code></pre><h3 id="Net-Premium-for-Term-Policy-with-Stochastic-rates"><a class="docs-heading-anchor" href="#Net-Premium-for-Term-Policy-with-Stochastic-rates">Net Premium for Term Policy with Stochastic rates</a><a id="Net-Premium-for-Term-Policy-with-Stochastic-rates-1"></a><a class="docs-heading-anchor-permalink" href="#Net-Premium-for-Term-Policy-with-Stochastic-rates" title="Permalink"></a></h3><p>Use a stochastic interest rate calculation to price a term policy:</p><pre><code class="language-julia hljs">using LifeContingencies, MortalityTables
+using Distributions
+
+vbt2001 = MortalityTables.table(&quot;2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB&quot;)
+
+# use an interest rate that&#39;s normally distirbuted
+μ = 0.05
+σ = 0.01
+
+years = 100
+int =   Yields.Forward(rand(Normal(μ,σ), years))
+
+life = SingleLife(mortality = vbt2001.select[30], issue_age = 30)
+
+term = 10
+LifeContingencies.A(lc, term) # around 0.055</code></pre><h4 id="Extending-example-to-use-autocorrelated-interest-rates"><a class="docs-heading-anchor" href="#Extending-example-to-use-autocorrelated-interest-rates">Extending example to use autocorrelated interest rates</a><a id="Extending-example-to-use-autocorrelated-interest-rates-1"></a><a class="docs-heading-anchor-permalink" href="#Extending-example-to-use-autocorrelated-interest-rates" title="Permalink"></a></h4><p>You can use autocorrelated interest rates - substitute the following in the prior example using the ability to self reference:</p><pre><code class="language-julia hljs">σ = 0.01
+initial_rate = 0.05
+vec = fill(initial_rate, years)
+
+for i in 2:length(vec)
+    vec[i] = rand(Normal(vec[i-1], σ))
+end
+
+int = Yields.Forward(vec)</code></pre><h3 id="Premium-comparison-across-Mortality-Tables"><a class="docs-heading-anchor" href="#Premium-comparison-across-Mortality-Tables">Premium comparison across Mortality Tables</a><a id="Premium-comparison-across-Mortality-Tables-1"></a><a class="docs-heading-anchor-permalink" href="#Premium-comparison-across-Mortality-Tables" title="Permalink"></a></h3><p>Compare the cost of annual premium, whole life insurance between multiple tables visually:</p><pre><code class="language-julia hljs">using LifeContingencies, MortalityTables, Plots
+
+tables = [
+    MortalityTables.table(&quot;1980 CET - Male Nonsmoker, ANB&quot;),
+    MortalityTables.table(&quot;2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB&quot;),
+    MortalityTables.table(&quot;2015 VBT Male Non-Smoker RR100 ANB&quot;),
+    ]
+
+issue_ages = 30:90
+int = Yields.Constant(0.05)
+
+whole_life_costs = map(tables) do t
+    map(issue_ages) do ia
+        lc = LifeContingency(SingleLife(mortality = t.ultimate, issue_age = ia), int)
+        premium_net(lc)
+
+    end
+end
+
+plt = plot(ylabel=&quot;Annual Premium per unit&quot;, xlabel=&quot;Issue Age&quot;,
+           legend=:topleft, legendfontsize=8,size=(800,600))
+
+for (i,t) in enumerate(tables)
+    plot!(plt,issue_ages,whole_life_costs[i], label=&quot;$(t.metadata.name)&quot;)
+end
+
+display(plt)</code></pre><p><img src="https://user-images.githubusercontent.com/711879/85190836-cb539800-b281-11ea-96b0-e3f3eab59449.png" alt="Comparison of three different mortality tables&#39; effect on insurance cost"/></p><h3 id="Joint-Life"><a class="docs-heading-anchor" href="#Joint-Life">Joint Life</a><a id="Joint-Life-1"></a><a class="docs-heading-anchor-permalink" href="#Joint-Life" title="Permalink"></a></h3><pre><code class="language-julia hljs">m1 = MortalityTables.table(&quot;1986-92 CIA – Male Smoker, ANB&quot;)
+m2 = MortalityTables.table(&quot;1986-92 CIA – Female Nonsmoker, ANB&quot;)
+l1 = SingleLife(mortality = m1.ultimate, issue_age = 40)
+l2 = SingleLife(mortality = m2.ultimate, issue_age = 37)
+
+jl = JointLife(lives=(l1, l2), contingency=LastSurvivor(), joint_assumption=Frasier())
+
+
+Insurance(jl,Yields.Constant(0.05))      # whole life insurance
+...                                      # similar functions as shown in the first example above</code></pre><h2 id="Commutation-and-Unexported-Function-shorthand"><a class="docs-heading-anchor" href="#Commutation-and-Unexported-Function-shorthand">Commutation and Unexported Function shorthand</a><a id="Commutation-and-Unexported-Function-shorthand-1"></a><a class="docs-heading-anchor-permalink" href="#Commutation-and-Unexported-Function-shorthand" title="Permalink"></a></h2><p>Because it&#39;s so common to use certain variables in your own code, LifeContingencies avoids exporting certain variables/functions so that it doesn&#39;t collide with your own usage. For example, you may find yourself doing something like:</p><pre><code class="language-julia hljs">a = ...
+b = ...
+result = b - a</code></pre><p>If you imported <code>using LifeContingencies</code> and the package exported <code>a</code> (<code>annuity_immediate</code>) then you could have problems if you tried to do the above. To avoid this, we only export long-form functions like <code>annuity_immediate</code>. To utilize the shorthand, you can include them into your code&#39;s scope like so:</p><pre><code class="language-julia hljs">using LifeContingencies # brings all the default functions into your scope
+using LifeContingencies: a, ä # also brings the short-form annuity functions into scope</code></pre><p><strong>Or</strong> you can do the following:</p><pre><code class="language-julia hljs">using LifeContingencies # brings all the default functions into your scope
+... # later on in the code
+LifeContingencies.ä(...) # utilize the unexported function with the module name</code></pre><p>For more on module scoping, see the <a href="https://docs.julialang.org/en/latest/manual/modules/#Summary-of-module-usage-1">Julia Manual section</a>.</p><h3 id="Actuarial-notation-shorthand"><a class="docs-heading-anchor" href="#Actuarial-notation-shorthand">Actuarial notation shorthand</a><a id="Actuarial-notation-shorthand-1"></a><a class="docs-heading-anchor-permalink" href="#Actuarial-notation-shorthand" title="Permalink"></a></h3><pre><code class="language-julia hljs">V =&gt; reserve_premium_net
+v =&gt; discount
+A =&gt; present value of Insurance
+ä =&gt; present value of AnnuityDue
+a =&gt; present value of AnnuityImmediate
+P =&gt; premium_net
+ω =&gt; omega</code></pre><h3 id="Commutation-functions"><a class="docs-heading-anchor" href="#Commutation-functions">Commutation functions</a><a id="Commutation-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Commutation-functions" title="Permalink"></a></h3><pre><code class="language-julia hljs">l,
+D,
+M,
+N,
+C,</code></pre><h2 id="References"><a class="docs-heading-anchor" href="#References">References</a><a id="References-1"></a><a class="docs-heading-anchor-permalink" href="#References" title="Permalink"></a></h2><ul><li>Life Insurance Mathematics, Gerber</li><li><a href="http://www2.math.umd.edu/~slud/s470/BookChaps/Chp6.pdf">Actuarial Mathematics and Life-Table Statistics, Slud</a></li><li><a href="http://www.macs.hw.ac.uk/~angus/papers/eas_offprints/commfunc.pdf">Commutation Functions, MacDonald</a></li></ul><script>
+    window.goatcounter = {
+        path: function(p) { return location.host + p }
+    }
+</script>
+<script data-goatcounter="https://juliaactuary.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="api/">API Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Friday 17 June 2022 04:41">Friday 17 June 2022</span>. Using Julia version 1.6.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
