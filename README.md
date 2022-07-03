@@ -47,7 +47,7 @@ vbt2001 = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate 
 
 issue_age = 30
 life = SingleLife(                 # The life underlying the risk
-    mort = vbt2001.select[issue_age],    # -- Mortality rates
+    mortality = vbt2001.select[issue_age],    # -- Mortality rates
 )
 
 yield = Yields.Constant(0.05)      # Using a flat 5% interest rate
