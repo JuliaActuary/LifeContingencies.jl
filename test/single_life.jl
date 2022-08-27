@@ -75,6 +75,8 @@
         @test M(ins, 2) ≈ 0.1100531118446950
 
         @test present_value(Insurance(ins)) ≈ 0.1107844934319970
+        @test present_value(Insurance(ins),0) ≈ 0.1107844934319970
+        @test present_value(Insurance(ins),90) / survival(Insurance(ins),90) ≈ 1 / 1.05
         @test present_value(AnnuityDue(ins)) ≈ 18.6735256379281000
         @test premium_net(ins) ≈ 0.0059327036350854
         @test reserve_premium_net(ins, 1) ≈ 0.0059012862412992
