@@ -65,8 +65,11 @@ With the above life contingent data, we can calculate vectors of relevant inform
 cashflows(ins)                     # A vector of the unit cashflows
 timepoints(ins)                    # The timepoints associated with the cashflows
 survival(ins)                      # The survival vector
+survival(ins,time)                 # The survivorship through `time`
 benefit(ins)                       # The unit benefit vector
 probability(ins)                   # The probability of benefit payment
+present_value(ins)                 # the present value of the insurance benefits from time zero
+present_value(ins,time)            # the present value of the insurance benefits from `time`
 ```
 
 Some of the above will return lazy results. For example, `cashflows(ins)` will return a `Generator` which can be efficiently used in most places you'd use a vector of cashflows (e.g. `pv(...)` or `sum(...)`) but has the advantage of being non-allocating (less memory used, faster computations). To get a computed vector instead of the generator, simply call `collect(...)` on the result: `collect(cashflows(ins))`.
