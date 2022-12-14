@@ -786,11 +786,17 @@ function mt.survival(l::JointLife, from_time, to_time)
 end
 
 function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, from_time, to_time)
+    a = survival(ins,assump,l,from_time)
+    b = survival(ins,assump,l,to_time)
+    return b/a
+end
+
+function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, to_time)
     to_time == 0 && return 1.0
 
     l1, l2 = l.lives
-    ₜpₓ = survival(l1.mortality, l1.issue_age + from_time, l1.issue_age + to_time, l1.fractional_assump)
-    ₜpᵧ = survival(l2.mortality, l2.issue_age + from_time, l2.issue_age + to_time, l2.fractional_assump)
+    ₜpₓ = survival(l1.mortality, l1.issue_age, l1.issue_age + to_time, l1.fractional_assump)
+    ₜpᵧ = survival(l2.mortality, l2.issue_age, l2.issue_age + to_time, l2.fractional_assump)
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 
