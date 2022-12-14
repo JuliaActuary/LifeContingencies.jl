@@ -700,7 +700,33 @@ end
     decrement(lc::LifeContingency,to_time)
     decrement(lc::LifeContingency,from_time,to_time)
 
-Return the probablity of death for the given LifeContingency. 
+Return the probability of death for the given LifeContingency, with decrements beginning at time zero. 
+    
+# Examples
+
+```julia-repl
+julia> q = [.1,.2,.3,.4];
+
+julia> l = SingleLife(mortality=q);
+
+julia> survival(l,1)
+0.9
+
+julia> decrement(l,1)
+0.09999999999999998
+
+julia> survival(l,1,2)
+0.8
+
+julia> decrement(l,1,2)
+0.19999999999999996
+
+julia> survival(l,1,3)
+0.5599999999999999
+
+julia> decrement(l,1,3)
+0.44000000000000006
+```
 """
 mt.decrement(lc::LifeContingency, from_time, to_time) = 1 - survival(lc.life, from_time, to_time)
 
@@ -709,7 +735,34 @@ mt.decrement(lc::LifeContingency, from_time, to_time) = 1 - survival(lc.life, fr
     survival(lc::LifeContingency,from_time,to_time)
     survival(lc::LifeContingency,to_time)
 
-Return the probability of survival for the given LifeContingency. 
+Return the probability of survival for the given LifeContingency, with decrements beginning at time zero. 
+    
+# Examples
+
+```julia-repl
+julia> q = [.1,.2,.3,.4];
+
+julia> l = SingleLife(mortality=q);
+
+julia> survival(l,1)
+0.9
+
+julia> decrement(l,1)
+0.09999999999999998
+
+julia> survival(l,1,2)
+0.8
+
+julia> decrement(l,1,2)
+0.19999999999999996
+
+julia> survival(l,1,3)
+0.5599999999999999
+
+julia> decrement(l,1,3)
+0.44000000000000006
+    
+    ```
 """
 mt.survival(lc::LifeContingency, to_time) = survival(lc.life, 0, to_time)
 mt.survival(lc::LifeContingency, from_time, to_time) = survival(lc.life, from_time, to_time)
@@ -733,11 +786,17 @@ function mt.survival(l::JointLife, from_time, to_time)
 end
 
 function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, from_time, to_time)
+    a = survival(ins,assump,l,from_time)
+    b = survival(ins,assump,l,to_time)
+    return b/a
+end
+
+function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, to_time)
     to_time == 0 && return 1.0
 
     l1, l2 = l.lives
-    ₜpₓ = survival(l1.mortality, l1.issue_age + from_time, l1.issue_age + to_time, l1.fractional_assump)
-    ₜpᵧ = survival(l2.mortality, l2.issue_age + from_time, l2.issue_age + to_time, l2.fractional_assump)
+    ₜpₓ = survival(l1.mortality, l1.issue_age, l1.issue_age + to_time, l1.fractional_assump)
+    ₜpᵧ = survival(l2.mortality, l2.issue_age, l2.issue_age + to_time, l2.fractional_assump)
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 

@@ -3,6 +3,33 @@
 
     @testset "Joint Last Survivor unknown status" begin
 
+        @testset "ASM Manual 13th Ed., Example 54B" begin
+            q1 = UltimateMortality([.10,.12,.14,.16,.18],start_age=80)
+            q2 = UltimateMortality([.07,.09,.11,.13,.15],start_age=80)
+            
+            l1 = SingleLife(mortality=q1,issue_age=82)
+            l2 = SingleLife(mortality=q2,issue_age=80)
+            j = JointLife(lives=(l1,l2))
+            
+            @test survival(j,2) ≈ 0.95733 atol=1e-5
+            @test survival(j,3) ≈ 0.899399 atol=1e-5
+        end
+
+        @testset "misc properties" begin
+            q = UltimateMortality([.1 for t in 1:200])
+
+            l1 = SingleLife(mortality=q)
+            l2 = SingleLife(mortality=q)
+            j = JointLife(lives=(l1,l2))
+            
+            ins0 = Insurance(j,Yields.Constant(0.0))
+            survival(j,1,2)
+            @test 1- survival(j,4)/survival(j,3) ≈ decrement(j,3,4)
+            @test pv(ins0) ≈ 1.0 atol=1e-6 # at zero percent discount the benefit should sum to the unit
+            @test last(collect(survival(ins0))) ≈ 0.0 atol=1e-6            
+
+        end
+
         @testset "ALMCR §9.4" begin
             ℓ₁ = [43302, 42854, 42081, 41351, 40050]
             ℓ₂ = [47260, 47040, 46755, 46500, 46227]

@@ -2,6 +2,7 @@ using LifeContingencies
 using LifeContingencies: l,D,M,N,C
 using Test
 using MortalityTables
+using ActuaryUtilities
 const Yields = LifeContingencies.Yields
 
 include("test_mortality.jl")
