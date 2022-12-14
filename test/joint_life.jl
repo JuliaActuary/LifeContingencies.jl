@@ -26,7 +26,7 @@
             survival(j,1,2)
             @test 1- survival(j,4)/survival(j,3) ≈ decrement(j,3,4)
             @test pv(ins0) ≈ 1.0 atol=1e-6 # at zero percent discount the benefit should sum to the unit
-            @test last(survival(ins0)) ≈ 0.0 atol=1e-6            
+            @test last(collect(survival(ins0))) ≈ 0.0 atol=1e-6            
 
         end
 
