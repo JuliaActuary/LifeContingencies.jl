@@ -294,3 +294,11 @@ t = UltimateMortality(maleMort)
 
 
 end
+
+@testset "consistency with MortaliyTables.jl" begin
+
+    q = UltimateMortality([.1 for t in 1:200])
+    l = SingleLife(mortality=q)
+    @test survival(l,0,5) == survival(q,0,5)
+    @test survival(l,1,5) == survival(q,1,5)
+end
