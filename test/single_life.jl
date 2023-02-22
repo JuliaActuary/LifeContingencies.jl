@@ -78,9 +78,12 @@
         @test present_value(Insurance(ins),0) ≈ 0.1107844934319970
         @test present_value(Insurance(ins),90) / survival(Insurance(ins),90) ≈ 1 / 1.05
         @test present_value(AnnuityDue(ins)) ≈ 18.6735256379281000
+        @test present_value(Insurance(ins, 20, 1000)) ≈ 366.52476153552664
         @test premium_net(ins) ≈ 0.0059327036350854
+        @test premium_net(ins, 20, 1000) ≈ 28.20263753
         @test reserve_premium_net(ins, 1) ≈ 0.0059012862412992
         @test reserve_premium_net(ins, 2) ≈ 0.0119711961204193
+        @test reserve_premium_net(ins, 2, 20, 1000) ≈ 0
 
         qs = t.select[30][30:55]
         @test present_value(Insurance(ins, 26)) ≈ sum(qs .* [1; cumprod(1 .- qs[1:25])] .* [1.05^-t for t = 1:26])

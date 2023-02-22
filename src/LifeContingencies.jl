@@ -9,7 +9,7 @@ using Yields
 const mt = MortalityTables
 
 export LifeContingency,
-    Insurance, AnnuityDue, AnnuityImmediate,
+    Insurance, AnnuityDue, AnnuityImmediate, Endowment,
     APV,
     SingleLife, Frasier, JointLife,
     LastSurvivor,
@@ -35,7 +35,6 @@ export LifeContingency,
 
 # 'actuarial objects' that combine multiple forms of decrements (lapse, interest, death, etc)
 abstract type Life end
-
 
 """
     struct SingleLife
@@ -292,13 +291,22 @@ struct Term{L,Y} <: Insurance
     term::Int
 end
 
+struct Endowment{L,Y} <: Insurance
+    life::L
+    int::Y
+    term::Int
+    maturity::Int
+end
+
 """
     Insurance(lc::LifeContingency, term)
-    Insurance(life,interest, term)
+    Insurance(life, interest, term)
     Insurance(lc::LifeContingency)
-    Insurance(life,interest)
+    Insurance(life, interest)
+    Insurance(lc::LifeContingency, term, maturity)
+    Insurance(life, interest, term, maturity)
 
-Life insurance with a term period of `term`. If `term` is `nothing`, then whole life insurance.
+Life insurance with a term period of `term`. If `maturity` is nothing, then term life insurance. If `term` is `nothing`, then whole life insurance.
 
 Issue age is based on the `issue_age` in the LifeContingency `lc`.
 
@@ -312,14 +320,18 @@ ins = Insurance(
 ) 
 ```
 """
-Insurance(lc::LifeContingency, term) = Insurance(lc.life, lc.int, term)
+Insurance(lc::LifeContingency, term::Int, maturity::Int) = Insurance(lc.life, lc.int, term, maturity)
+Insurance(lc::LifeContingency, term::Int) = Insurance(lc.life, lc.int, term)
 Insurance(lc::LifeContingency) = Insurance(lc.life, lc.int)
 
-function Insurance(life, int, term::Int)
+function Insurance(life::Life, int, term::Int, maturity::Int)
+    return Endowment(life, int, term, maturity)
+end
+function Insurance(life::Life, int, term::Int)
     term < 1 && return ZeroBenefit(life, int)
     return Term(life, int, term)
 end
-function Insurance(life, int)
+function Insurance(life::Life, int)
     return WholeLife(life, int)
 end
 
@@ -489,6 +501,10 @@ function benefit(ins::I) where {I<:Insurance}
     return 1.0
 end
 
+function benefit(ins::I) where {I<:Endowment}
+    return (1.0, ins.maturity)
+end
+
 function benefit(ins::ZeroBenefit)
     return 0.0
 end
@@ -508,6 +524,18 @@ To get the fully computed and allocated vector, call `collect(probability(...))`
 function probability(ins::I) where {I<:Insurance}
     return Iterators.map(timepoints(ins)) do t
         survival(ins.life, t - 1) * decrement(ins.life, t - 1, t)
+    end
+end
+
+function probability(ins::I) where {I<:Endowment}
+    m = ins.life.mortality
+    issage = ins.life.issue_age
+    return Iterators.map(timepoints(ins)) do t
+        if t == lastindex(timepoints(ins))
+            (survival(m, issage + t - 1) * decrement(m, issage + t - 1, issage + t), survival(m, issage + t))
+        else
+            (survival(m, issage + t - 1) * decrement(m, issage + t - 1, issage + t), 0)
+        end
     end
 end
 
@@ -542,6 +570,10 @@ function cashflows(ins::I) where {I<:Insurance}
     return Iterators.map(p -> p * b, probability(ins))
 end
 
+function cashflows(ins::I) where {I<:Endowment}
+    b = benefit(ins)
+    return Iterators.map(p -> p[1] * b[1] + p[2] * b[2], probability(ins))
+end
 
 """
     timepoints(Insurance)
@@ -555,6 +587,10 @@ function timepoints(ins::Insurance)::UnitRange{Int64}
 end
 
 function timepoints(ins::Term)::UnitRange{Int64}
+    return 1:min(omega(ins.life), ins.term)
+end
+
+function timepoints(ins::Endowment)::UnitRange{Int64}
     return 1:min(omega(ins.life), ins.term)
 end
 
@@ -654,7 +690,7 @@ present_value(ins,10) / survival(ins,10)
 ```
 """
 function ActuaryUtilities.present_value(ins::T,time) where {T<:Insurance}
-    ts =timepoints(ins)
+    ts = timepoints(ins)
     times = (t - time for t in ts if t > time)
     cfs = (cf for (cf,t) in zip(cashflows(ins),ts) if t > time)
     yield = ins.int
@@ -676,6 +712,8 @@ end
 
 premium_net(lc::LifeContingency, to_time) = A(lc, to_time) / ä(lc, to_time)
 
+premium_net(lc::LifeContingency, to_time, maturity) = A(lc, to_time, maturity) / ä(lc, to_time)
+
 """
      reserve_premium_net(lc::LifeContingency,time)
 
@@ -685,6 +723,12 @@ function reserve_premium_net(lc::LifeContingency, time)
     PVFB = A(lc) - A(lc, time)
     PVFP = premium_net(lc) * (ä(lc) - ä(lc, time))
     return (PVFB - PVFP) / APV(lc, time)
+end
+
+function reserve_premium_net(lc::LifeContingency, time, term, maturity)
+    PVFB = present_value(Insurance(lc, term, maturity)) - present_value(Insurance(lc, term, maturity), time)
+    PVFP = premium_net(lc, term ,maturity) * (ä(lc, term) - ä(lc, term - time))
+    return max(0.0, (PVFB - PVFP) / APV(lc, time))
 end
 
 """
