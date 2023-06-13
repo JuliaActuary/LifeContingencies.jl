@@ -12,15 +12,8 @@ jobs:
           - '1.9'
         os:
           - ubuntu-latest
-
-        experimental: [false]
         arch:
           - x64
-        include:
-          - version: 'nightly'
-            arch: x64
-            os: ubuntu-latest
-            experimental: true
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
@@ -30,6 +23,8 @@ jobs:
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
       - uses: julia-actions/julia-processcoverage@v1
+      - name: Print first 10 lines of lcov
+        run: head -n 10 lcov.info
       - uses: romeovs/lcov-reporter-action@v0.2.16
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
