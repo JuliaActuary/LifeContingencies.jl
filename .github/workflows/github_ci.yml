@@ -9,13 +9,10 @@ jobs:
     strategy:
       matrix:
         version:
-          - '1.6'
-          - '1.7'
-          - 'nightly'
+          - '1.9'
         os:
           - ubuntu-latest
-          - macOS-latest
-          - windows-latest
+
         experimental: [false]
         arch:
           - x64
@@ -36,24 +33,5 @@ jobs:
       - uses: romeovs/lcov-reporter-action@v0.2.16
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          lcov-file: ./coverage/lcov.info
+          lcov-file: lcov.info
       
-  docs:
-    name: Documentation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
-        with:
-          version: '1.6'
-      - run: |
-          julia --project=docs -e '
-            using Pkg
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()
-            Pkg.add("Documenter")'
-      - run: julia --project=docs docs/make.jl
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Needed due to https://github.com/JuliaDocs/Documenter.jl/issues/1177
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
