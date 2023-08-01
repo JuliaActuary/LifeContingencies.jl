@@ -1,20 +1,16 @@
 name = "LifeContingencies"
 uuid = "c8f0d631-89cd-4a1f-93d0-7542c3692561"
 authors = ["Alec Loudenback"]
-version = "2.3.1"
+version = "2.4.0"
 
 [deps]
-ActuaryUtilities = "bdd23359-8b1c-4f88-b89b-d11982a786f4"
-Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+FinanceCore = "b9b1ffdd-6612-4b69-8227-7663be06e089"
 MortalityTables = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"
 Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
-Yields = "d7e99b2f-e7f3-4d9e-9f01-2338fc023ad3"
 
 [compat]
-ActuaryUtilities = "^2,^3"
-MortalityTables = "^0.12, ^1, ^2"
+MortalityTables = "^1, ^2"
 Transducers = "^0.4"
-Yields = "^2,^3"
 julia = "^1.6"
 
 [extras]
