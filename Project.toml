@@ -11,6 +11,7 @@ Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
 [compat]
 MortalityTables = "^1, ^2"
 Transducers = "^0.4"
+FinanceModels = "4"
 julia = "^1.6"
 
 [extras]
