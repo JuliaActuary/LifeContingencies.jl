@@ -1,8 +1,8 @@
 @testset "Single Life" begin
     @testset "issue age 116" begin
         t = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
-        i = Yields.Constant(0.05)
-        lc = LifeContingency(SingleLife(mortality = t.ultimate, issue_age = 116), i)
+        i = 0.05
+        lc = LifeContingency(SingleLife(mortality=t.ultimate, issue_age=116), i)
 
 
         @test l(lc, 0) ≈ 1.0
@@ -33,7 +33,7 @@
         @test present_value(AnnuityDue(lc, 3)) ≈ sum([1; cumprod(1 .- qs[1:2])] .* [1.05^-t for t = 0:2])
 
         @test LifeContingencies.V(lc, 1) == reserve_premium_net(lc, 1)
-        @test LifeContingencies.v(lc, 1) == Yields.discount(lc, 1)
+        @test LifeContingencies.v(lc, 1) == FinanceCore.discount(lc, 1)
         @test LifeContingencies.A(lc) == present_value(Insurance(lc))
         @test LifeContingencies.ä(lc) == present_value(AnnuityDue(lc))
         @test LifeContingencies.a(lc) == present_value(AnnuityImmediate(lc))
@@ -43,13 +43,13 @@
 
     @testset "issue age 30" begin
         t = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
-        i = Yields.Constant(0.05)
-        life = SingleLife(mortality = t.select[30], issue_age = 30)
+        i = 0.05
+        life = SingleLife(mortality=t.select[30], issue_age=30)
         ins = LifeContingency(life, i)
 
-        @test life.issue_age == SingleLife(mortality = t.select[30]).issue_age
+        @test life.issue_age == SingleLife(mortality=t.select[30]).issue_age
         @test life.issue_age == SingleLife(t.select[30]).issue_age
-        @test life.issue_age == SingleLife(t.select, issue_age = 30).issue_age
+        @test life.issue_age == SingleLife(t.select, issue_age=30).issue_age
 
 
         @test l(ins, 0) ≈ 1.0
@@ -75,8 +75,8 @@
         @test M(ins, 2) ≈ 0.1100531118446950
 
         @test present_value(Insurance(ins)) ≈ 0.1107844934319970
-        @test present_value(Insurance(ins),0) ≈ 0.1107844934319970
-        @test present_value(Insurance(ins),90) / survival(Insurance(ins),90) ≈ 1 / 1.05
+        @test present_value(Insurance(ins), 0) ≈ 0.1107844934319970
+        @test present_value(Insurance(ins), 90) / survival(Insurance(ins), 90) ≈ 1 / 1.05
         @test present_value(AnnuityDue(ins)) ≈ 18.6735256379281000
         @test premium_net(ins) ≈ 0.0059327036350854
         @test reserve_premium_net(ins, 1) ≈ 0.0059012862412992

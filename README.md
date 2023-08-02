@@ -39,7 +39,7 @@ Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base tab
 
 using LifeContingencies
 using MortalityTables
-using Yields
+using FinanceModels
 import LifeContingencies: V, ä     # pull the shortform notation into scope
 
 # load mortality rates from MortalityTables.jl
@@ -50,7 +50,7 @@ life = SingleLife(                 # The life underlying the risk
     mortality = vbt2001.select[issue_age],    # -- Mortality rates
 )
 
-yield = Yields.Constant(0.05)      # Using a flat 5% interest rate
+yield = FinanceModels.Yield.Constant(0.05)      # Using a flat 5% interest rate
 
 lc = LifeContingency(life, yield)  # LifeContingency joins the risk with interest
 
@@ -157,7 +157,7 @@ tables = [
     ]
 
 issue_ages = 30:90
-int = Yields.Constant(0.05)
+int = FinanceModels.Yield.Constant(0.05)
 
 whole_life_costs = map(tables) do t
     map(issue_ages) do ia
@@ -190,7 +190,7 @@ l2 = SingleLife(mortality = m2.ultimate, issue_age = 37)
 jl = JointLife(lives=(l1, l2), contingency=LastSurvivor(), joint_assumption=Frasier())
 
 
-Insurance(jl,Yields.Constant(0.05))      # whole life insurance
+Insurance(jl,FinanceModels.Yield.Constant(0.05))      # whole life insurance
 ...                                      # similar functions as shown in the first example above
 ```
 

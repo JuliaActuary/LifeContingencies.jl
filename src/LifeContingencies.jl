@@ -1,10 +1,9 @@
 module LifeContingencies
 
-using ActuaryUtilities
 using MortalityTables
 using Transducers
-using Dates
-using Yields
+using FinanceCore
+import FinanceCore: present_value, discount
 
 const mt = MortalityTables
 
@@ -69,11 +68,11 @@ struct SingleLife{M,D} <: Life
     fractional_assump::D
 end
 
-function SingleLife(; mortality, issue_age = nothing, alive = true, fractional_assump = mt.Uniform())
+function SingleLife(; mortality, issue_age=nothing, alive=true, fractional_assump=mt.Uniform())
     return SingleLife(mortality; issue_age, alive, fractional_assump)
 end
 
-function SingleLife(mortality; issue_age = nothing, alive = true, fractional_assump = mt.Uniform())
+function SingleLife(mortality; issue_age=nothing, alive=true, fractional_assump=mt.Uniform())
     if isnothing(issue_age)
         issue_age = firstindex(mortality)
     end
@@ -231,7 +230,7 @@ end
 
 ``l_x`` is a retrospective actuarial commutation function which is the survival up to a certain point in time. By default, will have a unitary basis (ie `1.0`), but you can specify `basis` keyword argument to use something different (e.g. `1000` is common in the literature.)
 """
-function l(lc::LifeContingency, to_time; basis = 1.0)
+function l(lc::LifeContingency, to_time; basis=1.0)
     return survival(lc.life, to_time) * basis
 end
 
@@ -307,7 +306,7 @@ Issue age is based on the `issue_age` in the LifeContingency `lc`.
 ```
 ins = Insurance(
     SingleLife(mortality = UltimateMortality([0.5,0.5]),issue_age = 0),
-    Yields.Constant(0.05),
+    FinanceModels.Yield.Constant(0.05),
     1           # 1 year term
 ) 
 ```
@@ -370,12 +369,12 @@ Annuity due with the benefit period starting at `start_time` and ending after `n
 ```
 ins = AnnuityDue(
     SingleLife(mortality = UltimateMortality([0.5,0.5]),issue_age = 0),
-    Yields.Constant(0.05),
+    FinanceModels.Yield.Constant(0.05),
     1, # term of policy
 ) 
 ```
 """
-function AnnuityDue(life, int, term; certain = nothing, start_time = 0, frequency = 1)
+function AnnuityDue(life, int, term; certain=nothing, start_time=0, frequency=1)
     term < 1 && return ZeroBenefit(life, int)
     if isnothing(certain)
         Annuity(life, int, Due(), TermAnnuity(term), start_time, frequency)
@@ -384,7 +383,7 @@ function AnnuityDue(life, int, term; certain = nothing, start_time = 0, frequenc
     end
 end
 
-function AnnuityDue(life, int; certain = nothing, start_time = 0, frequency = 1)
+function AnnuityDue(life, int; certain=nothing, start_time=0, frequency=1)
     if isnothing(certain)
         Annuity(life, int, Due(), LifeAnnuity(), start_time, frequency)
     else
@@ -392,11 +391,11 @@ function AnnuityDue(life, int; certain = nothing, start_time = 0, frequency = 1)
     end
 end
 
-function AnnuityDue(lc::L, term; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
+function AnnuityDue(lc::L, term; certain=nothing, start_time=0, frequency=1) where {L<:LifeContingency}
     return AnnuityDue(lc.life, lc.int, term; certain, start_time, frequency)
 end
 
-function AnnuityDue(lc::L; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
+function AnnuityDue(lc::L; certain=nothing, start_time=0, frequency=1) where {L<:LifeContingency}
     return AnnuityDue(lc.life, lc.int; certain, start_time, frequency)
 end
 
@@ -411,13 +410,13 @@ Annuity immediate with the benefit period starting at `start_time` and ending af
 ```
 ins = AnnuityImmediate(
     SingleLife(mortality = UltimateMortality([0.5,0.5]),issue_age = 0),
-    Yields.Constant(0.05),
+    FinanceModels.Yield.Constant(0.05),
     1 # term of policy
 ) 
 ```
 
 """
-function AnnuityImmediate(life, int, term; certain = nothing, start_time = 0, frequency = 1)
+function AnnuityImmediate(life, int, term; certain=nothing, start_time=0, frequency=1)
     term < 1 && return ZeroBenefit(life, int)
     if isnothing(certain)
         Annuity(life, int, Immediate(), TermAnnuity(term), start_time, frequency)
@@ -426,7 +425,7 @@ function AnnuityImmediate(life, int, term; certain = nothing, start_time = 0, fr
     end
 end
 
-function AnnuityImmediate(life, int; certain = nothing, start_time = 0, frequency = 1)
+function AnnuityImmediate(life, int; certain=nothing, start_time=0, frequency=1)
     if isnothing(certain)
         Annuity(life, int, Immediate(), LifeAnnuity(), start_time, frequency)
     else
@@ -434,11 +433,11 @@ function AnnuityImmediate(life, int; certain = nothing, start_time = 0, frequenc
     end
 end
 
-function AnnuityImmediate(lc::L, term; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
+function AnnuityImmediate(lc::L, term; certain=nothing, start_time=0, frequency=1) where {L<:LifeContingency}
     return AnnuityImmediate(lc.life, lc.int, term; certain, start_time, frequency)
 end
 
-function AnnuityImmediate(lc::L; certain = nothing, start_time = 0, frequency = 1) where {L<:LifeContingency}
+function AnnuityImmediate(lc::L; certain=nothing, start_time=0, frequency=1) where {L<:LifeContingency}
     return AnnuityImmediate(lc.life, lc.int; certain, start_time, frequency)
 end
 
@@ -449,7 +448,7 @@ The survivorship for the given insurance from time zero to `time`.
 
 """
 function MortalityTables.survival(ins::I, t) where {I<:Insurance}
-    survival(ins.life,t)
+    survival(ins.life, t)
 end
 
 """
@@ -475,8 +474,8 @@ The discount vector for the given insurance.
 
 To get the fully computed and allocated vector, call `collect(discount(...))`.
 """
-function Yields.discount(ins::I) where {I<:Insurance}
-    return Iterators.map(t -> Yields.discount.(ins.int, t), timepoints(ins))
+function FinanceCore.discount(ins::I) where {I<:Insurance}
+    return Iterators.map(t -> FinanceCore.discount.(ins.int, t), timepoints(ins))
 end
 
 
@@ -631,7 +630,7 @@ end
 
 The actuarial present value of the given insurance benefits.
 """
-function ActuaryUtilities.present_value(ins::T) where {T<:Insurance}
+function FinanceCore.present_value(ins::T) where {T<:Insurance}
     cfs = cashflows(ins)
     times = timepoints(ins)
     yield = ins.int
@@ -653,10 +652,10 @@ To get an undecremented present value, divide by the survivorship to that timepo
 present_value(ins,10) / survival(ins,10)
 ```
 """
-function ActuaryUtilities.present_value(ins::T,time) where {T<:Insurance}
-    ts =timepoints(ins)
+function FinanceCore.present_value(ins::T, time) where {T<:Insurance}
+    ts = timepoints(ins)
     times = (t - time for t in ts if t > time)
-    cfs = (cf for (cf,t) in zip(cashflows(ins),ts) if t > time)
+    cfs = (cf for (cf, t) in zip(cashflows(ins), ts) if t > time)
     yield = ins.int
     pv = present_value(yield, cfs, times)
     return pv
@@ -786,9 +785,9 @@ function mt.survival(l::JointLife, from_time, to_time)
 end
 
 function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, from_time, to_time)
-    a = survival(ins,assump,l,from_time)
-    b = survival(ins,assump,l,to_time)
-    return b/a
+    a = survival(ins, assump, l, from_time)
+    b = survival(ins, assump, l, to_time)
+    return b / a
 end
 
 function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, to_time)
@@ -800,19 +799,19 @@ function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, t
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end
 
-Yields.discount(lc::LifeContingency, t) = discount(lc.int, t)
-Yields.discount(lc::LifeContingency, t1, t2) = discount(lc.int, t1, t2)
+FinanceCore.discount(lc::LifeContingency, t) = discount(lc.int, t)
+FinanceCore.discount(lc::LifeContingency, t1, t2) = discount(lc.int, t1, t2)
 
 
 # unexported aliases
 const V = reserve_premium_net
-const v = Yields.discount
+const v = FinanceCore.discount
 # A(args) = present_value(Insurance(args))
 # a(args, kwargs) = present_value(AnnuityImmediate(args...; kwargs...))
 # ä(args) = present_value(AnnuityDue(args))
-const A = present_value ∘ Insurance
-const a = present_value ∘ AnnuityImmediate
-const ä = present_value ∘ AnnuityDue
+const A = FinanceCore.present_value ∘ Insurance
+const a = FinanceCore.present_value ∘ AnnuityImmediate
+const ä = FinanceCore.present_value ∘ AnnuityDue
 const P = premium_net
 const ω = omega
 
