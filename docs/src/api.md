@@ -1,21 +1,19 @@
-# API Reference
+# LifeContingencies API Reference
 
 ```@index
+Modules = [LifeContingencies]
 ```
 
-```@meta
-```
-
+## Exported API
 ```@autodocs
 Modules = [LifeContingencies]
+Private = false
+```
 
+## Unexported API
+```@autodocs
+Modules = [LifeContingencies]
+Public = false
 ```
-```@raw html
-<script>
-    window.goatcounter = {
-        path: function(p) { return location.host + p }
-    }
-</script>
-<script data-goatcounter="https://juliaactuary.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
-```
+
+Please [open an issue](https://github.com/JuliaActuary/LifeContingencies.jl/issues) if you encounter any issues or confusion with the package.
