@@ -1,7 +1,7 @@
 name = "LifeContingencies"
 uuid = "c8f0d631-89cd-4a1f-93d0-7542c3692561"
 authors = ["Alec Loudenback"]
-version = "2.4.0"
+version = "2.5.0"
 
 [deps]
 FinanceCore = "b9b1ffdd-6612-4b69-8227-7663be06e089"
