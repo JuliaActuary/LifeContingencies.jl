@@ -61,11 +61,19 @@ Keyword arguments:
         issue_age  = 30          
     )
 """
-struct SingleLife{M,D} <: Life
+struct SingleLife{I,M,D} <: Life
     mortality::M
-    issue_age::Int
+    issue_age::I
     alive::Bool
     fractional_assump::D
+    function SingleLife(mortality::M, issue_age::I, alive::Bool=true, fractional_assump::D=mt.Uniform()) where {M<:MortalityTables.ParametricMortality,I<:Real,D<:DeathDistribution}
+
+        return new{I,M,D}(mortality, issue_age, alive, fractional_assump)
+    end
+    function SingleLife(mortality::M, issue_age::I, alive::Bool=true, fractional_assump::D=mt.Uniform()) where {M,I<:Integer,D<:DeathDistribution}
+
+        return new{I,M,D}(mortality, issue_age, alive, fractional_assump)
+    end
 end
 
 function SingleLife(; mortality, issue_age=nothing, alive=true, fractional_assump=mt.Uniform())
@@ -77,9 +85,9 @@ function SingleLife(mortality; issue_age=nothing, alive=true, fractional_assump=
         issue_age = firstindex(mortality)
     end
 
-    if !(eltype(mortality) <: Real)
+    if (eltype(mortality) <: AbstractArray)
         # most likely case is that mortality is an array of vectors
-        # use issue age to select the right one (assuming indexed with issue age
+        # use issue age to select the right one (assuming indexed with issue age)
         return SingleLife(mortality[issue_age], issue_age, alive, fractional_assump)
     else
         return SingleLife(mortality, issue_age, alive, fractional_assump)
