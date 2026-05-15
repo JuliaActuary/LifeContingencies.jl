@@ -89,4 +89,16 @@
         @test premium_net(ins, 26) ≈ LifeContingencies.A(ins, 26) / LifeContingencies.ä(ins, 26)
 
     end
+
+    @testset "issue https://github.com/JuliaActuary/LifeContingencies.jl/issues/78" begin
+        t = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
+        i = 0.05
+        @test_throws MethodError LifeContingency(SingleLife(mortality=t.ultimate, issue_age=53.75), i)
+
+        m = MortalityTables.MakehamBeard()
+        lc1 = LifeContingency(SingleLife(mortality=m, issue_age=53.75), i)
+        lc2 = LifeContingency(SingleLife(mortality=m, issue_age=54.00), i)
+        @test l(lc1, 1) > l(lc2, 1)
+
+    end
 end
