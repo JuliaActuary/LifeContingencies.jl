@@ -73,22 +73,15 @@ The survivorship vector for the given insurance: for life insurance, the probabi
 in force at the start of each year of cover; for an annuity, at each payment time.
 """
 MortalityTables.survival(ins::DeathBenefit) = expected_payments(ins).survival
-
-function MortalityTables.survival(ins::A) where {A<:Annuity}
-    return Iterators.map(t -> survival(ins, t), timepoints(ins))
-end
+MortalityTables.survival(ins::Annuity) = in_force_at(ins.life, timepoints(ins))
 
 
 """
     discount(Insurance)
 
 The discount vector for the given insurance.
-
-To get the fully computed and allocated vector, call `collect(discount(...))`.
 """
-function FinanceCore.discount(ins::I) where {I<:Insurance}
-    return Iterators.map(t -> FinanceCore.discount.(ins.int, t), timepoints(ins))
-end
+FinanceCore.discount(ins::Insurance) = [discount(ins.int, t) for t in timepoints(ins)]
 
 
 """
@@ -97,41 +90,18 @@ end
 The unit benefit for the given insurance.
 """
 benefit(ins::DeathBenefit) = 1.0
-
-function benefit(ins::ZeroBenefit)
-    return 0.0
-end
-
-function benefit(ins::Annuity)
-    return 1.0 / ins.frequency
-end
+benefit(ins::Annuity) = 1.0 / ins.frequency
 
 
 """
     probability(Insurance)
 
 The vector of contingent benefit probabilities for the given insurance: for life insurance,
-the probability that the benefit is paid at the end of each year of cover.
+the probability that the benefit is paid at the end of each year of cover; for an annuity, the
+probability that each installment is paid (one for guaranteed installments).
 """
 probability(ins::DeathBenefit) = expected_payments(ins).probability
-
-function probability(ins::ZeroBenefit)
-    return Iterators.repeated(1.0, length(timepoints(ins)))
-end
-
-function probability(ins::Annuity)
-    return probability(ins.payable, ins)
-end
-
-function probability(ap::AP, ins::Annuity) where {AP<:AnnuityPayable}
-    return Iterators.map(t -> survival(ins.life, t), timepoints(ins))
-end
-
-function probability(ap::AP, ins::Annuity) where {AP<:AnnuityCertain}
-    return Iterators.map(timepoints(ins)) do t
-        t <= ap.certain + ins.start_time ? 1.0 : survival(ins.life, t)
-    end
-end
+probability(ins::Annuity) = expected_payments(ins)
 
 
 """
@@ -151,74 +121,7 @@ end
 The vector of times corresponding to the cashflow vector for the given insurance.
 """
 timepoints(ins::DeathBenefit) = 1:benefit_years(ins)
-
-function timepoints(ins::ZeroBenefit)
-    return Iterators.repeated(0.0, 1)
-end
-
-function timepoints(ins::Annuity)
-    return timepoints(ins, ins.kind)
-end
-
-function timepoints(ins::Annuity, kind::K) where {K<:AnnuityKind}
-    return timepoints(ins.payable, ins, kind)
-end
-
-function timepoints(ap::LifeCertain, ins::Annuity, ::Due)
-    end_time = omega(ins.life)
-    timestep = 1 / ins.frequency
-    return ins.start_time:timestep:end_time
-end
-
-function timepoints(ap::LifeAnnuity, ins::Annuity, ::Due)
-    # same timepoints as LifeCertain
-    end_time = omega(ins.life)
-    timestep = 1 / ins.frequency
-    return ins.start_time:timestep:end_time
-end
-
-function timepoints(ap::TermCertain, ins::Annuity, ::Due)
-    end_time = ap.term + ins.start_time - 1 / ins.frequency
-    timestep = 1 / ins.frequency
-    return ins.start_time:timestep:end_time
-end
-
-function timepoints(ap::TermAnnuity, ins::Annuity, ::Due)
-    # same timepoints as 
-    end_time = ap.term + ins.start_time - 1 / ins.frequency
-    timestep = 1 / ins.frequency
-    return ins.start_time:timestep:end_time
-end
-
-function timepoints(ap::LifeCertain, ins::Annuity, ::Immediate)
-    end_time = omega(ins.life)
-    timestep = 1 / ins.frequency
-    end_time = max(ins.start_time + timestep, end_time) # return at least one timepoint to avoid returning empty array
-    return (ins.start_time+timestep):timestep:end_time
-end
-
-function timepoints(ap::LifeAnnuity, ins::Annuity, ::Immediate)
-    # same timepoints as LifeCertain
-    end_time = omega(ins.life)
-    timestep = 1 / ins.frequency
-    end_time = max(ins.start_time + timestep, end_time) # return at least one timepoint to avoid returning empty array
-    return (ins.start_time+timestep):timestep:end_time
-end
-
-function timepoints(ap::TermCertain, ins::Annuity, ::Immediate)
-    end_time = ap.term + ins.start_time
-    timestep = 1 / ins.frequency
-    end_time = max(ins.start_time + timestep, end_time) # return at least one timepoint to avoid returning empty array
-    return (ins.start_time+timestep):timestep:end_time
-end
-
-function timepoints(ap::TermAnnuity, ins::Annuity, ::Immediate)
-    # same timepoints as 
-    end_time = ap.term + ins.start_time
-    timestep = 1 / ins.frequency
-    end_time = max(ins.start_time + timestep, end_time) # return at least one timepoint to avoid returning empty array
-    return (ins.start_time+timestep):timestep:end_time
-end
+timepoints(ins::Annuity) = schedule(ins).times
 
 """
     present_value(Insurance)

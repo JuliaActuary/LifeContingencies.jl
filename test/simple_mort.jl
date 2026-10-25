@@ -47,7 +47,8 @@
     # annuity due
     ins = AnnuityDue(
         SingleLife(mortality=mt, issue_age=0),
-        0.05
+        0.05,
+        3
     )
 
     @test [survival(ins)...] == [1.0, 0.5, 0.25]
@@ -102,7 +103,7 @@ end
     @test survival(ins, 0.5) ≈ 1 - 0.5 * 0.5
 
     @test omega(ins) ≈ 1
-    @test FinanceCore.present_value(AnnuityDue(ins)) ≈ 1 + 1 * 0.5 / 1.05
+    @test FinanceCore.present_value(AnnuityDue(ins, 2)) ≈ 1 + 1 * 0.5 / 1.05
     @test FinanceCore.present_value(AnnuityDue(ins, 1)) ≈ 1
     @test FinanceCore.present_value(AnnuityDue(ins, 0)) == 0
     @test FinanceCore.present_value(AnnuityImmediate(ins, 1)) ≈ 1 * 0.5 / 1.05
@@ -119,7 +120,7 @@ end
     )
 
     @test omega(ins_jl) ≈ 1
-    @test FinanceCore.present_value(AnnuityDue(ins_jl)) ≈ 1 + 1 * 0.75 / 1.05
+    @test FinanceCore.present_value(AnnuityDue(ins_jl, 2)) ≈ 1 + 1 * 0.75 / 1.05
     @test FinanceCore.present_value(AnnuityDue(ins_jl, 1)) ≈ 1
     @test FinanceCore.present_value(AnnuityImmediate(ins_jl, 1)) ≈ 1 * 0.75 / 1.05
     @test FinanceCore.present_value(AnnuityDue(ins_jl, 2)) ≈ 1 + 1 * 0.75 / 1.05
@@ -143,8 +144,8 @@ end
     )
 
     @test omega(ins) ≈ 2
-    @test FinanceCore.present_value(AnnuityDue(ins)) ≈ 3
-    @test FinanceCore.present_value(AnnuityDue(ins; start_time=1)) ≈ 2
+    @test FinanceCore.present_value(AnnuityDue(ins, 3)) ≈ 3
+    @test FinanceCore.present_value(AnnuityDue(ins, 2; start_time=1)) ≈ 2
     @test FinanceCore.present_value(AnnuityDue(ins, 1)) ≈ 1
     @test FinanceCore.present_value(AnnuityDue(ins, 2)) ≈ 2
     @test_throws DomainError FinanceCore.present_value(AnnuityDue(ins, 2; start_time=2))
@@ -155,9 +156,9 @@ end
     @test FinanceCore.present_value(AnnuityImmediate(ins, 1; start_time=1)) ≈ 1
     @test_throws DomainError FinanceCore.present_value(AnnuityImmediate(ins; start_time=2))
     @test FinanceCore.present_value(AnnuityImmediate(ins, 2)) ≈ 2
-    @test FinanceCore.present_value(AnnuityImmediate(ins)) ≈ 2
-    @test FinanceCore.present_value(AnnuityImmediate(ins; certain=0)) ≈ 2
-    @test FinanceCore.present_value(AnnuityImmediate(ins; certain=2)) ≈ 2
+    @test FinanceCore.present_value(AnnuityImmediate(ins, 2)) ≈ 2
+    @test FinanceCore.present_value(AnnuityImmediate(ins, 2; certain=0)) ≈ 2
+    @test FinanceCore.present_value(AnnuityImmediate(ins, 2; certain=2)) ≈ 2
 
     @test FinanceCore.present_value(Insurance(ins, 2)) ≈ 0
     @test FinanceCore.present_value(Insurance(ins, 1)) ≈ 0
@@ -187,7 +188,7 @@ end
     )
 
     @test omega(ins) ≈ 2
-    @test FinanceCore.present_value(AnnuityDue(ins)) ≈ 1 + 1 * 0.5 * 1 / 1.05 + 1 * 0.25 / 1.05^2
+    @test FinanceCore.present_value(AnnuityDue(ins, 3)) ≈ 1 + 1 * 0.5 * 1 / 1.05 + 1 * 0.25 / 1.05^2
     @test FinanceCore.present_value(AnnuityDue(ins, 1)) ≈ 1
     @test FinanceCore.present_value(AnnuityDue(ins, 2)) ≈ 1 + 1 * 0.5 * 1 / 1.05
     @test FinanceCore.present_value(AnnuityDue(ins, 3)) ≈ 1 + 1 * 0.5 * 1 / 1.05 + 1 * 0.25 / 1.05^2

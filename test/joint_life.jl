@@ -60,7 +60,8 @@
             # problem 9.1.f
             @test isapprox(present_value(AnnuityDue(ins, 5)), 4.5437, atol=1e-4)
 
-            @test isapprox(present_value(AnnuityDue(ins)), 4.5437, atol=1e-4)
+            # the rates stop short of 1, so a life annuity is not defined
+            @test_throws DomainError present_value(AnnuityDue(ins))
         end
 
         @testset "CIA tables" begin

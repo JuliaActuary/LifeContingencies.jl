@@ -9,15 +9,6 @@ FinanceCore.discount(c::RegressionCurve, from, to) = discount(c, to) / discount(
 
 ultimate_life(q; kwargs...) = SingleLife(UltimateMortality(q); kwargs...)
 
-function threw(f)
-    try
-        f()
-        return false
-    catch
-        return true
-    end
-end
-
 # reference net premium reserve at `t`, built prospectively from conditional probabilities
 function prospective_reserve(lc, t)
     life = lc.life
@@ -32,18 +23,18 @@ end
 
     @testset "guarantees" begin
         # a one-year guarantee on an annuity due covers one installment, not two
-        @test_broken collect(cashflows(AnnuityDue(life5, 0.0, 3; certain=1))) ≈ [1.0, 0.5, 0.25]
+        @test collect(cashflows(AnnuityDue(life5, 0.0, 3; certain=1))) ≈ [1.0, 0.5, 0.25]
         # a zero-year guarantee is no guarantee
-        @test_broken collect(cashflows(AnnuityDue(life5, 0.0, 2; certain=0, start_time=1))) ≈ [0.5, 0.25]
+        @test collect(cashflows(AnnuityDue(life5, 0.0, 2; certain=0, start_time=1))) ≈ [0.5, 0.25]
         # a guarantee continues past established extinction
         dead_next_year = ultimate_life([1.0])
-        @test_broken present_value(AnnuityDue(dead_next_year, 0.0; certain=3)) ≈ 3.0
+        @test present_value(AnnuityDue(dead_next_year, 0.0; certain=3)) ≈ 3.0
         @test present_value(AnnuityDue(dead_next_year, 0.0, 3; certain=3)) ≈ 3.0
     end
 
     @testset "contract parameters" begin
         for frequency in (0, -1)
-            @test_broken threw(() -> AnnuityDue(life5, 0.0, 3; frequency))
+            @test_throws ArgumentError AnnuityDue(life5, 0.0, 3; frequency)
         end
         for ins in (Insurance(life5, 0.0, 0), AnnuityDue(life5, 0.0, 0), AnnuityImmediate(life5, 0.0, 0))
             @test present_value(ins, 0) == 0
@@ -144,6 +135,37 @@ end
         @test_throws DomainError present_value(Insurance(incomplete, 0.05))
         # a value between settlement dates keeps claims incurred but not yet paid
         @test present_value(Insurance(ultimate_life([0.5, 1.0]), 0.0), 0.5) ≈ 1.0
+    end
+
+    @testset "annuities" begin
+        # the one-time value includes the payment at issue; the value at a time excludes payments then
+        two = AnnuityDue(ultimate_life([0.5, 1.0]), 0.0, 2)
+        @test present_value(two) ≈ 1.5
+        @test present_value(two, 0) ≈ 0.5
+        # a zero term keeps its life and curve and has no payments
+        none = AnnuityImmediate(life5, 0.05, 0)
+        @test none isa Insurance && none.life === life5
+        @test isempty(timepoints(none)) && isempty(cashflows(none)) && isempty(survival(none))
+        @test present_value(none) == 0
+        @test isconcretetype(only(Base.return_types(AnnuityDue, Tuple{typeof(life5),Float64,Int})))
+        @test isconcretetype(only(Base.return_types(AnnuityImmediate, Tuple{typeof(life5),Float64})))
+        @test_throws ArgumentError AnnuityDue(life5, 0.05; certain=-1)
+        @test_throws ArgumentError AnnuityDue(life5, 0.05; start_time=-1)
+        @test_throws ArgumentError AnnuityDue(life5, 0.05; frequency=2.5)
+        # the schedule stays exact at monthly frequency
+        monthly = timepoints(AnnuityDue(life5, 0.0, 2; frequency=12))
+        @test length(monthly) == 24 && first(monthly) == 0 && last(monthly) ≈ 2 - 1 / 12
+        @test length(timepoints(AnnuityImmediate(life5, 0.0, 2; frequency=12))) == 24
+        # guaranteed installments need no mortality rates, even past where the rates stop
+        incomplete = ultimate_life([0.5, 0.5])
+        @test present_value(AnnuityDue(incomplete, 0.0, 5; certain=5)) ≈ 5.0
+        @test_throws DomainError present_value(AnnuityDue(incomplete, 0.0, 5; certain=2))
+        # a guarantee longer than the term is cut off at the term
+        @test present_value(AnnuityDue(life5, 0.0, 2; certain=4)) ≈ 2.0
+        # parametric mortality: a term annuity is valued, a life annuity needs a term
+        gompertz = SingleLife(MortalityTables.Gompertz(a=0.0002, b=0.13), issue_age=40)
+        @test present_value(AnnuityDue(gompertz, 0.0, 10)) ≈ sum(survival(gompertz, t) for t in 0:9)
+        @test_throws DomainError present_value(AnnuityDue(gompertz, 0.0))
     end
 
     @testset "exports" begin

@@ -84,43 +84,40 @@ abstract type AnnuityKind end
 struct Due <: AnnuityKind end
 struct Immediate <: AnnuityKind end
 
-abstract type AnnuityPayable end
-abstract type AnnuityCertain <: AnnuityPayable end
-
-struct TermCertain <: AnnuityCertain
-    term::Int
-    certain::Int
-end
-struct LifeCertain <: AnnuityCertain
-    certain::Int
-end
-struct TermAnnuity <: AnnuityPayable
-    term::Int
-end
-struct LifeAnnuity <: AnnuityPayable end
-
-struct Annuity{L,Y,K<:AnnuityKind,P<:AnnuityPayable} <: Insurance
+struct Annuity{L,Y,K<:AnnuityKind} <: Insurance
     life::L
     int::Y
     kind::K
-    payable::P
+    term::Union{Nothing,Int}
+    certain::Int
     start_time::Int
     frequency::Int
 end
-struct ZeroBenefit{L,Y} <: Insurance
-    life::L
-    int::Y
-end
 
-function ZeroBenefit(lc::LifeContingency)
-    return ZeroBenefit(lc.life, lc.int)
+function annuity(kind, life, int, term; certain, start_time, frequency)
+    frequency isa Integer && frequency >= 1 ||
+        throw(ArgumentError("`frequency` must be a positive whole number of payments a year; got $frequency"))
+    certain isa Integer && certain >= 0 ||
+        throw(ArgumentError("`certain` must be a nonnegative whole number of years; got $certain"))
+    start_time isa Integer && start_time >= 0 ||
+        throw(ArgumentError("`start_time` must be a nonnegative whole number of years; got $start_time"))
+    return Annuity(life, int, kind, checked_term(term), Int(certain), Int(start_time), Int(frequency))
 end
 
 """
-    AnnuityDue(lc::LifeContingency; n=nothing, start_time=0; certain=nothing,frequency=1)
-    AnnuityDue(life, interest; n=nothing, start_time=0; certain=nothing,frequency=1)
+    AnnuityDue(lc::LifeContingency[, term]; certain=0, start_time=0, frequency=1)
+    AnnuityDue(life, interest[, term]; certain=0, start_time=0, frequency=1)
 
-Annuity due with the benefit period starting at `start_time` and ending after `n` periods with `frequency` payments per year of `1/frequency` amount and a `certain` period with non-contingent payments. 
+An annuity due: `frequency` payments a year of `1/frequency` each, at the start of each period,
+beginning at `start_time` and lasting `term` years, or for life when `term` is omitted.
+
+The first `certain` years of payments are guaranteed: they are paid whether or not the life
+survives, including during any deferral. Later payments are made only while the life (or a
+`JointLife`'s contingency) is in force. A `term` of zero gives an annuity with no payments.
+
+The mortality assumption has to cover the life-contingent payments. A life annuity needs rates
+that reach extinction (a rate of 1), so give a `term` for a table whose rates stop short of 1,
+or for parametric mortality.
 
 # Examples
 
@@ -132,36 +129,16 @@ ins = AnnuityDue(
 ) 
 ```
 """
-function AnnuityDue(life, int, term; certain=nothing, start_time=0, frequency=1)
-    term < 1 && return ZeroBenefit(life, int)
-    if isnothing(certain)
-        Annuity(life, int, Due(), TermAnnuity(term), start_time, frequency)
-    else
-        Annuity(life, int, Due(), TermCertain(term, certain), start_time, frequency)
-    end
-end
-
-function AnnuityDue(life, int; certain=nothing, start_time=0, frequency=1)
-    if isnothing(certain)
-        Annuity(life, int, Due(), LifeAnnuity(), start_time, frequency)
-    else
-        Annuity(life, int, Due(), LifeCertain(certain), start_time, frequency)
-    end
-end
-
-function AnnuityDue(lc::L, term; certain=nothing, start_time=0, frequency=1) where {L<:LifeContingency}
-    return AnnuityDue(lc.life, lc.int, term; certain, start_time, frequency)
-end
-
-function AnnuityDue(lc::L; certain=nothing, start_time=0, frequency=1) where {L<:LifeContingency}
-    return AnnuityDue(lc.life, lc.int; certain, start_time, frequency)
-end
+AnnuityDue(life, int, term=nothing; certain=0, start_time=0, frequency=1) =
+    annuity(Due(), life, int, term; certain, start_time, frequency)
+AnnuityDue(lc::LifeContingency, args...; kwargs...) = AnnuityDue(lc.life, lc.int, args...; kwargs...)
 
 """
-    AnnuityImmediate(lc::LifeContingency; term=nothing, start_time=0; certain=nothing,frequency=1)
-    AnnuityImmediate(life, interest; term=nothing, start_time=0; certain=nothing,frequency=1)
+    AnnuityImmediate(lc::LifeContingency[, term]; certain=0, start_time=0, frequency=1)
+    AnnuityImmediate(life, interest[, term]; certain=0, start_time=0, frequency=1)
 
-Annuity immediate with the benefit period starting at `start_time` and ending after `term` periods with `frequency` payments per year of `1/frequency` amount and a `certain` period with non-contingent payments. 
+An annuity immediate: like [`AnnuityDue`](@ref), but each payment is made at the end of its
+period.
 
 # Examples
 
@@ -172,29 +149,49 @@ ins = AnnuityImmediate(
     1 # term of policy
 ) 
 ```
-
 """
-function AnnuityImmediate(life, int, term; certain=nothing, start_time=0, frequency=1)
-    term < 1 && return ZeroBenefit(life, int)
-    if isnothing(certain)
-        Annuity(life, int, Immediate(), TermAnnuity(term), start_time, frequency)
-    else
-        Annuity(life, int, Immediate(), TermCertain(term, certain), start_time, frequency)
-    end
+AnnuityImmediate(life, int, term=nothing; certain=0, start_time=0, frequency=1) =
+    annuity(Immediate(), life, int, term; certain, start_time, frequency)
+AnnuityImmediate(lc::LifeContingency, args...; kwargs...) = AnnuityImmediate(lc.life, lc.int, args...; kwargs...)
+
+# How many periods after `start_time` the first payment falls.
+first_period(::Due) = 0
+first_period(::Immediate) = 1
+
+# Installment k is paid at start_time + (k - 1 + first_period) / frequency. Counting
+# installments in whole numbers keeps the schedule exact at any frequency.
+function schedule(ins::Annuity)
+    horizon = omega(ins.life)
+    in_term = isnothing(ins.term) ? nothing : ins.term * ins.frequency
+    isnothing(in_term) && isinf(horizon) &&
+        throw(DomainError(horizon, "parametric mortality never reaches extinction, so a life annuity needs a `term`"))
+    guaranteed = isnothing(in_term) ? ins.certain * ins.frequency : min(ins.certain * ins.frequency, in_term)
+    # installments due no later than the end of the mortality assumption
+    covered = isinf(horizon) ? in_term : max(0, (Int(horizon) - ins.start_time) * ins.frequency + 1 - first_period(ins.kind))
+    contingent_end = isnothing(in_term) ? covered : min(in_term, covered)
+    count = max(guaranteed, contingent_end)
+    # whether life-contingent installments carry on past the end of the assumption
+    continues = isnothing(in_term) || in_term > max(covered, guaranteed)
+    step = 1 / ins.frequency
+    times = range(ins.start_time + first_period(ins.kind) * step; step, length=count)
+    return (; times, guaranteed, continues, horizon)
 end
 
-function AnnuityImmediate(life, int; certain=nothing, start_time=0, frequency=1)
-    if isnothing(certain)
-        Annuity(life, int, Immediate(), LifeAnnuity(), start_time, frequency)
-    else
-        Annuity(life, int, Immediate(), LifeCertain(certain), start_time, frequency)
-    end
+# The probability of being in force at each of `times` (increasing), from one projection.
+function in_force_at(life, times)
+    isempty(times) && return probability_type(life)[]
+    grid = unique!([0.0; times])
+    p = project_from_issue((in_force=in_force_payment(life),), life, grid)
+    in_force = Dict(cf.time => cf.amount for cf in p.cashflows.in_force)
+    return [in_force[t] for t in times]
 end
 
-function AnnuityImmediate(lc::L, term; certain=nothing, start_time=0, frequency=1) where {L<:LifeContingency}
-    return AnnuityImmediate(lc.life, lc.int, term; certain, start_time, frequency)
-end
-
-function AnnuityImmediate(lc::L; certain=nothing, start_time=0, frequency=1) where {L<:LifeContingency}
-    return AnnuityImmediate(lc.life, lc.int; certain, start_time, frequency)
+# Guaranteed installments are paid for certain; the rest only while the life is in force.
+function expected_payments(ins::Annuity)
+    s = schedule(ins)
+    contingent = s.times[s.guaranteed+1:end]
+    checked = s.continues ? [contingent; s.horizon] : collect(contingent)
+    in_force = in_force_at(ins.life, checked)
+    s.continues && !iszero(last(in_force)) && throw(beyond_assumption(s.horizon))
+    return [ones(probability_type(ins.life), s.guaranteed); in_force[1:length(contingent)]]
 end
