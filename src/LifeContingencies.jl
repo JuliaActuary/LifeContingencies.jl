@@ -608,7 +608,7 @@ julia> decrement(l,1,3)
     
     ```
 """
-mt.survival(lc::LifeContingency, to_time) = survival(lc.life, 0, to_time)
+mt.survival(lc::LifeContingency, to_time) = survival(lc.life, to_time)
 mt.survival(lc::LifeContingency, from_time, to_time) = survival(lc.life, from_time, to_time)
 
 FinanceCore.discount(lc::LifeContingency, t) = discount(lc.int, t)

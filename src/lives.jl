@@ -15,7 +15,7 @@ A `Life` object containing the necessary assumptions for contingent maths relate
 
 Keyword arguments:
 - `issue_age` is the assumed issue age for the `SingleLife` and is the basis of many contingency calculations.
-- `alive` Default value is `true`. Useful for joint insurances with different status on the lives insured.
+- `alive` (default `true`) is the life's status at issue. A life that is not alive has `survival(life, t) == 0` for every `t`; `survival(life, from, to)` is still the mortality assumption's survival for a life alive at `from`. Useful for joint lives with different statuses.
 - `fractional_assump`. Default value is `UniformDeaths()`. This is a `DeathDistribution` from the `MortalityTables.jl` package and is the assumption to use for non-integer ages/times.
 
 # Examples
@@ -137,7 +137,15 @@ function mt.omega(l::JointLife)
     return minimum(omega.(l.lives))
 end
 
-mt.survival(l::SingleLife, to_time) = survival(l, 0, to_time)
+"""
+    survival(life::SingleLife, to_time)
+    survival(life::SingleLife, from_time, to_time)
+
+With one time, the probability that `life` is alive at `to_time`, given its status at issue.
+With two, the probability of surviving from `from_time` to `to_time` for a life alive at
+`from_time`, which depends only on the mortality assumption.
+"""
+mt.survival(l::SingleLife, to_time) = l.alive ? survival(l, 0, to_time) : zero(survival(l, 0, 0))
 mt.survival(l::SingleLife, from_time, to_time) = survival(l.mortality, l.issue_age + from_time, l.issue_age + to_time, l.fractional_assump)
 
 """
@@ -150,7 +158,7 @@ function mt.survival(l::L) where {L<:Life}
     return Iterators.map(t -> survival(l, t), 0:ω)
 end
 
-mt.survival(l::JointLife, to_time) = survival(l::JointLife, 0, to_time)
+mt.survival(l::JointLife, to_time) = survival(l.contingency, l.joint_assumption, l, to_time)
 function mt.survival(l::JointLife, from_time, to_time)
     return survival(l.contingency, l.joint_assumption, l::JointLife, from_time, to_time)
 end
@@ -162,10 +170,8 @@ function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, f
 end
 
 function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, to_time)
-    to_time == 0 && return 1.0
-
     l1, l2 = l.lives
-    ₜpₓ = survival(l1.mortality, l1.issue_age, l1.issue_age + to_time, l1.fractional_assump)
-    ₜpᵧ = survival(l2.mortality, l2.issue_age, l2.issue_age + to_time, l2.fractional_assump)
+    ₜpₓ = survival(l1, to_time)
+    ₜpᵧ = survival(l2, to_time)
     return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
 end

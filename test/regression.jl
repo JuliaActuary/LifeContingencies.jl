@@ -56,8 +56,13 @@ end
     @testset "life status" begin
         dead = ultimate_life([0.5, 0.5, 1.0]; alive=false)
         survivor = ultimate_life([0.1, 0.1, 1.0])
-        @test_broken survival(JointLife(lives=(dead, survivor)), 1) ≈ survival(survivor, 1)
-        @test_broken present_value(AnnuityDue(dead, 0.0)) ≈ 0.0
+        @test survival(JointLife(lives=(dead, survivor)), 1) ≈ survival(survivor, 1)
+        @test present_value(AnnuityDue(dead, 0.0)) ≈ 0.0
+        @test survival(dead, 0) == 0
+        @test survival(LifeContingency(dead, 0.05), 1) == 0
+        # two-time survival is the mortality assumption's, for a life alive at the start
+        @test survival(dead, 1, 2) == survival(ultimate_life([0.5, 0.5, 1.0]), 1, 2)
+        @test survival(JointLife(lives=(dead, dead)), 0) == 0
     end
 
     @testset "joint lives" begin
