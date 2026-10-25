@@ -100,6 +100,26 @@ end
         @test care.f(Interval(grid[1], grid[2]), exhausted, exhausted) == 0
     end
 
+    @testset "elimination periods of any length" begin
+        grid = months(2)
+        continuing(model, k, state) =
+            only(next for next in keys(row_probabilities(model, Interval(grid[k], grid[k+1]), state)) if next.status === :claim)
+        # a claim qualifies once it has lasted the elimination period, even past the rate bands
+        long_wait = LTCModel(elimination_months=12)
+        state = LTCState(:claim, 0, false, 0)
+        for k in 1:12
+            @test !state.qualified
+            state = continuing(long_wait, k, state)
+        end
+        @test state == LTCState(:claim, 12, true, 0)
+        @test continuing(long_wait, 13, state) == LTCState(:claim, 12, true, 1)
+        # with no elimination period, a new claim is paid from its first month
+        no_wait = LTCModel(elimination_months=0)
+        new_claim = only(next for next in keys(row_probabilities(no_wait, Interval(grid[1], grid[2]), HEALTHY)) if next.status === :claim)
+        @test new_claim == LTCState(:claim, 0, true, 0)
+        @test ltc_contract(no_wait; term=1, premium=0.03).care.f(Interval(grid[1], grid[2]), new_claim, new_claim) == 1
+    end
+
     @testset "Monte Carlo agreement" begin
         term = 2
         grid = months(term)

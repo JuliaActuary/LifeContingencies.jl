@@ -17,7 +17,7 @@ policyholder's status:
 | Field | Meaning |
 |---|---|
 | `status` | `:healthy`, `:claim`, `:dead` or `:lapsed` |
-| `claim_months` | whole months in the current claim, counted up to 6 |
+| `claim_months` | whole months in the current claim, counted up to 6, or up to the elimination period when that is longer |
 | `qualified` | whether the elimination period has been satisfied |
 | `benefit_months` | benefit months paid so far, across all claims |
 
@@ -39,7 +39,8 @@ month. Over a month with total force ``\mu``, the probability of staying is
 **Contract.** `ltc_contract` builds a policy of `term` years with three payments:
 - a monthly premium at the start of each month while healthy, waived on claim
 - a care benefit for each month on claim once the three-month elimination period is
-  satisfied, up to 24 benefit months in total
+  satisfied, up to 24 benefit months in total. With no elimination period, a claim is paid
+  from its first month.
 - a death benefit at the end of the month of death
 
 ## Simplifications
@@ -106,7 +107,8 @@ sum(cf.amount for cf in projection.cashflows.care)
 
 ## How it is checked
 
-`test/ltc.jl` checks the model in four independent ways:
+`test/ltc.jl` checks the model in four independent ways, and separately checks that
+elimination periods of any length qualify:
 
 - **Reduction:** with no incidence and no lapse, the model matches a `SingleLife` on the
   equivalent constant-force table. That covers occupancy, the premium annuity against

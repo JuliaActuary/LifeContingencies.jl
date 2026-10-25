@@ -10,7 +10,7 @@ using LifeContingencies.Experimental
 
 struct LTCState
     status::Symbol         # :healthy, :claim, :dead or :lapsed
-    claim_months::Int      # whole months in the current claim, counted up to `RATE_BANDS`
+    claim_months::Int      # whole months in the current claim, counted up to `claim_months_counted`
     qualified::Bool        # whether the elimination period has been satisfied (once per lifetime)
     benefit_months::Int    # benefit months paid so far, across all claims
 end
@@ -50,6 +50,15 @@ end
 care_payable(m::LTCModel, s::LTCState) =
     s.status === :claim && s.qualified && s.benefit_months < m.maximum_benefit_months
 
+# Claim duration matters until both the rate band and the elimination period are settled,
+# so it is counted that far and no further, which keeps the states few.
+claim_months_counted(m::LTCModel) = max(RATE_BANDS, m.elimination_months)
+
+# A claim that has lasted `months` whole months. It qualifies once it has lasted the
+# elimination period, so with no elimination period it qualifies as it starts.
+on_claim(m::LTCModel, months, qualified, benefit_months) =
+    LTCState(:claim, min(months, claim_months_counted(m)), qualified || months >= m.elimination_months, benefit_months)
+
 # Every row has four entries so that all rows have one type.
 function LifeContingencies.Experimental.transitions(m::LTCModel, interval::Interval, s::LTCState)
     isapprox(interval.stop - interval.start, MONTH) ||
@@ -58,14 +67,12 @@ function LifeContingencies.Experimental.transitions(m::LTCModel, interval::Inter
     if s.status === :healthy
         forces = (m.incidence * exp(m.incidence_growth * years), m.healthy_mortality * exp(m.mortality_growth * years), m.lapse)
         stay, (incidence, death, lapse) = exits(forces, MONTH)
-        claim = LTCState(:claim, 0, s.qualified, s.benefit_months)
+        claim = on_claim(m, 0, s.qualified, s.benefit_months)
         return (s => stay, claim => incidence, DEAD => death, LAPSED => lapse)
     elseif s.status === :claim
         band = s.claim_months < RATE_BANDS ? 1 : 2
         stay, (recovery, death) = exits((m.recovery[band], m.claim_mortality[band]), MONTH)
-        months_on_claim = s.claim_months + 1
-        continuing = LTCState(:claim, min(months_on_claim, RATE_BANDS), s.qualified || months_on_claim >= m.elimination_months,
-            s.benefit_months + care_payable(m, s))
+        continuing = on_claim(m, s.claim_months + 1, s.qualified, s.benefit_months + care_payable(m, s))
         recovered = LTCState(:healthy, 0, s.qualified, s.benefit_months)
         return (continuing => stay, recovered => recovery, DEAD => death, DEAD => 0.0)
     else
