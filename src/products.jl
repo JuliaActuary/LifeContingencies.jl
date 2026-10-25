@@ -20,7 +20,7 @@ death_payment(life) = TransitionPayment((interval, from, to) -> active(life, fro
 in_force_payment(life) = StatePayment((t, state) -> active(life, state) ? 1 : 0)
 
 beyond_assumption(t) = DomainError(t,
-    "the contract continues past the end of the mortality rates at time $t while lives remain in force; supply rates that reach extinction (a rate of 1), or give the contract a shorter term")
+    "the contract continues past the end of the mortality assumption at time $t while lives remain in force; supply rates that reach extinction (a rate of 1), or give the contract a shorter term")
 
 checked_term(::Nothing) = nothing
 function checked_term(term::Integer)
@@ -62,12 +62,14 @@ ins = Insurance(
 Insurance(life, int, term=nothing) = DeathBenefit(life, int, checked_term(term))
 Insurance(lc::LifeContingency, args...) = Insurance(lc.life, lc.int, args...)
 
-# The years a death benefit runs: its term, ending early when the mortality assumption does.
+# The years a death benefit runs: its term, ending early at the last whole year the mortality
+# assumption covers.
 function benefit_years(ins::DeathBenefit)
     horizon = omega(ins.life)
     isnothing(ins.term) && isinf(horizon) &&
         throw(DomainError(horizon, "parametric mortality never reaches extinction, so a whole-life insurance needs a `term`"))
-    return Int(isnothing(ins.term) ? horizon : min(ins.term, horizon))
+    covered = isinf(horizon) ? ins.term : floor(Int, horizon)
+    return isnothing(ins.term) ? covered : min(ins.term, covered)
 end
 
 # One projection from issue gives every view of a death benefit.
@@ -76,7 +78,7 @@ function expected_payments(ins::DeathBenefit)
     p = project_from_issue((death=death_payment(ins.life), in_force=in_force_payment(ins.life)), ins.life, 0:years)
     in_force = [cf.amount for cf in p.cashflows.in_force]
     continues = isnothing(ins.term) || ins.term > years
-    continues && !iszero(last(in_force)) && throw(beyond_assumption(years))
+    continues && !iszero(last(in_force)) && throw(beyond_assumption(omega(ins.life)))
     return (probability=[cf.amount for cf in p.cashflows.death], survival=in_force[1:end-1])
 end
 
@@ -166,15 +168,17 @@ function schedule(ins::Annuity)
     isnothing(in_term) && isinf(horizon) &&
         throw(DomainError(horizon, "parametric mortality never reaches extinction, so a life annuity needs a `term`"))
     guaranteed = isnothing(in_term) ? ins.certain * ins.frequency : min(ins.certain * ins.frequency, in_term)
+    step = 1 / ins.frequency
+    first_date = ins.start_time + first_period(ins.kind) * step
+    # enough installment dates for the term, or to pass the end of the mortality assumption
+    available = isnothing(in_term) ? max(0, ceil(Int, (horizon - first_date) * ins.frequency) + 1) : in_term
+    dates = range(first_date; step, length=max(available, guaranteed))
     # installments due no later than the end of the mortality assumption
-    covered = isinf(horizon) ? in_term : max(0, (Int(horizon) - ins.start_time) * ins.frequency + 1 - first_period(ins.kind))
+    covered = isinf(horizon) ? in_term : searchsortedlast(dates, horizon)
     contingent_end = isnothing(in_term) ? covered : min(in_term, covered)
-    count = max(guaranteed, contingent_end)
     # whether life-contingent installments carry on past the end of the assumption
     continues = isnothing(in_term) || in_term > max(covered, guaranteed)
-    step = 1 / ins.frequency
-    times = range(ins.start_time + first_period(ins.kind) * step; step, length=count)
-    return (; times, guaranteed, continues, horizon)
+    return (; times=dates[1:max(guaranteed, contingent_end)], guaranteed, continues, horizon)
 end
 
 # The probability of being in force at each of `times` (increasing), from one projection.

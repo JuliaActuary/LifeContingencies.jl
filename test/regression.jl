@@ -134,6 +134,17 @@ end
         @test present_value(Insurance(life, 0.05, 10)) ≈ term_reference
         # parametric mortality never reaches extinction, so whole life needs a term
         @test_throws DomainError present_value(Insurance(life, 0.05))
+        # a law can end partway through a year: terms within it are valued, terms past it are undefined
+        @test present_value(AnnuityDue(bounded, 0.05, 2)) ≈ 1 + survival(bounded, 1) / 1.05
+        @test present_value(Insurance(bounded, 0.05, 60)) ≈ sum(1.05^-t * (survival(bounded, t - 1) - survival(bounded, t)) for t in 1:60)
+        @test_throws DomainError present_value(Insurance(bounded, 0.05, 61))
+        @test_throws DomainError present_value(Insurance(bounded, 0.05))
+        # installments are counted against their dates, so the last one inside the law falls at 60.5
+        semiannual = AnnuityDue(bounded, 0.0, 61; frequency=2)
+        @test last(timepoints(semiannual)) == 60.5
+        @test present_value(semiannual) ≈ sum(survival(bounded, t) for t in 0:0.5:60.5) / 2
+        @test_throws DomainError present_value(AnnuityDue(bounded, 0.0, 62; frequency=2))
+        @test_throws DomainError present_value(AnnuityDue(bounded, 0.0))
     end
 
     @testset "death benefits" begin
