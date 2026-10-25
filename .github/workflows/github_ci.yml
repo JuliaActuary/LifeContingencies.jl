@@ -45,6 +45,9 @@ jobs:
   docs:
     name: Documentation
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      statuses: write
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
@@ -59,5 +62,3 @@ jobs:
       - run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Needed due to https://github.com/JuliaDocs/Documenter.jl/issues/1177
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
