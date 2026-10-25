@@ -44,8 +44,6 @@ struct LifeContingency{L,Y}
     int::Y
 end
 
-Base.broadcastable(lc::LifeContingency) = Ref(lc)
-
 """
     omega(lc::LifeContingency)
     omega(l::Life)

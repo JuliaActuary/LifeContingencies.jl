@@ -224,6 +224,14 @@ end
         @test_throws DomainError present_value(AnnuityDue(gompertz, 0.0))
     end
 
+    @testset "broadcasting" begin
+        lc = LifeContingency(life5, 0.05)
+        @test survival.(life5, 0:2) == [survival(life5, t) for t in 0:2]
+        @test survival.(Insurance(lc), 0:2) == [survival(Insurance(lc), t) for t in 0:2]
+        @test survival.(lc, 0:2) == [survival(lc, t) for t in 0:2]
+        @test present_value.(Insurance(lc), [0, 1]) == [present_value(Insurance(lc), t) for t in [0, 1]]
+    end
+
     @testset "commutation functions" begin
         lc = LifeContingency(life5, 0.05)
         @test LifeContingencies.D === APV

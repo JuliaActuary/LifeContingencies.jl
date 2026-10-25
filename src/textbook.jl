@@ -208,6 +208,9 @@ function in_force_distribution(life, time)
     return condition(at_time, s -> active(life, s))
 end
 
+# Lives, products and life contingencies act as scalars in broadcasting.
+Base.broadcastable(x::Union{Life,Insurance,LifeContingency}) = Ref(x)
+
 # unexported aliases
 const V = reserve_premium_net
 const v = FinanceCore.discount
