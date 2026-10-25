@@ -1,7 +1,6 @@
 module LifeContingencies
 
 using MortalityTables
-using Transducers
 using FinanceCore
 import FinanceCore: present_value, discount
 
