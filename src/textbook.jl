@@ -148,8 +148,20 @@ gives one only when every remaining payment depends on being in force at `time`,
 life annuity outside its guarantee period, or a death benefit valued at the end of a policy
 year:
 
-```julia
-present_value(ins,10) / survival(ins,10)
+```jldoctest
+julia> ins = Insurance(SingleLife(UltimateMortality([0.5, 0.5, 1.0])), 0.0);
+
+julia> cashflows(ins)
+3-element Vector{Float64}:
+ 0.5
+ 0.25
+ 0.25
+
+julia> present_value(ins, 1)                     # the payments at times 2 and 3
+0.5
+
+julia> present_value(ins, 1) / survival(ins, 1)  # for a life in force at time 1
+1.0
 ```
 """
 function FinanceCore.present_value(ins::Insurance, time::Real)

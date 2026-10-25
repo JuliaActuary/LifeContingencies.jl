@@ -19,12 +19,22 @@ Keyword arguments:
 - `fractional_assump`. Default value is `UniformDeaths()`. This is a `DeathDistribution` from the `MortalityTables.jl` package and is the assumption to use for non-integer ages/times.
 
 # Examples
-    using MortalityTables
-    vbt = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
 
-    SingleLife(vbt.select[30])                        # select rates for issue age 30
-    SingleLife(vbt.select, issue_age=30)              # the same, picking the row by issue age
-    SingleLife(mortality=vbt.ultimate, issue_age=30)
+```jldoctest
+julia> vbt = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB");
+
+julia> SingleLife(vbt.select[30]).issue_age        # select rates for issue age 30
+30
+
+julia> SingleLife(vbt.select, issue_age=30).mortality == vbt.select[30]   # the same, picking the row by issue age
+true
+
+julia> survival(SingleLife(mortality=vbt.ultimate, issue_age=30), 10)
+0.9894404665434904
+
+julia> survival(SingleLife(MortalityTables.Gompertz(a=0.0002, b=0.13), issue_age=40), 10)
+0.4750123629834455
+```
 """
 struct SingleLife{M,D} <: Life
     mortality::M
@@ -90,37 +100,28 @@ Is a subtype of `Contingency`
 struct FirstToDie <: Contingency end
 
 """
-    struct JointLife
-        lives
-        contingency
-        joint_assumption
-    end
+    JointLife(; lives, contingency=LastSurvivor(), joint_assumption=Frasier())
 
-    A `Life` object containing the necessary assumptions for contingent maths related to a joint life insurance. Use with a `LifeContingency` to do many actuarial present value calculations. 
+A `Life` object containing the necessary assumptions for contingent maths related to a joint life insurance. Use with a `LifeContingency` to do many actuarial present value calculations. 
 
 Keyword arguments:
 - `lives` is a tuple of two `SingleLife`s
-- `contingency` default is `LastSurvivor()`. It is the trigger for contingent benefits. See `?Contingency`. 
-- `joint_assumption` Default value is `Frasier()`. It is the assumed relationship between the mortality of the two lives. See `?JointAssumption`. 
+- `contingency` default is `LastSurvivor()`. It is the trigger for contingent benefits: `LastSurvivor()` or `FirstToDie()`. See `?Contingency`. 
+- `joint_assumption` Default value is `Frasier()`, independent lives, the only assumption implemented. See `?JointAssumption`. 
 
 # Examples
-    using MortalityTables
-    mortality = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
 
-    l1 = SingleLife(
-        mortality       = mortality.select[30], 
-        issue_age  = 30          
-    )
-    l2 = SingleLife(
-        mortality       = mortality.select[30], 
-        issue_age  = 30          
-    )
+```jldoctest
+julia> vbt = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB");
 
-    jl = JointLife(
-        lives = (l1,l2),
-        contingency = LastSurvivor(),
-        joint_assumption = Frasier()
-    )
+julia> lives = (SingleLife(vbt.select[30]), SingleLife(vbt.select[35]));
+
+julia> survival(JointLife(lives=lives), 40)                           # at least one alive
+0.935943451146974
+
+julia> survival(JointLife(lives=lives, contingency=FirstToDie()), 40)  # both alive
+0.5468053463643783
+```
 """
 Base.@kwdef struct JointLife{L<:Tuple{SingleLife,SingleLife},C<:Contingency,J<:JointAssumption} <: Life
     lives::L
