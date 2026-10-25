@@ -90,11 +90,13 @@ function care_payment(m::LTCModel, from::LTCState, to::LTCState)
 end
 
 # A `term`-year policy: a monthly premium at the start of each month while healthy (waived on
-# claim), a monthly care benefit, and a benefit on death.
+# claim), a monthly care benefit, and a benefit on death. Nothing is paid for a month that
+# ends after the term, however far the projection grid runs.
 function ltc_contract(m::LTCModel; term, premium, care=1.0, death=1.0)
     return (
         premium=StatePayment((t, s) -> s.status === :healthy && t < term ? -premium : 0.0),
-        care=TransitionPayment((interval, from, to) -> care * care_payment(m, from, to)),
-        death=TransitionPayment((interval, from, to) -> from.status in (:healthy, :claim) && to.status === :dead ? death : 0.0),
+        care=TransitionPayment((interval, from, to) -> interval.stop <= term ? care * care_payment(m, from, to) : 0.0),
+        death=TransitionPayment((interval, from, to) ->
+            interval.stop <= term && from.status in (:healthy, :claim) && to.status === :dead ? death : 0.0),
     )
 end

@@ -43,6 +43,8 @@ month. Over a month with total force ``\mu``, the probability of staying is
   from its first month.
 - a death benefit at the end of the month of death
 
+Nothing is paid after the term, so projecting over a longer grid gives the same values.
+
 ## Simplifications
 
 The engine needs every convention stated, so here are this model's:
@@ -107,8 +109,8 @@ sum(cf.amount for cf in projection.cashflows.care)
 
 ## How it is checked
 
-`test/ltc.jl` checks the model in four independent ways, and separately checks that
-elimination periods of any length qualify:
+`test/ltc.jl` checks the model in four independent ways, and separately checks that payments
+stop at the term and that elimination periods of any length qualify:
 
 - **Reduction:** with no incidence and no lapse, the model matches a `SingleLife` on the
   equivalent constant-force table. That covers occupancy, the premium annuity against

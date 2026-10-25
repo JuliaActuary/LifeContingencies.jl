@@ -100,6 +100,22 @@ end
         @test care.f(Interval(grid[1], grid[2]), exhausted, exhausted) == 0
     end
 
+    @testset "payments stop at the term, however far the grid runs" begin
+        # a qualified claimant who never leaves claim is paid for the term's 12 months only
+        lasting = LTCModel(recovery=(0.0, 0.0), claim_mortality=(0.0, 0.0))
+        claimant = LTCState(:claim, RATE_BANDS, true, 0)
+        contract = ltc_contract(lasting; term=1, premium=0.03)
+        for years in (1, 2)
+            @test policy_values(contract, lasting, 0.0; grid=months(years), terminal=0, roots=[claimant]).before[claimant].care == 12
+        end
+        contract = ltc_contract(m; term=1, premium=0.03)
+        within = policy_values(contract, m, curve; grid=months(1), terminal=0, roots=[HEALTHY]).before[HEALTHY]
+        beyond = policy_values(contract, m, curve; grid=months(2), terminal=0, roots=[HEALTHY]).before[HEALTHY]
+        for name in keys(contract)
+            @test beyond[name] ≈ within[name]
+        end
+    end
+
     @testset "elimination periods of any length" begin
         grid = months(2)
         continuing(model, k, state) =
