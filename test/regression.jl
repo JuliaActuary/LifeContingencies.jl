@@ -90,7 +90,7 @@ end
 
     @testset "valuation" begin
         # the time-1 value of a death payment at time 2 uses the curve's own 1→2 discount factor
-        @test_broken present_value(Insurance(ultimate_life([0.0, 1.0]), RegressionCurve()), 1) ≈ exp(-0.3)
+        @test present_value(Insurance(ultimate_life([0.0, 1.0]), RegressionCurve()), 1) ≈ exp(-0.3)
         # late-duration reserves keep their precision
         qs = vcat(fill(0.5, 100), [0.9, 1.0])
         lc = LifeContingency(ultimate_life(qs), 0.05)

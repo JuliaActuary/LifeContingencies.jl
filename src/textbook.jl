@@ -139,24 +139,25 @@ end
 """
     present_value(Insurance,`time`)
 
-The actuarial present value of the given insurance benefits, as if you were standing at `time`. 
+The actuarial present value of the given insurance benefits, as if you were standing at `time`:
+the expected payments strictly after `time`, as projected from issue, discounted to `time`
+with the curve's own factors `discount(interest, time, t)`.
 
-For example, if the given `Insurance` has *decremented* payments `[1,2,3,4,5]` at times `[1,2,3,4,5]` and you call `pv(ins,3)`, 
-you will get the present value of the payments `[4,5]` at times `[1,2]`.
+For example, if the given `Insurance` has *decremented* payments `[1,2,3,4,5]` at times `[1,2,3,4,5]` and you call `pv(ins,3)`,
+you will get the present value of the payments `[4,5]` at times `[4,5]`, discounted to time 3.
 
-To get an undecremented present value, divide by the survivorship to that timepoint:
+This is not a value for a life known to be in force at `time`. Dividing by the survivorship
+gives one only when every remaining payment depends on being in force at `time`, as for a
+life annuity outside its guarantee period, or a death benefit valued at the end of a policy
+year:
 
 ```julia
 present_value(ins,10) / survival(ins,10)
 ```
 """
-function FinanceCore.present_value(ins::T, time) where {T<:Insurance}
-    ts = timepoints(ins)
-    times = (t - time for t in ts if t > time)
-    cfs = (cf for (cf, t) in zip(cashflows(ins), ts) if t > time)
-    yield = ins.int
-    pv = present_value(yield, cfs, times)
-    return pv
+function FinanceCore.present_value(ins::Insurance, time::Real)
+    cfs = cashflows(ins)
+    return sum((cf * discount(ins.int, time, t) for (cf, t) in zip(cfs, timepoints(ins)) if t > time); init=zero(eltype(cfs)))
 end
 
 """
