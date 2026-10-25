@@ -224,6 +224,17 @@ end
         @test_throws DomainError present_value(AnnuityDue(gompertz, 0.0))
     end
 
+    @testset "commutation functions" begin
+        lc = LifeContingency(life5, 0.05)
+        @test LifeContingencies.D === APV
+        # the sums are empty past the last year of the table
+        @test LifeContingencies.N(lc, omega(lc)) == 0
+        @test LifeContingencies.M(lc, omega(lc)) == 0
+        @test LifeContingencies.N(lc, 0) ≈ sum(APV(lc, t) for t in 0:omega(lc)-1)
+        gompertz = LifeContingency(SingleLife(MortalityTables.Gompertz(a=0.0002, b=0.13), issue_age=40), 0.05)
+        @test_throws DomainError LifeContingencies.N(gompertz, 0)
+    end
+
     @testset "exports" begin
         # `insurance`, `annuity_due` and `annuity_immediate` are exported but never defined
         @test_broken all(name -> isdefined(LifeContingencies, name), names(LifeContingencies))

@@ -3,14 +3,20 @@
 ###################
 
 """
-    D(lc::LifeContingency, to_time)
+    APV(lc::LifeContingency,to_time)
 
-``D_x`` is a retrospective actuarial commutation function which is the product of the survival and discount factor.
+The **actuarial present value** which is the survival times the discount factor for the life contingency.
 """
-function D(lc::LifeContingency, to_time)
-    return discount(lc.int, to_time) * survival(lc, to_time)
+function APV(lc::LifeContingency, to_time)
+    return survival(lc, to_time) * discount(lc.int, to_time)
 end
 
+"""
+    D(lc::LifeContingency, to_time)
+
+``D_x`` is a retrospective actuarial commutation function which is the product of the survival and discount factor: another name for [`APV`](@ref).
+"""
+const D = APV
 
 """
     l(lc::LifeContingency, to_time)
@@ -27,8 +33,14 @@ end
 ``C_x`` is a retrospective actuarial commutation function which is the product of the discount factor and the difference in `l` (``l_x``).
 """
 function C(lc::LifeContingency, to_time)
-    discount(lc.int, to_time + 1) * (l(lc, to_time) - l(lc, to_time + 1))
+    return discount(lc.int, to_time + 1) * (l(lc, to_time) - l(lc, to_time + 1))
+end
 
+# Commutation sums run through the last year the mortality rates cover.
+function last_table_year(lc::LifeContingency)
+    ω = omega(lc)
+    isinf(ω) && throw(DomainError(ω, "commutation sums run to the end of the mortality table, and parametric mortality has none"))
+    return Int(ω) - 1
 end
 
 """
@@ -36,25 +48,14 @@ end
 
 ``N_x`` is a prospective actuarial commutation function which is the sum of the `D` (``D_x``) values from the given time to the end of the mortality table.
 """
-function N(lc::LifeContingency, from_time)
-    range = from_time:(omega(lc)-1)
-    vals = Iterators.map(from_time -> D(lc, from_time), range)
-    return sum(vals)
-end
+N(lc::LifeContingency, from_time) = sum(t -> D(lc, t), from_time:last_table_year(lc); init=zero(APV(lc, 0)))
 
 """
     M(lc::LifeContingency, from_time)
 
-The ``M_x`` actuarial commutation function where the `from_time` argument is `x`.
-Issue age is based on the issue_age in the LifeContingency `lc`.
+``M_x`` is a prospective actuarial commutation function which is the sum of the `C` (``C_x``) values from the given time to the end of the mortality table.
 """
-function M(lc::LifeContingency, from_time)
-    range = from_time:omega(lc)-1
-    vals = Iterators.map(from_time -> C(lc, from_time), range)
-    return sum(vals)
-end
-
-E(lc::LifeContingency, t, x) = D(lc, x + t) / D(lc, x)
+M(lc::LifeContingency, from_time) = sum(t -> C(lc, t), from_time:last_table_year(lc); init=zero(APV(lc, 0)))
 
 """
     survival(Insurance,time)
@@ -207,21 +208,9 @@ function in_force_distribution(life, time)
     return condition(at_time, s -> active(life, s))
 end
 
-"""
-    APV(lc::LifeContingency,to_time)
-
-The **actuarial present value** which is the survival times the discount factor for the life contingency.
-"""
-function APV(lc::LifeContingency, to_time)
-    return survival(lc, to_time) * discount(lc.int, to_time)
-end
-
 # unexported aliases
 const V = reserve_premium_net
 const v = FinanceCore.discount
-# A(args) = present_value(Insurance(args))
-# a(args, kwargs) = present_value(AnnuityImmediate(args...; kwargs...))
-# ä(args) = present_value(AnnuityDue(args))
 const A = FinanceCore.present_value ∘ Insurance
 const a = FinanceCore.present_value ∘ AnnuityImmediate
 const ä = FinanceCore.present_value ∘ AnnuityDue
