@@ -48,27 +48,12 @@ Base.broadcastable(lc::LifeContingency) = Ref(lc)
 """
     omega(lc::LifeContingency)
     omega(l::Life)
-    omega(i::InterestRate)
 
-# `Life`s and `LifeContingency`s
+The number of years from issue that the mortality assumption covers: survival to `omega` uses the last defined rate. For parametric mortality, `omega` is `Inf`.
 
-Returns the last defined time_period for both the interest rate and mortality table.
-Note that this is *different* than calling `omega` on a `MortalityTable`, which will give you the last `attained_age`.
-
-Example: if the `LifeContingency` has issue age 60, and the last defined attained age for the `MortalityTable` is 100, then `omega` of the `MortalityTable` will be `100` and `omega` of the 
-`LifeContingency` will be `40`.
-
-# `InterestRate`s
-
-The last period that the interest rate is defined for. Assumed to be infinite (`Inf`) for 
-    functional and constant interest rate types. Returns the `lastindex` of the vector if 
-    a vector type.
+This differs from `omega` of a mortality vector, which is the last attained age with a rate. For example, with issue age 60 and rates through age 100, `omega` of the vector is `100` and `omega` of the life is `41`.
 """
-function mt.omega(lc::LifeContingency)
-    # if one of the omegas is infinity, that's a Float so we need
-    # to narrow the type with Int
-    return Int(omega(lc.life))
-end
+mt.omega(lc::LifeContingency) = omega(lc.life)
 
 
 ###################
