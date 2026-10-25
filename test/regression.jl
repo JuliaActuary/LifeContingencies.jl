@@ -101,7 +101,8 @@ end
 
     @testset "parametric mortality" begin
         m = MortalityTables.Gompertz(a=0.0002, b=0.13)
-        @test_broken SingleLife(mortality=m, issue_age=40) isa SingleLife
+        @test SingleLife(mortality=m, issue_age=40) isa SingleLife
+        @test SingleLife(m, issue_age=40).mortality === m
         life = SingleLife(m, 40, true, UniformDeaths())
         @test_broken omega(LifeContingency(life, 0.05)) == Inf
         term_reference = sum(1.05^-t * (survival(m, 40, 40 + t - 1) - survival(m, 40, 40 + t)) for t in 1:10)

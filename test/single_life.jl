@@ -50,6 +50,8 @@
         @test life.issue_age == SingleLife(mortality=t.select[30]).issue_age
         @test life.issue_age == SingleLife(t.select[30]).issue_age
         @test life.issue_age == SingleLife(t.select, issue_age=30).issue_age
+        @test SingleLife(t.select, issue_age=30).mortality == t.select[30]
+        @test_throws ArgumentError SingleLife(t)
 
 
         @test l(ins, 0) ≈ 1.0

@@ -3,29 +3,28 @@ abstract type Life end
 
 
 """
-    struct SingleLife
-        mortality
-        issue_age::Int
-        alive::Bool
-        fractional_assump::MortalityTables.DeathDistribution
-    end
+    SingleLife(mortality; issue_age, alive=true, fractional_assump=UniformDeaths())
+    SingleLife(; mortality, issue_age, alive=true, fractional_assump=UniformDeaths())
 
-A `Life` object containing the necessary assumptions for contingent maths related to a single life. Use with a `LifeContingency` to do many actuarial present value calculations. 
+A `Life` object containing the necessary assumptions for contingent maths related to a single life. Use with a `LifeContingency` to do many actuarial present value calculations.
+
+`mortality` is one of:
+- a vector of rates indexed by attained age, such as `table.ultimate` or `table.select[30]`. `issue_age` defaults to the vector's first age.
+- a select table's vector of rate vectors, such as `table.select`. `issue_age` picks the row, and defaults to the first issue age.
+- a parametric model from MortalityTables, such as `MortalityTables.Gompertz(a=0.0002, b=0.13)`. `issue_age` is required.
 
 Keyword arguments:
-- `mortality` pass a mortality vector, which is an array of applicable mortality rates indexed by attained age
 - `issue_age` is the assumed issue age for the `SingleLife` and is the basis of many contingency calculations.
 - `alive` Default value is `true`. Useful for joint insurances with different status on the lives insured.
 - `fractional_assump`. Default value is `UniformDeaths()`. This is a `DeathDistribution` from the `MortalityTables.jl` package and is the assumption to use for non-integer ages/times.
 
 # Examples
     using MortalityTables
-    mortality = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
+    vbt = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
 
-    SingleLife(
-        mort       = mort.select[30], 
-        issue_age  = 30          
-    )
+    SingleLife(vbt.select[30])                        # select rates for issue age 30
+    SingleLife(vbt.select, issue_age=30)              # the same, picking the row by issue age
+    SingleLife(mortality=vbt.ultimate, issue_age=30)
 """
 struct SingleLife{M,D} <: Life
     mortality::M
@@ -34,24 +33,22 @@ struct SingleLife{M,D} <: Life
     fractional_assump::D
 end
 
-function SingleLife(; mortality, issue_age=nothing, alive=true, fractional_assump=mt.UniformDeaths())
-    return SingleLife(mortality; issue_age, alive, fractional_assump)
+SingleLife(; mortality, kwargs...) = SingleLife(mortality; kwargs...)
+
+function SingleLife(mortality::AbstractVector; issue_age=firstindex(mortality), alive=true, fractional_assump=mt.UniformDeaths())
+    return SingleLife(mortality, issue_age, alive, fractional_assump)
 end
 
-function SingleLife(mortality; issue_age=nothing, alive=true, fractional_assump=mt.UniformDeaths())
-    if isnothing(issue_age)
-        issue_age = firstindex(mortality)
-    end
+# a select table: one vector of rates per issue age
+SingleLife(mortality::AbstractVector{<:AbstractVector}; issue_age=firstindex(mortality), kwargs...) =
+    SingleLife(mortality[issue_age]; issue_age, kwargs...)
 
-    if !(eltype(mortality) <: Real)
-        # most likely case is that mortality is an array of vectors
-        # use issue age to select the right one (assuming indexed with issue age
-        return SingleLife(mortality[issue_age], issue_age, alive, fractional_assump)
-    else
-        return SingleLife(mortality, issue_age, alive, fractional_assump)
-    end
-
+function SingleLife(mortality::mt.ParametricMortality; issue_age, alive=true, fractional_assump=mt.UniformDeaths())
+    return SingleLife(mortality, issue_age, alive, fractional_assump)
 end
+
+SingleLife(::mt.MortalityTable; kwargs...) =
+    throw(ArgumentError("pass a vector of rates, such as `table.ultimate` or `table.select[issue_age]`, rather than the whole table"))
 
 """ 
     JointAssumption()
