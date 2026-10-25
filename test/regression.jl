@@ -244,7 +244,7 @@ end
     end
 
     @testset "exports" begin
-        # `insurance`, `annuity_due` and `annuity_immediate` are exported but never defined
-        @test_broken all(name -> isdefined(LifeContingencies, name), names(LifeContingencies))
+        # every exported name is defined
+        @test all(name -> isdefined(LifeContingencies, name), names(LifeContingencies))
     end
 end

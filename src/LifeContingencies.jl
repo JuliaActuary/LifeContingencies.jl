@@ -17,22 +17,14 @@ export LifeContingency,
     LastSurvivor, FirstToDie,
     survival,
     reserve_premium_net,
-    insurance,
-    annuity_due,
-    annuity_immediate,
     premium_net,
     omega,
-    survival,
     discount,
     benefit,
     probability,
     cashflows,
-    cashflows,
     timepoints,
     present_value
-
-
-
 
 
 """
