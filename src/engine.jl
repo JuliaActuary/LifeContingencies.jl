@@ -159,10 +159,46 @@ function position!(index::StateIndex, state)
     return i
 end
 
-function grow!(v::Vector{T}, n) where {T}
-    length(v) < n && append!(v, zeros(T, n - length(v)))
+function grow!(v::Vector, n)
+    while length(v) < n
+        push!(v, zero(eltype(v)))
+    end
     return v
 end
+
+# Probability mass by state position. `positions` lists the positions given mass since the
+# last `clear!`, so a step costs time in the states it touches rather than in every state
+# met so far.
+struct Occupancy{T}
+    mass::Vector{T}
+    listed::Vector{Bool}
+    positions::Vector{Int}
+end
+
+Occupancy{T}() where {T} = Occupancy{T}(T[], Bool[], Int[])
+
+function add!(o::Occupancy, i, p)
+    grow!(o.mass, i)
+    grow!(o.listed, i)
+    if !o.listed[i]
+        o.listed[i] = true
+        push!(o.positions, i)
+    end
+    o.mass[i] += p
+    return nothing
+end
+
+function clear!(o::Occupancy)
+    for i in o.positions
+        o.mass[i] = zero(eltype(o.mass))
+        o.listed[i] = false
+    end
+    empty!(o.positions)
+    return nothing
+end
+
+snapshot(index, o::Occupancy) =
+    Dict(index.states[i] => o.mass[i] for i in o.positions if !iszero(o.mass[i]))
 
 distribution_pairs(d::AbstractDict) = collect(d)
 distribution_pairs(d::AbstractVector{<:Pair}) = d
@@ -230,61 +266,63 @@ function project(contract::NamedTuple, model; grid, initial, history::Bool=false
 end
 
 function project_states(contract, model, grid, start, index::StateIndex{S}, ::Type{T}, history) where {S,T}
-    current = T[]
-    for (state, p) in start
-        i = position!(index, state)
-        grow!(current, i)
-        current[i] += p
-    end
-    next = zeros(T, length(current))
     n = length(grid)
-    amounts = map(_ -> zeros(T, n), contract)
+    amounts = map(_ -> Vector{T}(undef, n), contract)
     occupancy = history ? Vector{Dict{S,T}}(undef, n) : nothing
+    _, final = forward(nothing, contract, model, grid, start, index, T) do _, k, due, current
+        map((a, d) -> (a[k] = d; nothing), amounts, due)
+        isnothing(occupancy) || (occupancy[k] = snapshot(index, current))
+        return nothing
+    end
+    cashflows = map((c, a) -> component_cashflows(c, a, grid), contract, amounts)
+    return Projection(cashflows, snapshot(index, final), occupancy)
+end
+
+# The forward recursion behind `project`. At each grid time it calls
+# `step(acc, k, due, occupancy)`, where `due` holds each component's payments at `grid[k]`:
+# state payments for the occupancy then, and transition payments for the interval ending
+# then. It returns the last `acc` and the occupancy at the last grid time.
+function forward(step, acc, contract, model, grid, start, index, ::Type{T}) where {T}
+    current, next = Occupancy{T}(), Occupancy{T}()
+    for (state, p) in start
+        add!(current, position!(index, state), p)
+    end
+    nothing_due = map(_ -> zero(T), contract)
+    n = length(grid)
+    due = nothing_due
     for k in 1:n
         t = grid[k]
-        for i in eachindex(current)
-            p = current[i]
+        for i in current.positions
+            p = current.mass[i]
             iszero(p) && continue
-            add_state_payments!(amounts, contract, k, p, t, index.states[i])
+            due = add_state_amounts(due, contract, p, t, index.states[i])
         end
-        history && (occupancy[k] = snapshot(index, current))
+        acc = step(acc, k, due, current)
         k == n && break
-        interval = Interval(grid[k], grid[k+1])
-        fill!(next, zero(T))
-        for i in eachindex(current)
-            p = current[i]
+        interval = Interval(t, grid[k+1])
+        due = nothing_due
+        for i in current.positions
+            p = current.mass[i]
             iszero(p) && continue
             state = index.states[i]
             row = transitions(model, interval, state)
             check_row(row, state, interval, T)
             for (next_state, q) in row
                 iszero(q) && continue
-                j = position!(index, next_state)
-                grow!(next, j)
-                next[j] += p * q
-                add_transition_payments!(amounts, contract, k + 1, p * q, interval, state, next_state)
+                add!(next, position!(index, next_state), p * q)
+                due = add_transition_amounts(due, contract, p * q, interval, state, next_state)
             end
         end
+        clear!(current)
         current, next = next, current
-        grow!(next, length(current))
     end
-    cashflows = map((c, a) -> component_cashflows(c, a, grid), contract, amounts)
-    return Projection(cashflows, snapshot(index, current), occupancy)
+    return acc, current
 end
 
-# `map` rather than `foreach` so that the loop over a contract's components unrolls.
-function add_state_payments!(amounts, contract, k, p, t, state)
-    map((c, a) -> (a[k] += p * state_amount(c, t, state); nothing), contract, amounts)
-    return nothing
-end
-
-function add_transition_payments!(amounts, contract, k, pq, interval, from, to)
-    map((c, a) -> (a[k] += pq * transition_amount(c, interval, from, to); nothing), contract, amounts)
-    return nothing
-end
-
-snapshot(index, occupancy) =
-    Dict(index.states[i] => occupancy[i] for i in eachindex(occupancy) if !iszero(occupancy[i]))
+add_state_amounts(due, contract, p, t, state) =
+    map((d, c) -> d + p * state_amount(c, t, state), due, contract)
+add_transition_amounts(due, contract, pq, interval, from, to) =
+    map((d, c) -> d + pq * transition_amount(c, interval, from, to), due, contract)
 
 component_cashflows(::StatePayment, amounts, grid) = [Cashflow(amounts[k], grid[k]) for k in eachindex(grid)]
 component_cashflows(::TransitionPayment, amounts, grid) = [Cashflow(amounts[k], grid[k]) for k in eachindex(grid)[2:end]]
@@ -332,7 +370,7 @@ function value_states(contract, model, curve, grid, terminal_values, roots, inde
     root_positions = unique!([position!(index, state) for state in roots])
     n = length(grid)
     frontiers = needs_occupancy(contract) ? reachable_frontiers(model, grid, index, root_positions, T) :
-                fill(root_positions, n)
+                Frontiers(root_positions, fill(1:length(root_positions), n))
     V_next = map(_ -> zeros(T, length(index.states)), contract)
     V_current = map(_ -> zeros(T, length(index.states)), contract)
     records = history ? Vector{Any}(undef, n) : nothing
@@ -416,14 +454,24 @@ zero_terminal(state) = false
 terminal_value(::Nothing, state) = false
 terminal_value(f, state) = f(state)
 
+# The positions reachable at each grid time, stored back to back: those at grid time `k` are
+# `positions[ranges[k]]`.
+struct Frontiers
+    positions::Vector{Int}
+    ranges::Vector{UnitRange{Int}}
+end
+
+Base.getindex(f::Frontiers, k) = view(f.positions, f.ranges[k])
+
 function reachable_frontiers(model, grid, index, roots, ::Type{T}) where {T}
-    frontiers = [roots]
-    marked = zeros(Int, length(index.states))
-    for k in firstindex(grid):lastindex(grid)-1
+    positions = copy(roots)
+    ranges = [1:length(roots)]
+    marked = Int[]
+    for k in 1:length(grid)-1
         interval = Interval(grid[k], grid[k+1])
-        next = Int[]
-        for i in frontiers[k]
-            state = index.states[i]
+        found = length(positions)
+        for r in ranges[k]
+            state = index.states[positions[r]]
             row = transitions(model, interval, state)
             check_row(row, state, interval, T)
             for (next_state, q) in row
@@ -432,13 +480,13 @@ function reachable_frontiers(model, grid, index, roots, ::Type{T}) where {T}
                 grow!(marked, j)
                 if marked[j] != k + 1
                     marked[j] = k + 1
-                    push!(next, j)
+                    push!(positions, j)
                 end
             end
         end
-        push!(frontiers, next)
+        push!(ranges, found+1:length(positions))
     end
-    return frontiers
+    return Frontiers(positions, ranges)
 end
 
 function values_at(contract, V, positions, index, curve, t, ::Type{T}) where {T}

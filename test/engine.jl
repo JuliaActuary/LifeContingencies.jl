@@ -38,6 +38,10 @@ Engine.transitions(::NegativeSliver, ::Interval, state) = (state => -1e-9, :else
 struct Rounded end
 Engine.transitions(::Rounded, ::Interval, state) = (state => 0.7, :elsewhere => 0.2, :third => 0.1)
 
+# One new state every step: a duration counter.
+struct Chain end
+Engine.transitions(::Chain, ::Interval, state::Int) = (state + 1 => 1.0,)
+
 # Counts the edges the engine is handed.
 struct Counted{M}
     model::M
@@ -276,6 +280,17 @@ const care = (
         for measure in (projecting, valuing)
             measure(Repeated{1}()), measure(Repeated{8}())
             @test measure(Repeated{8}()) == measure(Repeated{1}())
+        end
+
+        # a step costs time in the states it touches, not in every state met so far, so
+        # sixteen times the steps of a duration counter cost about sixteen times as long
+        payment = (a=StatePayment((t, s) -> 1.0),)
+        timed(f) = (f(); minimum(@elapsed(f()) for _ in 1:5))
+        for run in (
+            n -> project(payment, Chain(); grid=0:n, initial=[0 => 1.0]),
+            n -> policy_values(payment, Chain(), 0.0; grid=0:n, terminal=0, roots=[0]),
+        )
+            @test timed(() -> run(16_000)) < 64 * timed(() -> run(1_000))
         end
     end
 end
