@@ -114,6 +114,11 @@ end
         @test SingleLife(m, issue_age=40).mortality === m
         life = SingleLife(m, 40, true, UniformDeaths())
         @test omega(LifeContingency(life, 0.05)) == Inf
+        # a law that ends at age 100.5 covers 60.5 years from age 40
+        bounded = SingleLife(MortalityTables.Wittstein(m=100.5), issue_age=40)
+        @test omega(bounded) == 60.5
+        @test survival(bounded, omega(bounded)) == survival(bounded.mortality, 40, 100.5)
+        @test_throws DomainError survival(bounded, omega(bounded) + 0.5)
         term_reference = sum(1.05^-t * (survival(m, 40, 40 + t - 1) - survival(m, 40, 40 + t)) for t in 1:10)
         @test_broken present_value(Insurance(life, 0.05, 10)) ≈ term_reference
     end

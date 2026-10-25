@@ -128,9 +128,10 @@ Base.@kwdef struct JointLife{L<:Tuple{SingleLife,SingleLife},C<:Contingency,J<:J
     joint_assumption::J = Frasier()
 end
 
-function mt.omega(l::SingleLife)
-    return mt.omega(l.mortality) - l.issue_age + 1
-end
+# A rate vector's last rate covers the year from its last age, while a parametric law ends at
+# its own `omega`, the last age at which it is defined.
+mt.omega(l::SingleLife) = mt.omega(l.mortality) - l.issue_age + 1
+mt.omega(l::SingleLife{<:mt.ParametricMortality}) = mt.omega(l.mortality) - l.issue_age
 
 mt.omega(l::JointLife) = horizon(l.contingency, map(omega, l.lives))
 
