@@ -1,13 +1,15 @@
 # Baseline workloads for the refactor's performance budgets (see REFACTOR_PLAN.md, PR 4).
 # Run from the repository root:  julia --project=. benchmark/baseline.jl
 #
-# Mortality reads are exact counts. Times are the minimum over `SAMPLES` runs after a
-# warm-up run, so compare them only against results from the same machine.
+# Mortality reads are exact counts. Times are the minimum over `SAMPLES` samples after a
+# warm-up run, each sample repeating the workload for about `SAMPLE_SECONDS` so that short
+# workloads are timed in bulk. Compare them only against results from the same machine.
 
 using LifeContingencies, MortalityTables, FinanceCore
 using Printf
 
 const SAMPLES = 20
+const SAMPLE_SECONDS = 0.01
 
 struct CountingMortality <: AbstractVector{Float64}
     q::Vector{Float64}
@@ -19,7 +21,8 @@ Base.getindex(m::CountingMortality, i::Int) = (m.reads[] += 1; m.q[i])
 
 function measure(f)
     f()
-    seconds = minimum(@elapsed(f()) for _ in 1:SAMPLES)
+    repeats = max(1, round(Int, SAMPLE_SECONDS / @elapsed(f())))
+    seconds = minimum(@elapsed(for _ in 1:repeats; f(); end) for _ in 1:SAMPLES) / repeats
     bytes = @allocated f()
     return seconds, bytes
 end
@@ -47,6 +50,7 @@ println()
 @printf("%-44s %15s %18s\n", "workload", "min time", "allocated")
 report("whole life PV (2001 VBT select, age 30)", () -> present_value(Insurance(lc)))
 report("annuity due PV (2001 VBT select, age 30)", () -> present_value(AnnuityDue(lc)))
+report("monthly annuity due PV, 10 years certain", () -> present_value(AnnuityDue(lc; certain=10, frequency=12)))
 report("net premium reserves, durations 1-70", () -> sum(t -> reserve_premium_net(lc, t), 1:70))
 report("joint last-survivor annuity due PV (CIA)", () -> present_value(AnnuityDue(joint, 0.05)))
 for n in (100, 400)
