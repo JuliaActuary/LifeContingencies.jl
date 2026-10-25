@@ -63,12 +63,14 @@ end
         # two-time survival is the mortality assumption's, for a life alive at the start
         @test survival(dead, 1, 2) == survival(ultimate_life([0.5, 0.5, 1.0]), 1, 2)
         @test survival(JointLife(lives=(dead, dead)), 0) == 0
+        # conditioning on a contingency that cannot be active is undefined
+        @test_throws DomainError survival(JointLife(lives=(dead, dead)), 0, 1)
     end
 
     @testset "joint lives" begin
         short = ultimate_life([0.1, 1.0])
         # only independence is implemented; other assumptions must not silently use it
-        @test_broken threw(() -> survival(JointLife(lives=(short, short), joint_assumption=RegressionDependence()), 1))
+        @test_throws ArgumentError survival(JointLife(lives=(short, short), joint_assumption=RegressionDependence()), 1)
         # joint survival infers a concrete type
         j = JointLife(lives=(short, ultimate_life([0.2, 1.0])))
         @test isconcretetype(only(Base.return_types(survival, Tuple{typeof(j),Int})))

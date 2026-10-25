@@ -71,6 +71,7 @@ struct Frasier <: JointAssumption end
 
 An abstract type representing the different triggers for contingent benefits. Available options to use include:
 - `LastSurvivor()`
+- `FirstToDie()`
 """
 abstract type Contingency end
 
@@ -81,14 +82,12 @@ Is a subtype of `Contingency`
 """
 struct LastSurvivor <: Contingency end
 
-# TODO: Not Implemented
-# """
-#     FirstToDie()
-# The contingency whereupon benefits are payable upon the first life passing.
-
-# Is a subtype of `Contingency`
-# """
-# struct FirstToDie <: Contingency end
+"""
+    FirstToDie()
+The contingency whereupon benefits are payable upon the first life passing.
+Is a subtype of `Contingency`
+"""
+struct FirstToDie <: Contingency end
 
 """
     struct JointLife
@@ -177,20 +176,37 @@ function mt.survival(l::L) where {L<:Life}
     return Iterators.map(t -> survival(l, t), 0:ω)
 end
 
-mt.survival(l::JointLife, to_time) = survival(l.contingency, l.joint_assumption, l, to_time)
+"""
+    survival(life::JointLife, to_time)
+    survival(life::JointLife, from_time, to_time)
+
+With one time, the probability that `life`'s contingency is still active at `to_time`, given
+each life's status at issue. With two, that probability conditional on the contingency being
+active at `from_time`. This conditions on the joint status alone, not on which lives are
+alive. Throws a `DomainError` when the contingency cannot be active at `from_time`.
+"""
+function mt.survival(l::JointLife, to_time)
+    statuses = joint_statuses(l.joint_assumption, map(life -> survival(life, to_time), l.lives))
+    return sum(p for (status, p) in statuses if active(l.contingency, status))
+end
+
 function mt.survival(l::JointLife, from_time, to_time)
-    return survival(l.contingency, l.joint_assumption, l::JointLife, from_time, to_time)
+    active_then = survival(l, from_time)
+    iszero(active_then) &&
+        throw(DomainError(from_time, "the contingency cannot be active at time $from_time, so survival conditional on it is undefined"))
+    return survival(l, to_time) / active_then
 end
 
-function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, from_time, to_time)
-    a = survival(ins, assump, l, from_time)
-    b = survival(ins, assump, l, to_time)
-    return b / a
-end
+# The probability of each pair of statuses, given each life's probability of being alive.
+joint_statuses(::Frasier, (p1, p2)) = (
+    (:alive, :alive) => p1 * p2,
+    (:alive, :dead) => p1 * (1 - p2),
+    (:dead, :alive) => (1 - p1) * p2,
+    (:dead, :dead) => (1 - p1) * (1 - p2),
+)
+joint_statuses(assumption::JointAssumption, probabilities) =
+    throw(ArgumentError("$(nameof(typeof(assumption))) is not implemented; the supported joint assumption is Frasier(), for independent lives"))
 
-function mt.survival(ins::LastSurvivor, assump::JointAssumption, l::JointLife, to_time)
-    l1, l2 = l.lives
-    ₜpₓ = survival(l1, to_time)
-    ₜpᵧ = survival(l2, to_time)
-    return ₜpₓ + ₜpᵧ - ₜpₓ * ₜpᵧ
-end
+# Whether the contingency is still active, given each life's status.
+active(::LastSurvivor, statuses) = any(==(:alive), statuses)
+active(::FirstToDie, statuses) = all(==(:alive), statuses)
