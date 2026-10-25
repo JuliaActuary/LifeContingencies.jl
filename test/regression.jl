@@ -71,7 +71,7 @@ end
         @test_broken threw(() -> survival(JointLife(lives=(short, short), joint_assumption=RegressionDependence()), 1))
         # joint survival infers a concrete type
         j = JointLife(lives=(short, ultimate_life([0.2, 1.0])))
-        @test_broken isconcretetype(only(Base.return_types(survival, Tuple{typeof(j),Int})))
+        @test isconcretetype(only(Base.return_types(survival, Tuple{typeof(j),Int})))
         # the last-survivor status lasts as long as the longer life
         unequal = JointLife(lives=(ultimate_life([1.0]), ultimate_life([0.0, 0.0, 1.0])))
         @test_broken present_value(Insurance(unequal, 0.0)) ≈ 1.0

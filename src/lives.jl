@@ -123,8 +123,8 @@ Keyword arguments:
         joint_assumption = Frasier()
     )
 """
-Base.@kwdef struct JointLife{C<:Contingency,J<:JointAssumption} <: Life
-    lives::Tuple{SingleLife,SingleLife}
+Base.@kwdef struct JointLife{L<:Tuple{SingleLife,SingleLife},C<:Contingency,J<:JointAssumption} <: Life
+    lives::L
     contingency::C = LastSurvivor()
     joint_assumption::J = Frasier()
 end
