@@ -91,4 +91,25 @@
         @test premium_net(ins, 26) ≈ LifeContingencies.A(ins, 26) / LifeContingencies.ä(ins, 26)
 
     end
+
+    @testset "mortality support" begin
+        # rates that reach one establish extinction, so survival past the table is zero
+        complete = SingleLife(UltimateMortality([0.5, 1.0]))
+        @test survival(complete, 2) == 0
+        @test survival(complete, 3) == 0
+        @test survival(complete, 2.5) == 0
+        @test survival(complete, 1, 5) == 0
+        @test survival(complete, 4, 4) == 1
+
+        # rates that end short of one leave survival past the table unknown
+        incomplete = SingleLife(UltimateMortality([0.5, 0.5]))
+        @test survival(incomplete, 2) ≈ 0.25
+        @test_throws DomainError survival(incomplete, 2.5)
+        @test_throws DomainError survival(incomplete, 3)
+        @test_throws DomainError survival(incomplete, 1, 3)
+
+        # parametric mortality has no table end
+        gompertz = SingleLife(MortalityTables.Gompertz(a=0.0002, b=0.13), issue_age=40)
+        @test 0 < survival(gompertz, 60) < 1e-10
+    end
 end

@@ -148,6 +148,25 @@ With two, the probability of surviving from `from_time` to `to_time` for a life 
 mt.survival(l::SingleLife, to_time) = l.alive ? survival(l, 0, to_time) : zero(survival(l, 0, 0))
 mt.survival(l::SingleLife, from_time, to_time) = survival(l.mortality, l.issue_age + from_time, l.issue_age + to_time, l.fractional_assump)
 
+# Past the last rate, survival is known only once a rate of one has established extinction.
+function mt.survival(l::SingleLife{<:AbstractVector}, from_time, to_time)
+    from_age, to_age = l.issue_age + from_time, l.issue_age + to_time
+    to_age <= lastindex(l.mortality) + 1 && return survival(l.mortality, from_age, to_age, l.fractional_assump)
+    certain = survival(l.mortality, l.issue_age, l.issue_age, l.fractional_assump)
+    from_age == to_age && return certain
+    isnothing(extinction_age(l)) && throw(DomainError(to_age,
+        "the mortality rates end at age $(lastindex(l.mortality)) without reaching a rate of 1, so survival to age $to_age is unknown; supply rates that cover it"))
+    return zero(certain)
+end
+
+# The first age by which everyone has died, or `nothing` if the rates never reach one.
+function extinction_age(l::SingleLife{<:AbstractVector})
+    for age in l.issue_age:lastindex(l.mortality)
+        l.mortality[age] >= 1 && return age + 1
+    end
+    return nothing
+end
+
 """
     survival(life)
 
