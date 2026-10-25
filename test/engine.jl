@@ -143,9 +143,11 @@ const care = (
         @test all(occupancy -> sum(values(occupancy)) ≈ 1, p.history)
 
         # linearity in the starting distribution, and forward/backward agreement at the start
+        forward = present_values(care, m, curve; grid, initial)
         for name in keys(care)
             mixed = 0.6 * valued.before[:healthy][name] + 0.4 * valued.before[:sick][name]
             @test tail_value(p.cashflows[name], curve, 0; include_now=true) ≈ mixed
+            @test forward[name] ≈ mixed
         end
 
         # forward/backward agreement at every grid time
@@ -167,6 +169,7 @@ const care = (
         @test blank.cashflows == (;)
         @test sum(values(blank.final)) ≈ 1
         @test policy_values((;), m, curve; grid, terminal=0).before[:healthy] == (;)
+        @test present_values((;), m, curve; grid, initial) == (;)
 
         # interval discount factors compose to the curve's own factor
         final_payment = (final=StatePayment((t, s) -> t == 3 ? 1.0 : 0.0),)
@@ -220,6 +223,7 @@ const care = (
         @test_throws ArgumentError project((annuity=alive_annuity,), BadRowSum(); grid=0:1, initial=[:x => 1.0])
         @test_throws ArgumentError project((annuity=alive_annuity,), NegativeRow(); grid=0:1, initial=[:x => 1.0])
         @test_throws ArgumentError policy_values((annuity=alive_annuity,), BadRowSum(), 0.0; grid=0:1, terminal=0, roots=[:x])
+        @test_throws ArgumentError present_values((annuity=alive_annuity,), BadRowSum(), 0.0; grid=0:1, initial=[:x => 1.0])
         @test_throws ArgumentError CertainPayment([0, 1], [1.0])
 
         # rows and distributions may miss their bounds by rounding, and by nothing more
@@ -242,7 +246,9 @@ const care = (
         @test policy_values(contract, m, 0.0; grid=0:3, terminal=(annuity=s -> 0.0,)).before[:alive].guaranteed == 1.0
 
         # certain payments need no occupancy, so an invalid model is never consulted
-        @test policy_values((guaranteed=CertainPayment([0, 1], [1.0, 1.0]),), BadRowSum(), 0.0; grid=0:1, terminal=0, roots=[:x]).before[:x].guaranteed == 2.0
+        certain = (guaranteed=CertainPayment([0, 1], [1.0, 1.0]),)
+        @test policy_values(certain, BadRowSum(), 0.0; grid=0:1, terminal=0, roots=[:x]).before[:x].guaranteed == 2.0
+        @test present_values(certain, BadRowSum(), 0.0; grid=0:1, initial=[:x => 1.0]).guaranteed == 2.0
     end
 
     @testset "condition" begin
@@ -260,6 +266,7 @@ const care = (
         valued = policy_values(contract, m, 0.05; grid=0:3, terminal=0, numbertype=BigFloat)
         @test valued.before[:alive].annuity isa BigFloat
         @test valued.before[:alive].annuity ≈ policy_values(contract, m, 0.05; grid=0:3, terminal=0).before[:alive].annuity
+        @test present_values(contract, m, 0.05; grid=0:3, initial=[:alive => 1.0], numbertype=BigFloat).annuity isa BigFloat
     end
 
     @testset "work and allocation" begin
@@ -276,8 +283,9 @@ const care = (
         # splitting every edge eight ways adds work but no allocation
         contract = (annuity=alive_annuity, death=death_benefit)
         projecting(model) = @allocated project(contract, model; grid=0:steps, initial=[:alive => 1.0])
+        discounting(model) = @allocated present_values(contract, model, 0.05; grid=0:steps, initial=[:alive => 1.0])
         valuing(model) = @allocated policy_values(contract, model, 0.05; grid=0:steps, terminal=0, roots=[:alive])
-        for measure in (projecting, valuing)
+        for measure in (projecting, discounting, valuing)
             measure(Repeated{1}()), measure(Repeated{8}())
             @test measure(Repeated{8}()) == measure(Repeated{1}())
         end
@@ -288,6 +296,7 @@ const care = (
         timed(f) = (f(); minimum(@elapsed(f()) for _ in 1:5))
         for run in (
             n -> project(payment, Chain(); grid=0:n, initial=[0 => 1.0]),
+            n -> present_values(payment, Chain(), 0.0; grid=0:n, initial=[0 => 1.0]),
             n -> policy_values(payment, Chain(), 0.0; grid=0:n, terminal=0, roots=[0]),
         )
             @test timed(() -> run(16_000)) < 64 * timed(() -> run(1_000))

@@ -3,8 +3,8 @@
 
 A finite-state engine for contingent payments: a model supplies one-step transition rows over
 a time grid, a contract is a `NamedTuple` of payment components, and the engine projects
-expected cash flows forward ([`project`](@ref)) or values them backward by state
-([`policy_values`](@ref)).
+expected cash flows forward ([`project`](@ref)), values them from a starting distribution
+([`present_values`](@ref)), or values them backward by state ([`policy_values`](@ref)).
 
 These interfaces are experimental and may change in minor releases.
 """
@@ -14,7 +14,7 @@ using FinanceCore: Cashflow, discount
 
 export Interval, transitions, states,
     StatePayment, TransitionPayment, CertainPayment,
-    project, policy_values, condition
+    project, present_values, policy_values, condition
 
 # Probabilities must be nonnegative. A row or distribution must sum to one up to rounding: at
 # most this many units in the last place of each probability's type, per entry. Nothing is
@@ -278,7 +278,7 @@ function project_states(contract, model, grid, start, index::StateIndex{S}, ::Ty
     return Projection(cashflows, snapshot(index, final), occupancy)
 end
 
-# The forward recursion behind `project`. At each grid time it calls
+# The forward recursion behind `project` and `present_values`. At each grid time it calls
 # `step(acc, k, due, occupancy)`, where `due` holds each component's payments at `grid[k]`:
 # state payments for the occupancy then, and transition payments for the interval ending
 # then. It returns the last `acc` and the occupancy at the last grid time.
@@ -328,6 +328,41 @@ component_cashflows(::StatePayment, amounts, grid) = [Cashflow(amounts[k], grid[
 component_cashflows(::TransitionPayment, amounts, grid) = [Cashflow(amounts[k], grid[k]) for k in eachindex(grid)[2:end]]
 component_cashflows(c::CertainPayment, amounts, grid) =
     [Cashflow(amount, τ) for (τ, amount) in zip(c.times, c.amounts) if τ >= first(grid)]
+
+"""
+    present_values(contract, model, curve; grid, initial, numbertype=Float64)
+
+The expected present value at `grid[1]` of each of `contract`'s components, starting from the
+distribution `initial` (`state => probability` pairs) at `grid[1]`. Returns a `NamedTuple`
+keyed by component name.
+
+The values include the payments scheduled at `grid[1]`, so they equal `Σᵢ πᵢ V⁻ᵢ` from
+[`policy_values`](@ref) with `terminal = 0`. They are discounted with
+`discount(curve, grid[1], t)`, and certain components are valued directly, as in
+`policy_values`. One forward pass computes them without storing cash flows or values by
+state. `numbertype` is the number type for occupancy and values.
+"""
+function present_values(contract::NamedTuple, model, curve; grid, initial, numbertype::Type=Float64)
+    check_contract(contract)
+    check_grid(grid)
+    start = distribution_pairs(initial)
+    check_distribution(start)
+    S = mapreduce(typeof ∘ first, typejoin, start)
+    # the state and number types are only known here, so specialize the work on them
+    return discount_states(contract, model, curve, grid, start, StateIndex{S}(), numbertype)
+end
+
+function discount_states(contract, model, curve, grid, start, index, ::Type{T}) where {T}
+    t₀ = first(grid)
+    values = map(_ -> zero(T), contract)
+    if needs_occupancy(contract)
+        values, _ = forward(values, contract, model, grid, start, index, T) do acc, k, due, _
+            d = discount(curve, t₀, grid[k])
+            map((v, x) -> v + d * x, acc, due)
+        end
+    end
+    return map((c, v) -> component_before(c, v, curve, t₀, T), contract, values)
+end
 
 """
     policy_values(contract, model, curve; grid, terminal, roots=states(model), history=false, numbertype=Float64)
@@ -492,14 +527,14 @@ end
 function values_at(contract, V, positions, index, curve, t, ::Type{T}) where {T}
     return Dict(map(positions) do i
         state = index.states[i]
-        before = map((c, v) -> component_before(c, v, i, curve, t, T), contract, V)
+        before = map((c, v) -> component_before(c, v[i], curve, t, T), contract, V)
         after = map((c, b) -> component_after(c, b, t, state, curve, T), contract, before)
         state => (before=before, after=after)
     end)
 end
 
-component_before(::Union{StatePayment,TransitionPayment}, v, i, curve, t, T) = v[i]
-component_before(c::CertainPayment, v, i, curve, t, T) = certain_value(c, curve, t, T; include_now=true)
+component_before(::Union{StatePayment,TransitionPayment}, v, curve, t, T) = v
+component_before(c::CertainPayment, v, curve, t, T) = certain_value(c, curve, t, T; include_now=true)
 component_after(c::StatePayment, before, t, state, curve, T) = before - c.f(t, state)
 component_after(::TransitionPayment, before, t, state, curve, T) = before
 component_after(c::CertainPayment, before, t, state, curve, T) = certain_value(c, curve, t, T; include_now=false)
