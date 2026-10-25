@@ -221,6 +221,10 @@ unsupported(assumption) =
 active(::LastSurvivor, statuses) = any(==(:alive), statuses)
 active(::FirstToDie, statuses) = all(==(:alive), statuses)
 
+# Whether a life is still in force in an engine state.
+active(::SingleLife, state) = state === :alive
+active(l::JointLife, state) = active(l.contingency, state)
+
 ## Lives as models for the experimental engine. A single life is `:alive` or `:dead`; a
 ## joint life's state is the pair of its lives' statuses.
 

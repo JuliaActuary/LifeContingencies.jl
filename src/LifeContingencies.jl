@@ -7,6 +7,7 @@ import FinanceCore: present_value, discount
 const mt = MortalityTables
 
 include("engine.jl")
+using .Experimental: StatePayment, TransitionPayment, CertainPayment, project, policy_values, condition
 include("lives.jl")
 
 export LifeContingency,

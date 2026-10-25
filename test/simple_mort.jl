@@ -1,11 +1,13 @@
 @testset "basic building blocks" begin
     mt = UltimateMortality([0.5, 0.5])
 
-    # whole life insurance
+    # insurance through the end of the rates (they stop short of 1, so whole life isn't defined)
     ins = Insurance(
         SingleLife(mortality=mt, issue_age=0),
-        0.05
+        0.05,
+        2
     )
+    @test_throws DomainError FinanceCore.present_value(Insurance(SingleLife(mortality=mt, issue_age=0), 0.05))
 
     @test all(survival(SingleLife(mortality=mt, issue_age=0)) .== [1.0, 0.5, 0.25])
 
@@ -18,7 +20,7 @@
     @test [cashflows(ins)...] == benefit(ins) .* probability(ins)
     @test FinanceCore.present_value(0.05, 1) ≈ 1 / 1.05
     @test FinanceCore.present_value(ins) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05^2
-    @test FinanceCore.present_value(ins) ≈ LifeContingencies.A(ins.life, ins.int)
+    @test FinanceCore.present_value(ins) ≈ LifeContingencies.A(ins.life, ins.int, 2)
 
     # basic life contingency tests
     @test survival(LifeContingency(ins), 0, 1) ≈ 0.5
@@ -106,7 +108,7 @@ end
     @test FinanceCore.present_value(AnnuityImmediate(ins, 1)) ≈ 1 * 0.5 / 1.05
     @test FinanceCore.present_value(AnnuityImmediate(ins, 0)) == 0
 
-    @test FinanceCore.present_value(Insurance(ins)) ≈ 0.5 / 1.05
+    @test FinanceCore.present_value(Insurance(ins, 1)) ≈ 0.5 / 1.05
     @test FinanceCore.present_value(Insurance(ins, 1)) ≈ 0.5 / 1.05
     @test FinanceCore.present_value(Insurance(ins, 0)) ≈ 0
 
@@ -126,7 +128,7 @@ end
 
     @test survival(ins_jl, 1) ≈ 0.5 + 0.5 - 0.5 * 0.5
     @test all(survival(JointLife((ins.life, ins.life), LastSurvivor(), Frasier())) .== [1.0, 0.75])
-    @test FinanceCore.present_value(Insurance(ins_jl)) ≈ 0.25 / 1.05
+    @test FinanceCore.present_value(Insurance(ins_jl, 1)) ≈ 0.25 / 1.05
     @test FinanceCore.present_value(Insurance(ins_jl, 1)) ≈ 0.25 / 1.05
     @test FinanceCore.present_value(Insurance(ins_jl, 0)) ≈ 0
 end
@@ -157,7 +159,7 @@ end
     @test FinanceCore.present_value(AnnuityImmediate(ins; certain=0)) ≈ 2
     @test FinanceCore.present_value(AnnuityImmediate(ins; certain=2)) ≈ 2
 
-    @test FinanceCore.present_value(Insurance(ins)) ≈ 0
+    @test FinanceCore.present_value(Insurance(ins, 2)) ≈ 0
     @test FinanceCore.present_value(Insurance(ins, 1)) ≈ 0
     @test FinanceCore.present_value(Insurance(ins, 0)) ≈ 0
 
@@ -193,7 +195,7 @@ end
     @test FinanceCore.present_value(AnnuityImmediate(ins, 0)) ≈ 0
     @test FinanceCore.present_value(AnnuityImmediate(ins, 1)) ≈ 1 * 0.5 * 1 / 1.05
 
-    @test FinanceCore.present_value(Insurance(ins)) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05^2
+    @test FinanceCore.present_value(Insurance(ins, 2)) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05^2
     @test FinanceCore.present_value(Insurance(ins, 1)) ≈ 0.5 / 1.05
     @test FinanceCore.present_value(Insurance(ins, 0)) ≈ 0
 
@@ -228,7 +230,7 @@ end
     @test FinanceCore.present_value(AnnuityImmediate(ins, 0)) == 0
     @test FinanceCore.present_value(AnnuityImmediate(ins, 1)) ≈ 1 * 0.5 * 1 / 1.05
 
-    @test FinanceCore.present_value(Insurance(ins)) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05^2
+    @test FinanceCore.present_value(Insurance(ins, 2)) ≈ 0.5 / 1.05 + 0.5 * 0.5 / 1.05^2
     @test FinanceCore.present_value(Insurance(ins, 1)) ≈ 0.5 / 1.05
     @test FinanceCore.present_value(Insurance(ins, 0)) ≈ 0
 
@@ -277,7 +279,7 @@ t = UltimateMortality(maleMort)
     @test M(ins, 1) ≈ 0.0355801393752753
     @test M(ins, 2) ≈ 0.0351775312392208
 
-    @test FinanceCore.present_value(Insurance(ins)) ≈ 0.04223728223
+    @test FinanceCore.present_value(Insurance(ins, 120)) ≈ 0.04223728223
     @test FinanceCore.present_value(Insurance(ins, 0)) ≈ 0.0
     @test FinanceCore.present_value(Insurance(ins, 1)) ≈ 0.0066571428571429
     @test FinanceCore.present_value(AnnuityDue(ins, 0)) ≈ 0.0

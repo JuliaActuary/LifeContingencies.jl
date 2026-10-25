@@ -31,7 +31,7 @@ end
 
 function mortality_reads(n)
     m = CountingMortality(fill(0.01, n), Ref(0))
-    collect(cashflows(Insurance(SingleLife(m), 0.0)))
+    collect(cashflows(Insurance(SingleLife(m), 0.0, n)))
     return m.reads[]
 end
 
@@ -51,9 +51,9 @@ report("net premium reserves, durations 1-70", () -> sum(t -> reserve_premium_ne
 report("joint last-survivor annuity due PV (CIA)", () -> present_value(AnnuityDue(joint, 0.05)))
 for n in (100, 400)
     m = UltimateMortality(fill(0.01, n))
-    report("whole life cash flows, $n-period table", () -> collect(cashflows(Insurance(SingleLife(m), 0.0))))
+    report("$n-year term cash flows, $n-period table", () -> collect(cashflows(Insurance(SingleLife(m), 0.0, n))))
 end
 println()
 for n in (100, 400)
-    @printf("%-44s %15d\n", "mortality reads, $n-period whole life", mortality_reads(n))
+    @printf("%-44s %15d\n", "mortality reads, $n-year term", mortality_reads(n))
 end

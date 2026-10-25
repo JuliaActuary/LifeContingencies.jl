@@ -81,7 +81,7 @@ end
         @test omega(JointLife(lives=unequal.lives, contingency=FirstToDie())) == 1
         # death cash flows stay finite after both lives are extinct
         both_extinct = JointLife(lives=(ultimate_life([1.0, 0.5, 1.0]), ultimate_life([1.0, 0.5, 1.0])))
-        @test_broken collect(cashflows(Insurance(both_extinct, 0.0))) ≈ [1.0, 0.0, 0.0]
+        @test collect(cashflows(Insurance(both_extinct, 0.0))) ≈ [1.0, 0.0, 0.0]
         @test all(isfinite, cashflows(Insurance(ultimate_life([1.0, 0.5, 1.0]), 0.0)))
     end
 
@@ -120,7 +120,30 @@ end
         @test survival(bounded, omega(bounded)) == survival(bounded.mortality, 40, 100.5)
         @test_throws DomainError survival(bounded, omega(bounded) + 0.5)
         term_reference = sum(1.05^-t * (survival(m, 40, 40 + t - 1) - survival(m, 40, 40 + t)) for t in 1:10)
-        @test_broken present_value(Insurance(life, 0.05, 10)) ≈ term_reference
+        @test present_value(Insurance(life, 0.05, 10)) ≈ term_reference
+        # parametric mortality never reaches extinction, so whole life needs a term
+        @test_throws DomainError present_value(Insurance(life, 0.05))
+    end
+
+    @testset "death benefits" begin
+        # a zero term keeps its life and curve and has no payments
+        none = Insurance(life5, 0.05, 0)
+        @test none isa Insurance && none.life === life5
+        @test isempty(timepoints(none)) && isempty(cashflows(none)) && isempty(survival(none))
+        @test present_value(none) == 0
+        @test isconcretetype(only(Base.return_types(Insurance, Tuple{typeof(life5),Float64,Int})))
+        @test isconcretetype(only(Base.return_types(Insurance, Tuple{typeof(life5),Float64})))
+        @test_throws ArgumentError Insurance(life5, 0.05, -1)
+        @test_throws ArgumentError Insurance(life5, 0.05, 2.5)
+        # past a table that reaches extinction a term pays nothing more; past one that doesn't, it is undefined
+        @test timepoints(Insurance(life5, 0.05, 10)) == timepoints(Insurance(life5, 0.05))
+        @test present_value(Insurance(life5, 0.05, 10)) ≈ present_value(Insurance(life5, 0.05))
+        incomplete = ultimate_life([0.5, 0.5])
+        @test present_value(Insurance(incomplete, 0.05, 2)) ≈ 0.5 / 1.05 + 0.25 / 1.05^2
+        @test_throws DomainError present_value(Insurance(incomplete, 0.05, 3))
+        @test_throws DomainError present_value(Insurance(incomplete, 0.05))
+        # a value between settlement dates keeps claims incurred but not yet paid
+        @test present_value(Insurance(ultimate_life([0.5, 1.0]), 0.0), 0.5) ≈ 1.0
     end
 
     @testset "exports" begin

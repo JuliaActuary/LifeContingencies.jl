@@ -69,13 +69,10 @@ end
 """
     survival(Insurance)
 
-The survivorship vector for the given insurance.
-
-To get the fully computed and allocated vector, call `collect(survival(...))`.
+The survivorship vector for the given insurance: for life insurance, the probability of being
+in force at the start of each year of cover; for an annuity, at each payment time.
 """
-function MortalityTables.survival(ins::I) where {I<:Insurance}
-    return Iterators.map(t -> survival(ins, t - 1), timepoints(ins))
-end
+MortalityTables.survival(ins::DeathBenefit) = expected_payments(ins).survival
 
 function MortalityTables.survival(ins::A) where {A<:Annuity}
     return Iterators.map(t -> survival(ins, t), timepoints(ins))
@@ -99,9 +96,7 @@ end
 
 The unit benefit for the given insurance.
 """
-function benefit(ins::I) where {I<:Insurance}
-    return 1.0
-end
+benefit(ins::DeathBenefit) = 1.0
 
 function benefit(ins::ZeroBenefit)
     return 0.0
@@ -115,15 +110,10 @@ end
 """
     probability(Insurance)
 
-The vector of contingent benefit probabilities for the given insurance.
-
-To get the fully computed and allocated vector, call `collect(probability(...))`.
+The vector of contingent benefit probabilities for the given insurance: for life insurance,
+the probability that the benefit is paid at the end of each year of cover.
 """
-function probability(ins::I) where {I<:Insurance}
-    return Iterators.map(timepoints(ins)) do t
-        survival(ins.life, t - 1) * decrement(ins.life, t - 1, t)
-    end
-end
+probability(ins::DeathBenefit) = expected_payments(ins).probability
 
 function probability(ins::ZeroBenefit)
     return Iterators.repeated(1.0, length(timepoints(ins)))
@@ -147,13 +137,11 @@ end
 """
     cashflows(Insurance)
 
-The vector of decremented benefit cashflows for the given insurance. 
-
-To get the fully computed and allocated vector, call `collect(cashflows(...))`.
+The vector of decremented benefit cashflows for the given insurance.
 """
 function cashflows(ins::I) where {I<:Insurance}
     b = benefit(ins)
-    return Iterators.map(p -> p * b, probability(ins))
+    return [p * b for p in probability(ins)]
 end
 
 
@@ -161,16 +149,8 @@ end
     timepoints(Insurance)
 
 The vector of times corresponding to the cashflow vector for the given insurance.
-
-To get the fully computed and allocated vector, call `collect(timepoints(...))`.
 """
-function timepoints(ins::Insurance)::UnitRange{Int64}
-    return 1:omega(ins.life)
-end
-
-function timepoints(ins::Term)::UnitRange{Int64}
-    return 1:min(omega(ins.life), ins.term)
-end
+timepoints(ins::DeathBenefit) = 1:benefit_years(ins)
 
 function timepoints(ins::ZeroBenefit)
     return Iterators.repeated(0.0, 1)

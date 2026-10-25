@@ -8,24 +8,44 @@ function LifeContingency(ins::I) where {I<:Insurance}
     LifeContingency(ins.life, ins.int)
 end
 
-struct WholeLife{L,Y} <: Insurance
-    life::L
-    int::Y
-end
+## The products are valued by projecting unit payments through the experimental engine,
+## from each life's status at issue.
 
-struct Term{L,Y} <: Insurance
+project_from_issue(contract, life, grid) =
+    project(contract, life; grid, initial=initial_distribution(life), numbertype=probability_type(life))
+
+probability_type(life) = typeof(last(only(initial_distribution(life))))
+
+death_payment(life) = TransitionPayment((interval, from, to) -> active(life, from) && !active(life, to) ? 1 : 0)
+in_force_payment(life) = StatePayment((t, state) -> active(life, state) ? 1 : 0)
+
+beyond_assumption(t) = DomainError(t,
+    "the contract continues past the end of the mortality rates at time $t while lives remain in force; supply rates that reach extinction (a rate of 1), or give the contract a shorter term")
+
+checked_term(::Nothing) = nothing
+function checked_term(term::Integer)
+    term >= 0 || throw(ArgumentError("a term must be nonnegative; got $term"))
+    return Int(term)
+end
+checked_term(term) = throw(ArgumentError("a term must be a whole number of years, or `nothing` for life; got $term"))
+
+struct DeathBenefit{L,Y} <: Insurance
     life::L
     int::Y
-    term::Int
+    term::Union{Nothing,Int}
 end
 
 """
-    Insurance(lc::LifeContingency, term)
-    Insurance(life,interest, term)
-    Insurance(lc::LifeContingency)
-    Insurance(life,interest)
+    Insurance(lc::LifeContingency[, term])
+    Insurance(life, interest[, term])
 
-Life insurance with a term period of `term`. If `term` is `nothing`, then whole life insurance.
+Life insurance paying a unit benefit at the end of the year of death, for `term` years, or for
+the whole of life when `term` is omitted. For a `JointLife`, the benefit is paid at the end of
+the year in which its contingency ends. A `term` of zero gives an insurance with no payments.
+
+The mortality assumption has to cover the contract. Whole-life insurance needs rates that reach
+extinction (a rate of 1), so give a `term` for a table whose rates stop short of 1, or for
+parametric mortality.
 
 Issue age is based on the `issue_age` in the LifeContingency `lc`.
 
@@ -36,18 +56,28 @@ ins = Insurance(
     SingleLife(mortality = UltimateMortality([0.5,0.5]),issue_age = 0),
     FinanceModels.Yield.Constant(0.05),
     1           # 1 year term
-) 
+)
 ```
 """
-Insurance(lc::LifeContingency, term) = Insurance(lc.life, lc.int, term)
-Insurance(lc::LifeContingency) = Insurance(lc.life, lc.int)
+Insurance(life, int, term=nothing) = DeathBenefit(life, int, checked_term(term))
+Insurance(lc::LifeContingency, args...) = Insurance(lc.life, lc.int, args...)
 
-function Insurance(life, int, term::Int)
-    term < 1 && return ZeroBenefit(life, int)
-    return Term(life, int, term)
+# The years a death benefit runs: its term, ending early when the mortality assumption does.
+function benefit_years(ins::DeathBenefit)
+    horizon = omega(ins.life)
+    isnothing(ins.term) && isinf(horizon) &&
+        throw(DomainError(horizon, "parametric mortality never reaches extinction, so a whole-life insurance needs a `term`"))
+    return Int(isnothing(ins.term) ? horizon : min(ins.term, horizon))
 end
-function Insurance(life, int)
-    return WholeLife(life, int)
+
+# One projection from issue gives every view of a death benefit.
+function expected_payments(ins::DeathBenefit)
+    years = benefit_years(ins)
+    p = project_from_issue((death=death_payment(ins.life), in_force=in_force_payment(ins.life)), ins.life, 0:years)
+    in_force = [cf.amount for cf in p.cashflows.in_force]
+    continues = isnothing(ins.term) || ins.term > years
+    continues && !iszero(last(in_force)) && throw(beyond_assumption(years))
+    return (probability=[cf.amount for cf in p.cashflows.death], survival=in_force[1:end-1])
 end
 
 abstract type AnnuityKind end
