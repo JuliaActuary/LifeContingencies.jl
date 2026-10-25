@@ -94,9 +94,29 @@ end
         # late-duration reserves keep their precision
         qs = vcat(fill(0.5, 100), [0.9, 1.0])
         lc = LifeContingency(ultimate_life(qs), 0.05)
-        @test_broken reserve_premium_net(lc, 100) ≈ prospective_reserve(lc, 100)
+        @test reserve_premium_net(lc, 100) ≈ prospective_reserve(lc, 100)
         precise = LifeContingency(ultimate_life(big.(qs)), big(0.05))
         @test Float64(reserve_premium_net(precise, 100)) ≈ prospective_reserve(lc, 100)
+        @test reserve_premium_net(precise, 100) isa BigFloat
+
+        # a reserve needs a contract that can be in force, and a real state
+        @test_throws DomainError reserve_premium_net(LifeContingency(ultimate_life([1.0, 0.5, 1.0]), 0.05), 1)
+        @test_throws ArgumentError reserve_premium_net(lc, 1; state=:sick)
+        @test_throws ArgumentError reserve_premium_net(lc, -1)
+        @test reserve_premium_net(lc, 1; state=:alive) ≈ reserve_premium_net(lc, 1)
+
+        # joint lives: aggregate conditioning is a mixture of the known statuses, and they differ
+        first_life = ultimate_life([0.1, 0.2, 0.3, 0.4, 1.0])
+        second_life = ultimate_life([0.2, 0.3, 0.4, 1.0])
+        joint = LifeContingency(JointLife(lives=(first_life, second_life)), 0.05)
+        aggregate = reserve_premium_net(joint, 2)
+        known = Dict(s => reserve_premium_net(joint, 2; state=s) for s in ((:alive, :alive), (:alive, :dead), (:dead, :alive)))
+        @test length(unique(values(known))) == 3
+        weights = LifeContingencies.in_force_distribution(joint.life, 2)
+        @test aggregate ≈ sum(p * known[s] for (s, p) in weights)
+        # the old subtraction formula is exact where it keeps its precision
+        A, ä, P = LifeContingencies.A, LifeContingencies.ä, premium_net
+        @test aggregate ≈ (A(joint) - A(joint, 2) - P(joint) * (ä(joint) - ä(joint, 2))) / APV(joint, 2)
     end
 
     @testset "parametric mortality" begin

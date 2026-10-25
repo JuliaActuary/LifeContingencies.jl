@@ -175,14 +175,40 @@ end
 premium_net(lc::LifeContingency, to_time) = A(lc, to_time) / ä(lc, to_time)
 
 """
-     reserve_premium_net(lc::LifeContingency,time)
+     reserve_premium_net(lc::LifeContingency, time; state=nothing)
 
-The net premium reserve at the end of year `time`.
+The net premium reserve at the end of year `time` for whole life insurance with annual net
+premiums: the value at `time` of future death benefits less future net premiums. The death
+benefits of the year ending at `time` have been paid; the premium due at `time` has not. The
+premium is the one set at issue, `premium_net(lc)`.
+
+By default the reserve is for a contract still in force at `time`, given each life's status at
+issue; for a `JointLife` that conditions on the joint contingency alone, not on which lives
+are alive. Pass `state` to value it from a known state instead: `:alive` for a `SingleLife`,
+or a pair of statuses such as `(:alive, :dead)` for a `JointLife`. Throws a `DomainError` when
+the contract cannot be in force at `time`.
 """
-function reserve_premium_net(lc::LifeContingency, time)
-    PVFB = A(lc) - A(lc, time)
-    PVFP = premium_net(lc) * (ä(lc) - ä(lc, time))
-    return (PVFB - PVFP) / APV(lc, time)
+function reserve_premium_net(lc::LifeContingency, time::Integer; state=nothing)
+    life = lc.life
+    time >= 0 || throw(ArgumentError("`time` must be nonnegative; got $time"))
+    isnothing(state) || state in Experimental.states(life) ||
+        throw(ArgumentError("`state` must be one of $(Experimental.states(life)); got $state"))
+    premium = premium_net(lc)
+    contract = (
+        benefit=death_payment(life),
+        premium=StatePayment((t, s) -> active(life, s) ? -premium : zero(premium)),
+    )
+    initial = isnothing(state) ? in_force_distribution(life, time) : [state => one(probability_type(life))]
+    T = promote_type(probability_type(life), typeof(premium), typeof(discount(lc.int, 0, 1)))
+    grid = time:benefit_years(Insurance(lc))
+    values = policy_values(contract, life, lc.int; grid, terminal=0, roots=first.(initial), numbertype=T)
+    return sum(p * sum(values.before[s]) for (s, p) in initial)
+end
+
+# The distribution of states at `time` among contracts still in force, given each life's status at issue.
+function in_force_distribution(life, time)
+    at_time = project_from_issue((;), life, 0:time).final
+    return condition(at_time, s -> active(life, s))
 end
 
 """

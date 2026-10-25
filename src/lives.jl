@@ -243,6 +243,7 @@ function Experimental.transitions(l::SingleLife, interval::Experimental.Interval
         certain = survival(l, interval.start, interval.start)
         return (:alive => zero(certain), :dead => certain)
     end
+    state === :alive || throw(ArgumentError("a single life's state is :alive or :dead; got $state"))
     p = survival(l, interval.start, interval.stop)
     return (:alive => p, :dead => one(p) - p)
 end
