@@ -42,6 +42,11 @@ Engine.transitions(::Rounded, ::Interval, state) = (state => 0.7, :elsewhere => 
 struct Chain end
 Engine.transitions(::Chain, ::Interval, state::Int) = (state + 1 => 1.0,)
 
+# Lists its states, then reaches one it didn't list.
+struct Unlisted end
+Engine.transitions(::Unlisted, ::Interval, state) = (:elsewhere => 1.0,)
+Engine.states(::Unlisted) = (:here,)
+
 # Counts the edges the engine is handed.
 struct Counted{M}
     model::M
@@ -233,6 +238,10 @@ const care = (
         @test sum(values(project((;), Rounded(); grid=0:1, initial=[:x => 1.0]).final)) ≈ 1
         @test 0.7 + 0.2 + 0.1 != 1
 
+        # a model that lists its states in a tuple can reach only those
+        @test_throws ArgumentError project((;), Unlisted(); grid=0:1, initial=[:here => 1.0])
+        @test_throws ArgumentError project((;), Unlisted(); grid=0:1, initial=[:elsewhere => 1.0])
+
         # roots come from `states(model)` or must be given
         @test_throws ArgumentError policy_values((annuity=alive_annuity,), Stay(), 0.0; grid=0:1, terminal=0)
         @test policy_values((annuity=alive_annuity,), Stay(), 0.0; grid=0:1, terminal=0, roots=[:alive]).before[:alive].annuity ≈ 2.0
@@ -279,6 +288,14 @@ const care = (
         policy_values((annuity=alive_annuity,), counted, 0.0; grid=0:steps, terminal=0, roots=[:alive])
         # once to find the reachable states and once to value them
         @test counted.edges[] == 2 * (2 + 4 * (steps - 1))
+
+        # listed and discovered states give the same results
+        listed, discovered = TwoState(fill(0.01, steps)), Counted(TwoState(fill(0.01, steps)), Ref(0))
+        both = (annuity=alive_annuity, death=death_benefit)
+        @test present_values(both, listed, 0.05; grid=0:steps, initial=[:alive => 1.0]) ==
+              present_values(both, discovered, 0.05; grid=0:steps, initial=[:alive => 1.0])
+        @test policy_values(both, listed, 0.05; grid=0:steps, terminal=0, roots=[:alive]).before ==
+              policy_values(both, discovered, 0.05; grid=0:steps, terminal=0, roots=[:alive]).before
 
         # splitting every edge eight ways adds work but no allocation
         contract = (annuity=alive_annuity, death=death_benefit)

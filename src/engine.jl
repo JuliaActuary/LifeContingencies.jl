@@ -54,6 +54,10 @@ function transitions end
     states(model)
 
 Optional: every state of `model`. [`policy_values`](@ref) uses them as its default `roots`.
+
+When they are a tuple, the engine also indexes states by their place in it, comparing states
+rather than hashing them, which is faster for a model with a few states. A row that reaches a
+state outside the tuple then throws an `ArgumentError`.
 """
 function states end
 
@@ -159,6 +163,23 @@ function position!(index::StateIndex, state)
     return i
 end
 
+# Positions for a model that lists its states in a tuple: each state's place in the tuple,
+# found by comparison rather than by hashing.
+struct ListedIndex{S,N}
+    states::NTuple{N,S}
+end
+
+function position!(index::ListedIndex, state)
+    i = findfirst(isequal(state), index.states)
+    isnothing(i) && throw(ArgumentError("$state is not one of the model's states $(index.states)"))
+    return i
+end
+
+state_index(model, ::Type{S}) where {S} = index_for(listed_states(model), S)
+index_for(listed::Tuple, ::Type) = ListedIndex(listed)
+index_for(::Any, ::Type{S}) where {S} = StateIndex{S}()
+listed_states(model) = hasmethod(states, Tuple{typeof(model)}) ? states(model) : nothing
+
 function grow!(v::Vector, n)
     while length(v) < n
         push!(v, zero(eltype(v)))
@@ -262,10 +283,11 @@ function project(contract::NamedTuple, model; grid, initial, history::Bool=false
     check_distribution(start)
     S = mapreduce(typeof ∘ first, typejoin, start)
     # the state and number types are only known here, so specialize the work on them
-    return project_states(contract, model, grid, start, StateIndex{S}(), numbertype, history)
+    return project_states(contract, model, grid, start, state_index(model, S), numbertype, history)
 end
 
-function project_states(contract, model, grid, start, index::StateIndex{S}, ::Type{T}, history) where {S,T}
+function project_states(contract, model, grid, start, index, ::Type{T}, history) where {T}
+    S = eltype(index.states)
     n = length(grid)
     amounts = map(_ -> Vector{T}(undef, n), contract)
     occupancy = history ? Vector{Dict{S,T}}(undef, n) : nothing
@@ -349,7 +371,7 @@ function present_values(contract::NamedTuple, model, curve; grid, initial, numbe
     check_distribution(start)
     S = mapreduce(typeof ∘ first, typejoin, start)
     # the state and number types are only known here, so specialize the work on them
-    return discount_states(contract, model, curve, grid, start, StateIndex{S}(), numbertype)
+    return discount_states(contract, model, curve, grid, start, state_index(model, S), numbertype)
 end
 
 function discount_states(contract, model, curve, grid, start, index, ::Type{T}) where {T}
@@ -398,10 +420,10 @@ function policy_values(contract::NamedTuple, model, curve; grid, terminal, roots
     isempty(roots) && throw(ArgumentError("`roots` is empty"))
     S = mapreduce(typeof, typejoin, roots)
     # the state and number types are only known here, so specialize the work on them
-    return value_states(contract, model, curve, grid, terminal_values, roots, StateIndex{S}(), numbertype, history)
+    return value_states(contract, model, curve, grid, terminal_values, roots, state_index(model, S), numbertype, history)
 end
 
-function value_states(contract, model, curve, grid, terminal_values, roots, index::StateIndex{S}, ::Type{T}, history) where {S,T}
+function value_states(contract, model, curve, grid, terminal_values, roots, index, ::Type{T}, history) where {T}
     root_positions = unique!([position!(index, state) for state in roots])
     n = length(grid)
     frontiers = needs_occupancy(contract) ? reachable_frontiers(model, grid, index, root_positions, T) :
@@ -424,7 +446,7 @@ function value_states(contract, model, curve, grid, terminal_values, roots, inde
                 acc = map(_ -> zero(T), contract)
                 for (next_state, q) in transitions(model, interval, state)
                     iszero(q) && continue
-                    acc = add_edge_values(acc, contract, V_next, q, interval, state, next_state, index.position[next_state])
+                    acc = add_edge_values(acc, contract, V_next, q, interval, state, next_state, position!(index, next_state))
                 end
                 store_values!(V_current, acc, contract, i, grid[k], state, d)
             end
