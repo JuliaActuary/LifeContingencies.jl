@@ -29,6 +29,15 @@ Engine.transitions(::BadRowSum, ::Interval, state) = (state => 0.9,)
 struct NegativeRow end
 Engine.transitions(::NegativeRow, ::Interval, state) = (state => 1.5, :elsewhere => -0.5)
 
+# A row that is off by more than rounding, or by a negative sliver, still fails.
+struct Overshoot end
+Engine.transitions(::Overshoot, ::Interval, state) = (state => 1 + 1e-8,)
+struct NegativeSliver end
+Engine.transitions(::NegativeSliver, ::Interval, state) = (state => -1e-9, :elsewhere => 1 + 1e-9)
+# A row that misses one by rounding alone.
+struct Rounded end
+Engine.transitions(::Rounded, ::Interval, state) = (state => 0.7, :elsewhere => 0.2, :third => 0.1)
+
 # Counts the edges the engine is handed.
 struct Counted{M}
     model::M
@@ -208,6 +217,13 @@ const care = (
         @test_throws ArgumentError project((annuity=alive_annuity,), NegativeRow(); grid=0:1, initial=[:x => 1.0])
         @test_throws ArgumentError policy_values((annuity=alive_annuity,), BadRowSum(), 0.0; grid=0:1, terminal=0, roots=[:x])
         @test_throws ArgumentError CertainPayment([0, 1], [1.0])
+
+        # rows and distributions may miss their bounds by rounding, and by nothing more
+        @test_throws ArgumentError project((;), Overshoot(); grid=0:1, initial=[:x => 1.0])
+        @test_throws ArgumentError project((;), NegativeSliver(); grid=0:1, initial=[:x => 1.0])
+        @test_throws ArgumentError project((;), m; grid=0:1, initial=[:alive => 1 + 1e-9, :dead => -1e-9])
+        @test sum(values(project((;), Rounded(); grid=0:1, initial=[:x => 1.0]).final)) ≈ 1
+        @test 0.7 + 0.2 + 0.1 != 1
 
         # roots come from `states(model)` or must be given
         @test_throws ArgumentError policy_values((annuity=alive_annuity,), Stay(), 0.0; grid=0:1, terminal=0)

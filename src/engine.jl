@@ -16,8 +16,11 @@ export Interval, transitions, states,
     StatePayment, TransitionPayment, CertainPayment,
     project, policy_values, condition
 
-# Probabilities and row sums may miss their bounds by this much from floating-point rounding.
-const TOLERANCE = sqrt(eps(Float64))
+# Probabilities must be nonnegative. A row or distribution must sum to one up to rounding: at
+# most this many units in the last place of each probability's type, per entry. Nothing is
+# rescaled, so a row that passes moves mass only by rounding.
+const ROUNDING_ULPS = 8
+rounding_slack(p) = ROUNDING_ULPS * eps(float(typeof(p)))
 
 """
     Interval(start, stop)
@@ -34,8 +37,12 @@ end
     transitions(model, interval::Interval, state)
 
 The one-step row of `model` from `state` over `interval`: an iterable of
-`next_state => probability` pairs, with nonnegative probabilities that sum to one. Every
-state of a model must have the same type.
+`next_state => probability` pairs. Every state of a model must have the same type.
+
+Probabilities must be nonnegative, and they must sum to one up to rounding: within eight
+units in the last place of their type for each entry. The engine checks each row it uses and
+throws an `ArgumentError` for one that fails; it never rescales a row. Compute a complement
+such as `1 - p - q` with care, or clamp it at zero, since rounding can make it negative.
 
 Define a method for each model type. It must be pure: the engine may call it more than once
 with the same arguments. A model that supports only some intervals, such as whole months,
@@ -165,10 +172,10 @@ distribution_pairs(d) =
 function check_distribution(pairs)
     isempty(pairs) && throw(ArgumentError("the initial distribution is empty"))
     for (state, p) in pairs
-        p < -TOLERANCE && throw(ArgumentError("negative initial probability $p for state $state"))
+        p < 0 && throw(ArgumentError("negative initial probability $p for state $state"))
     end
     total = sum(last, pairs)
-    abs(total - 1) <= TOLERANCE || throw(ArgumentError("initial probabilities sum to $total, not 1"))
+    abs(total - 1) <= sum(rounding_slack ∘ last, pairs) || throw(ArgumentError("initial probabilities sum to $total, not 1"))
     return nothing
 end
 
@@ -188,13 +195,14 @@ function check_contract(contract::NamedTuple)
     return nothing
 end
 
-function check_probability(q, state, next_state, interval)
-    q < -TOLERANCE && throw(ArgumentError("negative probability $q for $state → $next_state over $interval"))
-    return nothing
-end
-
-function check_row(total, state, interval)
-    abs(total - 1) <= TOLERANCE || throw(ArgumentError("transition probabilities from $state over $interval sum to $total, not 1"))
+function check_row(row, state, interval, ::Type{T}) where {T}
+    total, slack = zero(T), zero(T)
+    for (next_state, q) in row
+        q < 0 && throw(ArgumentError("negative probability $q for $state → $next_state over $interval"))
+        total += q
+        slack += rounding_slack(q)
+    end
+    abs(total - 1) <= slack || throw(ArgumentError("transition probabilities from $state over $interval sum to $total, not 1"))
     return nothing
 end
 
@@ -247,17 +255,15 @@ function project_states(contract, model, grid, start, index::StateIndex{S}, ::Ty
             p = current[i]
             iszero(p) && continue
             state = index.states[i]
-            total = zero(T)
-            for (next_state, q) in transitions(model, interval, state)
-                check_probability(q, state, next_state, interval)
-                total += q
+            row = transitions(model, interval, state)
+            check_row(row, state, interval, T)
+            for (next_state, q) in row
                 iszero(q) && continue
                 j = position!(index, next_state)
                 grow!(next, j)
                 next[j] += p * q
                 add_transition_payments!(amounts, contract, k + 1, p * q, interval, state, next_state)
             end
-            check_row(total, state, interval)
         end
         current, next = next, current
         grow!(next, length(current))
@@ -418,10 +424,9 @@ function reachable_frontiers(model, grid, index, roots, ::Type{T}) where {T}
         next = Int[]
         for i in frontiers[k]
             state = index.states[i]
-            total = zero(T)
-            for (next_state, q) in transitions(model, interval, state)
-                check_probability(q, state, next_state, interval)
-                total += q
+            row = transitions(model, interval, state)
+            check_row(row, state, interval, T)
+            for (next_state, q) in row
                 iszero(q) && continue
                 j = position!(index, next_state)
                 grow!(marked, j)
@@ -430,7 +435,6 @@ function reachable_frontiers(model, grid, index, roots, ::Type{T}) where {T}
                     push!(next, j)
                 end
             end
-            check_row(total, state, interval)
         end
         push!(frontiers, next)
     end
