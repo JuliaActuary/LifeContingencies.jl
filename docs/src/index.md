@@ -1,7 +1,7 @@
 # LifeContingencies.jl
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaActuary.github.io/LifeContingencies.jl/stable/) 
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaActuary.github.io/LifeContingencies.jl/dev/)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://docs.juliaactuary.org/LifeContingencies/stable/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://docs.juliaactuary.org/LifeContingencies/dev/)
 ![](https://github.com/JuliaActuary/LifeContingencies.jl/workflows/CI/badge.svg)
 [![codecov](https://codecov.io/gh/JuliaActuary/LifeContingencies.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaActuary/LifeContingencies.jl)
 

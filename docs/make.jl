@@ -4,6 +4,7 @@ makedocs(;
     modules=[LifeContingencies],
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
+        canonical="https://docs.juliaactuary.org/LifeContingencies/stable/",
         assets=String[]
     ),
     pages=[
