@@ -49,7 +49,7 @@ Base.broadcastable(lc::LifeContingency) = Ref(lc)
     omega(lc::LifeContingency)
     omega(l::Life)
 
-The number of years from issue that the mortality assumption covers: survival to `omega` uses the last defined rate. For parametric mortality, `omega` is `Inf`.
+The number of years from issue that the mortality assumption covers: survival to `omega` uses the last defined rate. For parametric mortality, `omega` is `Inf`. A `JointLife` lasts as long as its contingency can be active: the longer life's `omega` for `LastSurvivor`, and the shorter life's for `FirstToDie`.
 
 This differs from `omega` of a mortality vector, which is the last attained age with a rate. For example, with issue age 60 and rates through age 100, `omega` of the vector is `100` and `omega` of the life is `41`.
 """

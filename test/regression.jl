@@ -76,7 +76,9 @@ end
         @test isconcretetype(only(Base.return_types(survival, Tuple{typeof(j),Int})))
         # the last-survivor status lasts as long as the longer life
         unequal = JointLife(lives=(ultimate_life([1.0]), ultimate_life([0.0, 0.0, 1.0])))
-        @test_broken present_value(Insurance(unequal, 0.0)) ≈ 1.0
+        @test present_value(Insurance(unequal, 0.0)) ≈ 1.0
+        @test omega(unequal) == 3
+        @test omega(JointLife(lives=unequal.lives, contingency=FirstToDie())) == 1
         # death cash flows stay finite after both lives are extinct
         both_extinct = JointLife(lives=(ultimate_life([1.0, 0.5, 1.0]), ultimate_life([1.0, 0.5, 1.0])))
         @test_broken collect(cashflows(Insurance(both_extinct, 0.0))) ≈ [1.0, 0.0, 0.0]

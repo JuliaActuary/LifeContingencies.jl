@@ -132,9 +132,11 @@ function mt.omega(l::SingleLife)
     return mt.omega(l.mortality) - l.issue_age + 1
 end
 
-function mt.omega(l::JointLife)
-    return minimum(omega.(l.lives))
-end
+mt.omega(l::JointLife) = horizon(l.contingency, map(omega, l.lives))
+
+# A joint status lasts as long as its contingency can still be active.
+horizon(::LastSurvivor, omegas) = maximum(omegas)
+horizon(::FirstToDie, omegas) = minimum(omegas)
 
 """
     survival(life::SingleLife, to_time)
