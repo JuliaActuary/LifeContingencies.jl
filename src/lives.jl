@@ -206,9 +206,41 @@ joint_statuses(::Frasier, (p1, p2)) = (
     (:dead, :alive) => (1 - p1) * p2,
     (:dead, :dead) => (1 - p1) * (1 - p2),
 )
-joint_statuses(assumption::JointAssumption, probabilities) =
+joint_statuses(assumption::JointAssumption, probabilities) = unsupported(assumption)
+
+unsupported(assumption) =
     throw(ArgumentError("$(nameof(typeof(assumption))) is not implemented; the supported joint assumption is Frasier(), for independent lives"))
 
 # Whether the contingency is still active, given each life's status.
 active(::LastSurvivor, statuses) = any(==(:alive), statuses)
 active(::FirstToDie, statuses) = all(==(:alive), statuses)
+
+## Lives as models for the experimental engine. A single life is `:alive` or `:dead`; a
+## joint life's state is the pair of its lives' statuses.
+
+# Each life's status at issue, as a distribution for `Experimental.project`.
+initial_distribution(l::SingleLife) = [(l.alive ? :alive : :dead) => one(survival(l, 0, 0))]
+initial_distribution(l::JointLife) =
+    [map(life -> life.alive ? :alive : :dead, l.lives) => prod(life -> one(survival(life, 0, 0)), l.lives)]
+
+Experimental.states(::SingleLife) = (:alive, :dead)
+Experimental.states(::JointLife) = ((:alive, :alive), (:alive, :dead), (:dead, :alive), (:dead, :dead))
+
+# The dead stay dead without consulting the mortality rates, so being dead is valid past
+# the end of any table.
+function Experimental.transitions(l::SingleLife, interval::Experimental.Interval, state::Symbol)
+    certain = survival(l, interval.start, interval.start)
+    state === :dead && return (:alive => zero(certain), :dead => certain)
+    p = survival(l, interval.start, interval.stop)
+    return (:alive => p, :dead => certain - p)
+end
+
+Experimental.transitions(l::JointLife, interval::Experimental.Interval, state::Tuple{Symbol,Symbol}) =
+    joint_row(l.joint_assumption, l.lives, interval, state)
+
+# Independent lives move independently: the joint row is the product of the lives' rows.
+function joint_row(::Frasier, lives, interval, state)
+    first_row, second_row = map((life, status) -> Experimental.transitions(life, interval, status), lives, state)
+    return ((first(a), first(b)) => last(a) * last(b) for a in first_row, b in second_row)
+end
+joint_row(assumption, lives, interval, state) = unsupported(assumption)

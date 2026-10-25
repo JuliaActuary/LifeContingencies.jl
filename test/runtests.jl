@@ -11,5 +11,6 @@ using MortalityTables
     include("joint_life.jl")
     include("single_life.jl")
     include("engine.jl")
+    include("life_models.jl")
     include("regression.jl")
 end
