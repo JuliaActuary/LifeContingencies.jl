@@ -6,6 +6,8 @@ import FinanceCore: present_value, discount
 
 const mt = MortalityTables
 
+include("engine.jl")
+
 export LifeContingency,
     Insurance, AnnuityDue, AnnuityImmediate,
     APV,

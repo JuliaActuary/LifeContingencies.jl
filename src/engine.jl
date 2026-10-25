@@ -1,0 +1,468 @@
+"""
+    LifeContingencies.Experimental
+
+A finite-state engine for contingent payments: a model supplies one-step transition rows over
+a time grid, a contract is a `NamedTuple` of payment components, and the engine projects
+expected cash flows forward ([`project`](@ref)) or values them backward by state
+([`policy_values`](@ref)).
+
+These interfaces are experimental and may change in minor releases.
+"""
+module Experimental
+
+using FinanceCore: Cashflow, discount
+
+export Interval, transitions, states,
+    StatePayment, TransitionPayment, CertainPayment,
+    project, policy_values, condition
+
+# Probabilities and row sums may miss their bounds by this much from floating-point rounding.
+const TOLERANCE = sqrt(eps(Float64))
+
+"""
+    Interval(start, stop)
+
+One step of a time grid, from `start` to `stop` in curve time. Models receive it in
+[`transitions`](@ref), and transition payments receive it in their amount function.
+"""
+struct Interval{T<:Real}
+    start::T
+    stop::T
+end
+
+"""
+    transitions(model, interval::Interval, state)
+
+The one-step row of `model` from `state` over `interval`: an iterable of
+`next_state => probability` pairs, with nonnegative probabilities that sum to one. Every
+state of a model must have the same type.
+
+Define a method for each model type. It must be pure: the engine may call it more than once
+with the same arguments. A model that supports only some intervals, such as whole months,
+should throw an `ArgumentError` for the others.
+"""
+function transitions end
+
+"""
+    states(model)
+
+Optional: every state of `model`. [`policy_values`](@ref) uses them as its default `roots`.
+"""
+function states end
+
+"""
+    StatePayment(f)
+
+A payment at each grid time `t` to anyone in `state`, of amount `f(t, state)`.
+"""
+struct StatePayment{F}
+    f::F
+end
+
+"""
+    TransitionPayment(f)
+
+A payment on each one-step transition `from → to` over `interval`, of amount
+`f(interval, from, to)`, paid at `interval.stop`. Self-transitions (`from == to`) are
+included, which is how accrual over a period is expressed.
+"""
+struct TransitionPayment{F}
+    f::F
+end
+
+"""
+    CertainPayment(times, amounts)
+
+Payments of `amounts` at `times`, independent of state. They are valued directly by
+discounting, so they need no occupancy and never take a `terminal` value.
+"""
+struct CertainPayment{T,A}
+    times::T
+    amounts::A
+    function CertainPayment(times, amounts)
+        length(times) == length(amounts) ||
+            throw(ArgumentError("CertainPayment needs one amount per time; got $(length(times)) times and $(length(amounts)) amounts"))
+        return new{typeof(times),typeof(amounts)}(times, amounts)
+    end
+end
+
+const Component = Union{StatePayment,TransitionPayment,CertainPayment}
+
+# The amount each component pays in each channel. `false` is Julia's strong zero: it adds
+# and multiplies as zero without changing the other operand's type.
+state_amount(c::StatePayment, t, state) = c.f(t, state)
+state_amount(::Union{TransitionPayment,CertainPayment}, t, state) = false
+transition_amount(c::TransitionPayment, interval, from, to) = c.f(interval, from, to)
+transition_amount(::Union{StatePayment,CertainPayment}, interval, from, to) = false
+
+function certain_value(c::CertainPayment, curve, t, ::Type{T}; include_now::Bool) where {T}
+    return sum(zip(c.times, c.amounts); init=zero(T)) do (τ, amount)
+        τ > t || (include_now && τ == t) ? amount * discount(curve, t, τ) : zero(T)
+    end
+end
+
+"""
+    Projection
+
+The result of [`project`](@ref).
+
+- `cashflows`: a `NamedTuple` with a vector of `FinanceCore.Cashflow`s for each component.
+  State payments are dated at every grid time, transition payments at every grid time after
+  the first, and certain payments at their own times from the first grid time on.
+- `final`: occupancy at the last grid time, as a `Dict` of state to probability.
+- `history`: occupancy at every grid time when requested, otherwise `nothing`.
+"""
+struct Projection{C,S,T}
+    cashflows::C
+    final::Dict{S,T}
+    history::Union{Nothing,Vector{Dict{S,T}}}
+end
+
+"""
+    PolicyValues
+
+The result of [`policy_values`](@ref).
+
+- `before`: for each root state, a `NamedTuple` of component values at the first grid time,
+  before the payments scheduled then (V⁻).
+- `after`: the same values after those payments (V⁺).
+- `history`: when requested, one `Dict` per grid time from each reachable state to
+  `(before = ..., after = ...)`; otherwise `nothing`.
+"""
+struct PolicyValues{S,V,H}
+    before::Dict{S,V}
+    after::Dict{S,V}
+    history::H
+end
+
+# Integer positions for the states the engine has met so far.
+struct StateIndex{S}
+    position::Dict{S,Int}
+    states::Vector{S}
+end
+
+StateIndex{S}() where {S} = StateIndex{S}(Dict{S,Int}(), S[])
+
+function position!(index::StateIndex, state)
+    i = get(index.position, state, 0)
+    if i == 0
+        push!(index.states, state)
+        i = index.position[state] = length(index.states)
+    end
+    return i
+end
+
+function grow!(v::Vector{T}, n) where {T}
+    length(v) < n && append!(v, zeros(T, n - length(v)))
+    return v
+end
+
+distribution_pairs(d::AbstractDict) = collect(d)
+distribution_pairs(d::AbstractVector{<:Pair}) = d
+distribution_pairs(d) =
+    throw(ArgumentError("a distribution is a collection of `state => probability` pairs, such as `[state => 1.0]`; got $(typeof(d))"))
+
+function check_distribution(pairs)
+    isempty(pairs) && throw(ArgumentError("the initial distribution is empty"))
+    for (state, p) in pairs
+        p < -TOLERANCE && throw(ArgumentError("negative initial probability $p for state $state"))
+    end
+    total = sum(last, pairs)
+    abs(total - 1) <= TOLERANCE || throw(ArgumentError("initial probabilities sum to $total, not 1"))
+    return nothing
+end
+
+function check_grid(grid)
+    isempty(grid) && throw(ArgumentError("the grid is empty"))
+    for k in firstindex(grid):lastindex(grid)-1
+        grid[k] < grid[k+1] || throw(ArgumentError("grid times must increase strictly; got $(grid[k]) then $(grid[k+1])"))
+    end
+    return nothing
+end
+
+function check_contract(contract::NamedTuple)
+    for (name, c) in pairs(contract)
+        c isa Component ||
+            throw(ArgumentError("contract component `$name` is a $(typeof(c)); use StatePayment, TransitionPayment or CertainPayment"))
+    end
+    return nothing
+end
+
+function check_probability(q, state, next_state, interval)
+    q < -TOLERANCE && throw(ArgumentError("negative probability $q for $state → $next_state over $interval"))
+    return nothing
+end
+
+function check_row(total, state, interval)
+    abs(total - 1) <= TOLERANCE || throw(ArgumentError("transition probabilities from $state over $interval sum to $total, not 1"))
+    return nothing
+end
+
+needs_occupancy(contract) = any(c -> !(c isa CertainPayment), values(contract))
+
+"""
+    project(contract, model; grid, initial, history=false, numbertype=Float64)
+
+Project `contract`'s expected cash flows over `grid`, starting from the distribution
+`initial` (`state => probability` pairs; use `[state => 1.0]` for a known state) at
+`grid[1]`. Returns a [`Projection`](@ref).
+
+Reachable states are discovered from `initial` by following [`transitions`](@ref). Each row
+is validated as it is used. `numbertype` is the number type for occupancy and amounts, for
+example `BigFloat` or a dual-number type.
+"""
+function project(contract::NamedTuple, model; grid, initial, history::Bool=false, numbertype::Type=Float64)
+    check_contract(contract)
+    check_grid(grid)
+    start = distribution_pairs(initial)
+    check_distribution(start)
+    S = mapreduce(typeof ∘ first, typejoin, start)
+    # the state and number types are only known here, so specialize the work on them
+    return project_states(contract, model, grid, start, StateIndex{S}(), numbertype, history)
+end
+
+function project_states(contract, model, grid, start, index::StateIndex{S}, ::Type{T}, history) where {S,T}
+    current = T[]
+    for (state, p) in start
+        i = position!(index, state)
+        grow!(current, i)
+        current[i] += p
+    end
+    next = zeros(T, length(current))
+    n = length(grid)
+    amounts = map(_ -> zeros(T, n), contract)
+    occupancy = history ? Vector{Dict{S,T}}(undef, n) : nothing
+    for k in 1:n
+        t = grid[k]
+        for i in eachindex(current)
+            p = current[i]
+            iszero(p) && continue
+            add_state_payments!(amounts, contract, k, p, t, index.states[i])
+        end
+        history && (occupancy[k] = snapshot(index, current))
+        k == n && break
+        interval = Interval(grid[k], grid[k+1])
+        fill!(next, zero(T))
+        for i in eachindex(current)
+            p = current[i]
+            iszero(p) && continue
+            state = index.states[i]
+            total = zero(T)
+            for (next_state, q) in transitions(model, interval, state)
+                check_probability(q, state, next_state, interval)
+                total += q
+                iszero(q) && continue
+                j = position!(index, next_state)
+                grow!(next, j)
+                next[j] += p * q
+                add_transition_payments!(amounts, contract, k + 1, p * q, interval, state, next_state)
+            end
+            check_row(total, state, interval)
+        end
+        current, next = next, current
+        grow!(next, length(current))
+    end
+    cashflows = map((c, a) -> component_cashflows(c, a, grid), contract, amounts)
+    return Projection(cashflows, snapshot(index, current), occupancy)
+end
+
+# `map` rather than `foreach` so that the loop over a contract's components unrolls.
+function add_state_payments!(amounts, contract, k, p, t, state)
+    map((c, a) -> (a[k] += p * state_amount(c, t, state); nothing), contract, amounts)
+    return nothing
+end
+
+function add_transition_payments!(amounts, contract, k, pq, interval, from, to)
+    map((c, a) -> (a[k] += pq * transition_amount(c, interval, from, to); nothing), contract, amounts)
+    return nothing
+end
+
+snapshot(index, occupancy) =
+    Dict(index.states[i] => occupancy[i] for i in eachindex(occupancy) if !iszero(occupancy[i]))
+
+component_cashflows(::StatePayment, amounts, grid) = [Cashflow(amounts[k], grid[k]) for k in eachindex(grid)]
+component_cashflows(::TransitionPayment, amounts, grid) = [Cashflow(amounts[k], grid[k]) for k in eachindex(grid)[2:end]]
+component_cashflows(c::CertainPayment, amounts, grid) =
+    [Cashflow(amount, τ) for (τ, amount) in zip(c.times, c.amounts) if τ >= first(grid)]
+
+"""
+    policy_values(contract, model, curve; grid, terminal, roots=states(model), history=false, numbertype=Float64)
+
+Value `contract` by state at `grid[1]`, discounting on `curve` with interval factors
+`discount(curve, tₖ, tₖ₊₁)`. Returns a [`PolicyValues`](@ref) for each state in `roots`.
+
+Payment phases:
+- Transition payments for the interval ending at `t` are settled at `t`.
+- `b(t)` is every payment scheduled at `t`: state payments for the occupied state, plus
+  certain payments.
+- `V⁻(t)` is the value before `b(t)`, and `V⁺(t) = V⁻(t) - b(t)`.
+- State and transition components follow
+  `V⁻ₖ(i) = bₖ(i) + d(tₖ, tₖ₊₁) Σⱼ Pₖ(i,j) (rₖ(i,j) + V⁻ₖ₊₁(j))`, with
+  `V⁻(T) = b(T) + terminal`, where `rₖ(i,j)` is the transition payment.
+- Certain components are valued directly at every date: `Σ_{τ ≥ t} d(t,τ) aτ` before the
+  payments at `t` and `Σ_{τ > t}` after. They are the same in every state.
+
+`terminal` supplies `V⁺` at the last grid time for each state or transition component: a
+`NamedTuple` of functions of the state, keyed by component name. `terminal = 0` sets every
+one to zero. Certain components never take a terminal value. A terminal value of zero is
+justified only by maturity, termination, or a deliberate truncation.
+
+`roots` defaults to `states(model)` and must be passed when `states` isn't defined for
+`model`. With `history = true`, values are also kept for every state reachable from the
+roots at every grid time.
+"""
+function policy_values(contract::NamedTuple, model, curve; grid, terminal, roots=nothing, history::Bool=false, numbertype::Type=Float64)
+    check_contract(contract)
+    check_grid(grid)
+    terminal_values = terminal_functions(contract, terminal)
+    roots = collect(resolve_roots(model, roots))
+    isempty(roots) && throw(ArgumentError("`roots` is empty"))
+    S = mapreduce(typeof, typejoin, roots)
+    # the state and number types are only known here, so specialize the work on them
+    return value_states(contract, model, curve, grid, terminal_values, roots, StateIndex{S}(), numbertype, history)
+end
+
+function value_states(contract, model, curve, grid, terminal_values, roots, index::StateIndex{S}, ::Type{T}, history) where {S,T}
+    root_positions = unique!([position!(index, state) for state in roots])
+    n = length(grid)
+    frontiers = needs_occupancy(contract) ? reachable_frontiers(model, grid, index, root_positions, T) :
+                fill(root_positions, n)
+    V_next = map(_ -> zeros(T, length(index.states)), contract)
+    V_current = map(_ -> zeros(T, length(index.states)), contract)
+    records = history ? Vector{Any}(undef, n) : nothing
+    t = grid[n]
+    for i in frontiers[n]
+        state = index.states[i]
+        map((c, v, f) -> (v[i] = state_amount(c, t, state) + terminal_value(f, state); nothing), contract, V_next, terminal_values)
+    end
+    history && (records[n] = values_at(contract, V_next, frontiers[n], index, curve, t, T))
+    if needs_occupancy(contract)
+        for k in n-1:-1:1
+            interval = Interval(grid[k], grid[k+1])
+            d = discount(curve, grid[k], grid[k+1])
+            for i in frontiers[k]
+                state = index.states[i]
+                acc = map(_ -> zero(T), contract)
+                for (next_state, q) in transitions(model, interval, state)
+                    iszero(q) && continue
+                    acc = add_edge_values(acc, contract, V_next, q, interval, state, next_state, index.position[next_state])
+                end
+                store_values!(V_current, acc, contract, i, grid[k], state, d)
+            end
+            history && (records[k] = values_at(contract, V_current, frontiers[k], index, curve, grid[k], T))
+            V_current, V_next = V_next, V_current
+        end
+    elseif history
+        for k in 1:n-1
+            records[k] = values_at(contract, V_next, frontiers[k], index, curve, grid[k], T)
+        end
+    end
+    at_start = values_at(contract, V_next, root_positions, index, curve, first(grid), T)
+    before = Dict(state => v.before for (state, v) in at_start)
+    after = Dict(state => v.after for (state, v) in at_start)
+    return PolicyValues(before, after, isnothing(records) ? nothing : [r for r in records])
+end
+
+add_edge_values(acc, contract, V, q, interval, from, to, j) =
+    map((a, c, v) -> a + q * (transition_amount(c, interval, from, to) + v[j]), acc, contract, V)
+
+function store_values!(V, acc, contract, i, t, state, d)
+    map((v, a, c) -> (v[i] = state_amount(c, t, state) + d * a; nothing), V, acc, contract)
+    return nothing
+end
+
+const CONTRACT_SHAPE = "a contract is a NamedTuple of StatePayment, TransitionPayment and CertainPayment components; the empty contract is (;)"
+
+project(contract, model; kwargs...) = throw(ArgumentError(CONTRACT_SHAPE * "; got $(typeof(contract))"))
+policy_values(contract, model, curve; kwargs...) = throw(ArgumentError(CONTRACT_SHAPE * "; got $(typeof(contract))"))
+
+function resolve_roots(model, ::Nothing)
+    hasmethod(states, Tuple{typeof(model)}) ||
+        throw(ArgumentError("pass `roots`, or define `states(::$(typeof(model)))`"))
+    return states(model)
+end
+resolve_roots(model, roots) = roots
+
+function terminal_functions(contract, terminal::Number)
+    iszero(terminal) ||
+        throw(ArgumentError("`terminal` must be 0 or a NamedTuple of functions of the state, one for each state or transition component"))
+    return map(c -> c isa CertainPayment ? nothing : zero_terminal, contract)
+end
+
+function terminal_functions(contract, terminal::NamedTuple)
+    for name in keys(terminal)
+        haskey(contract, name) || throw(ArgumentError("`terminal` names `$name`, which is not a contract component"))
+        contract[name] isa CertainPayment &&
+            throw(ArgumentError("`terminal` names `$name`, a CertainPayment; certain payments are valued directly and take no terminal value"))
+    end
+    functions = map(keys(contract), values(contract)) do name, c
+        c isa CertainPayment && return nothing
+        haskey(terminal, name) || throw(ArgumentError("`terminal` has no value for component `$name`"))
+        return terminal[name]
+    end
+    return NamedTuple{keys(contract)}(functions)
+end
+
+terminal_functions(contract, terminal) =
+    throw(ArgumentError("`terminal` must be 0 or a NamedTuple of functions of the state; got $(typeof(terminal))"))
+
+zero_terminal(state) = false
+terminal_value(::Nothing, state) = false
+terminal_value(f, state) = f(state)
+
+function reachable_frontiers(model, grid, index, roots, ::Type{T}) where {T}
+    frontiers = [roots]
+    marked = zeros(Int, length(index.states))
+    for k in firstindex(grid):lastindex(grid)-1
+        interval = Interval(grid[k], grid[k+1])
+        next = Int[]
+        for i in frontiers[k]
+            state = index.states[i]
+            total = zero(T)
+            for (next_state, q) in transitions(model, interval, state)
+                check_probability(q, state, next_state, interval)
+                total += q
+                iszero(q) && continue
+                j = position!(index, next_state)
+                grow!(marked, j)
+                if marked[j] != k + 1
+                    marked[j] = k + 1
+                    push!(next, j)
+                end
+            end
+            check_row(total, state, interval)
+        end
+        push!(frontiers, next)
+    end
+    return frontiers
+end
+
+function values_at(contract, V, positions, index, curve, t, ::Type{T}) where {T}
+    return Dict(map(positions) do i
+        state = index.states[i]
+        before = map((c, v) -> component_before(c, v, i, curve, t, T), contract, V)
+        after = map((c, b) -> component_after(c, b, t, state, curve, T), contract, before)
+        state => (before=before, after=after)
+    end)
+end
+
+component_before(::Union{StatePayment,TransitionPayment}, v, i, curve, t, T) = v[i]
+component_before(c::CertainPayment, v, i, curve, t, T) = certain_value(c, curve, t, T; include_now=true)
+component_after(c::StatePayment, before, t, state, curve, T) = before - c.f(t, state)
+component_after(::TransitionPayment, before, t, state, curve, T) = before
+component_after(c::CertainPayment, before, t, state, curve, T) = certain_value(c, curve, t, T; include_now=false)
+
+"""
+    condition(distribution, event)
+
+Restrict `distribution` (`state => probability` pairs) to the states where `event(state)` is
+true, and renormalize. Throws a `DomainError` when the event has probability zero.
+"""
+function condition(distribution, event)
+    kept = [state => p for (state, p) in distribution_pairs(distribution) if event(state)]
+    total = sum(last, kept; init=0)
+    iszero(total) && throw(DomainError(total, "cannot condition on an event of probability zero"))
+    return [state => p / total for (state, p) in kept]
+end
+
+end # module Experimental
