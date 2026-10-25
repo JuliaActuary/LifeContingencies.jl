@@ -117,6 +117,14 @@ end
         # the old subtraction formula is exact where it keeps its precision
         A, ä, P = LifeContingencies.A, LifeContingencies.ä, premium_net
         @test aggregate ≈ (A(joint) - A(joint, 2) - P(joint) * (ä(joint) - ä(joint, 2))) / APV(joint, 2)
+
+        # scalar values fold the projection instead of collecting it, so they allocate the same
+        # however long the contract runs
+        long_life = ultimate_life(fill(0.01, 200))
+        allocated(f) = (f(); @allocated f())
+        for product in (Insurance, AnnuityDue)
+            @test allocated(() -> present_value(product(long_life, 0.05, 10))) == allocated(() -> present_value(product(long_life, 0.05, 150)))
+        end
     end
 
     @testset "parametric mortality" begin

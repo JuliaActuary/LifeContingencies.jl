@@ -72,7 +72,7 @@ end
 The survivorship vector for the given insurance: for life insurance, the probability of being
 in force at the start of each year of cover; for an annuity, at each payment time.
 """
-MortalityTables.survival(ins::DeathBenefit) = expected_payments(ins).survival
+MortalityTables.survival(ins::DeathBenefit) = in_force_at(ins.life, 0:benefit_years(ins)-1)
 MortalityTables.survival(ins::Annuity) = in_force_at(ins.life, timepoints(ins))
 
 
@@ -100,8 +100,7 @@ The vector of contingent benefit probabilities for the given insurance: for life
 the probability that the benefit is paid at the end of each year of cover; for an annuity, the
 probability that each installment is paid (one for guaranteed installments).
 """
-probability(ins::DeathBenefit) = expected_payments(ins).probability
-probability(ins::Annuity) = expected_payments(ins)
+probability(ins::Insurance) = expected_payments(ins)
 
 
 """
@@ -128,12 +127,9 @@ timepoints(ins::Annuity) = schedule(ins).times
 
 The actuarial present value of the given insurance benefits.
 """
-function FinanceCore.present_value(ins::T) where {T<:Insurance}
-    cfs = cashflows(ins)
-    times = timepoints(ins)
-    yield = ins.int
-    pv = present_value(yield, cfs, times)
-    return pv
+function FinanceCore.present_value(ins::Insurance)
+    (; contract, grid) = unit_payments(ins)
+    return benefit(ins) * sum(value_from_issue(contract, ins.life, ins.int, grid))
 end
 
 """
@@ -199,7 +195,7 @@ function reserve_premium_net(lc::LifeContingency, time::Integer; state=nothing)
         premium=StatePayment((t, s) -> active(life, s) ? -premium : zero(premium)),
     )
     initial = isnothing(state) ? in_force_distribution(life, time) : [state => one(probability_type(life))]
-    T = promote_type(probability_type(life), typeof(premium), typeof(discount(lc.int, 0, 1)))
+    T = promote_type(value_type(life, lc.int), typeof(premium))
     grid = time:benefit_years(Insurance(lc))
     values = policy_values(contract, life, lc.int; grid, terminal=0, roots=first.(initial), numbertype=T)
     return sum(p * sum(values.before[s]) for (s, p) in initial)

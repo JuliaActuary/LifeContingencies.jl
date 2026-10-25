@@ -8,16 +8,26 @@ function LifeContingency(ins::I) where {I<:Insurance}
     LifeContingency(ins.life, ins.int)
 end
 
-## The products are valued by projecting unit payments through the experimental engine,
-## from each life's status at issue.
+## Each product is a contract of unit payment components for the experimental engine:
+## `unit_payments(ins)` gives the contract and the grid to project it over, from each life's
+## status at issue. Views collect its projection; present values fold it.
 
 project_from_issue(contract, life, grid) =
     project(contract, life; grid, initial=initial_distribution(life), numbertype=probability_type(life))
 
+value_from_issue(contract, life, curve, grid) =
+    present_values(contract, life, curve; grid, initial=initial_distribution(life), numbertype=value_type(life, curve))
+
 probability_type(life) = typeof(last(only(initial_distribution(life))))
+value_type(life, curve) = promote_type(probability_type(life), typeof(discount(curve, 0, 1)))
 
 death_payment(life) = TransitionPayment((interval, from, to) -> active(life, from) && !active(life, to) ? 1 : 0)
-in_force_payment(life) = StatePayment((t, state) -> active(life, state) ? 1 : 0)
+
+# A unit at each of `dates`, which are sorted, while the life is in force.
+in_force_payment(life, dates) = StatePayment((t, state) -> active(life, state) && insorted(t, dates) ? 1 : 0)
+
+# Grid times from issue through `dates`, which are sorted and nonnegative.
+from_issue(dates) = !isempty(dates) && iszero(first(dates)) ? dates : [zero(eltype(dates)); dates]
 
 beyond_assumption(t) = DomainError(t,
     "the contract continues past the end of the mortality assumption at time $t while lives remain in force; supply rates that reach extinction (a rate of 1), or give the contract a shorter term")
@@ -63,24 +73,19 @@ Insurance(life, int, term=nothing) = DeathBenefit(life, int, checked_term(term))
 Insurance(lc::LifeContingency, args...) = Insurance(lc.life, lc.int, args...)
 
 # The years a death benefit runs: its term, ending early at the last whole year the mortality
-# assumption covers.
+# assumption covers. It may stop there only if no life remains in force.
 function benefit_years(ins::DeathBenefit)
     horizon = omega(ins.life)
     isnothing(ins.term) && isinf(horizon) &&
         throw(DomainError(horizon, "parametric mortality never reaches extinction, so a whole-life insurance needs a `term`"))
     covered = isinf(horizon) ? ins.term : floor(Int, horizon)
-    return isnothing(ins.term) ? covered : min(ins.term, covered)
+    years = isnothing(ins.term) ? covered : min(ins.term, covered)
+    continues = isnothing(ins.term) || ins.term > years
+    continues && !iszero(survival(ins.life, years)) && throw(beyond_assumption(horizon))
+    return years
 end
 
-# One projection from issue gives every view of a death benefit.
-function expected_payments(ins::DeathBenefit)
-    years = benefit_years(ins)
-    p = project_from_issue((death=death_payment(ins.life), in_force=in_force_payment(ins.life)), ins.life, 0:years)
-    in_force = [cf.amount for cf in p.cashflows.in_force]
-    continues = isnothing(ins.term) || ins.term > years
-    continues && !iszero(last(in_force)) && throw(beyond_assumption(omega(ins.life)))
-    return (probability=[cf.amount for cf in p.cashflows.death], survival=in_force[1:end-1])
-end
+unit_payments(ins::DeathBenefit) = (contract=(benefit=death_payment(ins.life),), grid=0:benefit_years(ins))
 
 abstract type AnnuityKind end
 struct Due <: AnnuityKind end
@@ -181,21 +186,34 @@ function schedule(ins::Annuity)
     return (; times=dates[1:max(guaranteed, contingent_end)], guaranteed, continues, horizon)
 end
 
-# The probability of being in force at each of `times` (increasing), from one projection.
-function in_force_at(life, times)
-    isempty(times) && return probability_type(life)[]
-    grid = unique!([0.0; times])
-    p = project_from_issue((in_force=in_force_payment(life),), life, grid)
-    in_force = Dict(cf.time => cf.amount for cf in p.cashflows.in_force)
-    return [in_force[t] for t in times]
+# Guaranteed installments are a certain payment; the rest are paid while the life is in force.
+function unit_payments(ins::Annuity)
+    s = schedule(ins)
+    s.continues && !iszero(survival(ins.life, s.horizon)) && throw(beyond_assumption(s.horizon))
+    guaranteed = s.times[1:s.guaranteed]
+    contingent = s.times[s.guaranteed+1:end]
+    contract = (
+        guaranteed=CertainPayment(guaranteed, fill(one(probability_type(ins.life)), length(guaranteed))),
+        contingent=in_force_payment(ins.life, contingent),
+    )
+    return (; contract, grid=from_issue(contingent), contingent)
 end
 
-# Guaranteed installments are paid for certain; the rest only while the life is in force.
+# Expected unit payments, in date order, from one projection of the contract.
+function expected_payments(ins::DeathBenefit)
+    (; contract, grid) = unit_payments(ins)
+    return [cf.amount for cf in project_from_issue(contract, ins.life, grid).cashflows.benefit]
+end
+
 function expected_payments(ins::Annuity)
-    s = schedule(ins)
-    contingent = s.times[s.guaranteed+1:end]
-    checked = s.continues ? [contingent; s.horizon] : collect(contingent)
-    in_force = in_force_at(ins.life, checked)
-    s.continues && !iszero(last(in_force)) && throw(beyond_assumption(s.horizon))
-    return [ones(probability_type(ins.life), s.guaranteed); in_force[1:length(contingent)]]
+    (; contract, grid, contingent) = unit_payments(ins)
+    cashflows = project_from_issue(contract, ins.life, grid).cashflows
+    # the contingent component is dated at every grid time, and the grid ends with its dates
+    return [cf.amount for cf in [cashflows.guaranteed; last(cashflows.contingent, length(contingent))]]
+end
+
+# The probability of being in force at each of `dates` (sorted), from one projection.
+function in_force_at(life, dates)
+    cashflows = project_from_issue((in_force=in_force_payment(life, dates),), life, from_issue(dates)).cashflows
+    return [cf.amount for cf in last(cashflows.in_force, length(dates))]
 end
