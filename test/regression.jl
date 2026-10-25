@@ -241,6 +241,10 @@ end
         @test LifeContingencies.N(lc, 0) ≈ sum(APV(lc, t) for t in 0:omega(lc)-1)
         gompertz = LifeContingency(SingleLife(MortalityTables.Gompertz(a=0.0002, b=0.13), issue_age=40), 0.05)
         @test_throws DomainError LifeContingencies.N(gompertz, 0)
+        # a law that ends at 60.5 years covers 60 whole years
+        bounded = LifeContingency(SingleLife(MortalityTables.Wittstein(m=100.5), issue_age=40), 0.05)
+        @test LifeContingencies.N(bounded, 0) ≈ sum(APV(bounded, t) for t in 0:59)
+        @test LifeContingencies.M(bounded, 0) ≈ present_value(Insurance(bounded, 60))
     end
 
     @testset "exports" begin

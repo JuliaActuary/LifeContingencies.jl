@@ -36,11 +36,11 @@ function C(lc::LifeContingency, to_time)
     return discount(lc.int, to_time + 1) * (l(lc, to_time) - l(lc, to_time + 1))
 end
 
-# Commutation sums run through the last year the mortality rates cover.
+# Commutation sums run through the last whole year the mortality assumption covers.
 function last_table_year(lc::LifeContingency)
     ω = omega(lc)
-    isinf(ω) && throw(DomainError(ω, "commutation sums run to the end of the mortality table, and parametric mortality has none"))
-    return Int(ω) - 1
+    isinf(ω) && throw(DomainError(ω, "commutation sums run to the end of the mortality table, and parametric mortality defined at every age has none"))
+    return floor(Int, ω) - 1
 end
 
 """
