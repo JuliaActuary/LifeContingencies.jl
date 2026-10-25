@@ -9,7 +9,7 @@ MortalityTables = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"
 
 [compat]
 MortalityTables = "3"
-FinanceCore = "2"
+FinanceCore = "2, 3"
 julia = "1.10"
 
 [extras]
