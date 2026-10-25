@@ -235,10 +235,12 @@ Experimental.states(::JointLife) = ((:alive, :alive), (:alive, :dead), (:dead, :
 # The dead stay dead without consulting the mortality rates, so being dead is valid past
 # the end of any table.
 function Experimental.transitions(l::SingleLife, interval::Experimental.Interval, state::Symbol)
-    certain = survival(l, interval.start, interval.start)
-    state === :dead && return (:alive => zero(certain), :dead => certain)
+    if state === :dead
+        certain = survival(l, interval.start, interval.start)
+        return (:alive => zero(certain), :dead => certain)
+    end
     p = survival(l, interval.start, interval.stop)
-    return (:alive => p, :dead => certain - p)
+    return (:alive => p, :dead => one(p) - p)
 end
 
 Experimental.transitions(l::JointLife, interval::Experimental.Interval, state::Tuple{Symbol,Symbol}) =
