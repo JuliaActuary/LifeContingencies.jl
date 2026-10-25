@@ -35,7 +35,8 @@ raise errors instead of being truncated silently.
   end of its rates, needs rates that reach extinction; otherwise it raises a `DomainError`
   instead of truncating silently. Give such contracts a term that ends with the rates, for
   example `Insurance(life, interest, omega(life))`.
-- **Parametric mortality.** Lifetime products on it need a term.
+- **Parametric mortality.** Lifetime products on it need a term. A term may run up to the
+  end of the law's domain, which need not fall on a whole year.
 
 ### Products
 
@@ -78,12 +79,13 @@ raise errors instead of being truncated silently.
 - **`reserve_premium_net(lc, t; state=...)`** values a reserve from a known state, such as
   `(:alive, :dead)`.
 - **Parametric mortality.** `SingleLife` accepts MortalityTables' parametric laws, with an
-  explicit `issue_age`.
+  explicit `issue_age`. Its `omega` is the time from issue to the law's own `omega`: `Inf`
+  for most laws, and 60.5 for a life aged 40 on a Wittstein law that ends at age 100.5.
 - **Broadcasting.** Lives, products and `LifeContingency` broadcast as scalars.
 - **`LifeContingencies.Experimental`**, a finite-state engine. It provides `project`,
-  `policy_values` and `condition`, and the payment components `StatePayment`,
-  `TransitionPayment` and `CertainPayment`. Its interfaces may change in minor releases. The
-  documentation includes a long-term care example built on it.
+  `present_values`, `policy_values` and `condition`, and the payment components
+  `StatePayment`, `TransitionPayment` and `CertainPayment`. Its interfaces may change in minor
+  releases. The documentation includes a long-term care example built on it.
 
 ## Fixed
 
@@ -91,7 +93,8 @@ raise errors instead of being truncated silently.
   made the first deferred payment certain.
 - **Joint lives.**
   - Cash flows after both lives had died were `NaN`.
-  - Joint survival inferred `Any`; joint annuities are now about 6× faster.
+  - Joint survival inferred `Any`. A joint annuity now takes about two-thirds of the time
+    and an eighth of the allocation.
 - **Late-duration reserves** lost all precision.
 - **Mortality reads** now grow linearly with the projection length, where they grew
   quadratically.
