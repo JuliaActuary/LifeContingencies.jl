@@ -19,7 +19,9 @@ value_from_issue(contract, life, curve, grid) =
     present_values(contract, life, curve; grid, initial=initial_distribution(life), numbertype=value_type(life, curve))
 
 probability_type(life) = typeof(last(only(initial_distribution(life))))
-value_type(life, curve) = promote_type(probability_type(life), typeof(discount(curve, 0, 1)))
+# Values take the number types of the probabilities and of the curve's factors, read at issue:
+# a valuation from issue discounts from there, whatever its term.
+value_type(life, curve) = promote_type(probability_type(life), typeof(discount(curve, 0, 0)))
 
 death_payment(life) = TransitionPayment((interval, from, to) -> active(life, from) && !active(life, to) ? 1 : 0)
 

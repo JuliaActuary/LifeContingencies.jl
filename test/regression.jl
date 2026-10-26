@@ -7,6 +7,14 @@ struct RegressionCurve end
 FinanceCore.discount(::RegressionCurve, t) = exp(-0.1t^2)
 FinanceCore.discount(c::RegressionCurve, from, to) = discount(c, to) / discount(c, from)
 
+# Defined only through time 1/4.
+struct ShortCurve end
+function FinanceCore.discount(::ShortCurve, t)
+    t <= 0.25 || throw(DomainError(t, "the curve ends at time 0.25"))
+    return exp(-0.05t)
+end
+FinanceCore.discount(c::ShortCurve, from, to) = discount(c, to) / discount(c, from)
+
 ultimate_life(q; kwargs...) = SingleLife(UltimateMortality(q); kwargs...)
 
 # reference net premium reserve at `t`, built prospectively from conditional probabilities
@@ -117,6 +125,15 @@ end
         # the old subtraction formula is exact where it keeps its precision
         A, ä, P = LifeContingencies.A, LifeContingencies.ä, premium_net
         @test aggregate ≈ (A(joint) - A(joint, 2) - P(joint) * (ä(joint) - ä(joint, 2))) / APV(joint, 2)
+
+        # a curve needs to reach only the payments: contracts that pay nothing, or only at issue
+        short = ultimate_life(fill(0.01, 10))
+        @test present_value(Insurance(short, ShortCurve(), 0)) == 0
+        @test present_value(AnnuityDue(short, ShortCurve(), 0)) == 0
+        @test present_value(AnnuityImmediate(short, ShortCurve(), 0)) == 0
+        @test present_value(AnnuityDue(short, ShortCurve(), 1)) == 1
+        @test present_value(AnnuityDue(short, ShortCurve(), 1; certain=1)) == 1
+        @test_throws DomainError present_value(AnnuityDue(short, ShortCurve(), 2))
 
         # scalar values fold the projection instead of collecting it, so they allocate the same
         # however long the contract runs
