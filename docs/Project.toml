@@ -1,4 +1,15 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+FinanceModels = "77f2ae65-bdde-421f-ae9d-22f1af19dd76"
 LifeContingencies = "c8f0d631-89cd-4a1f-93d0-7542c3692561"
+Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 MortalityTables = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[compat]
+Documenter = "1"
+FinanceModels = "6"
+Markdown = "1"
+MortalityTables = "3"
+Random = "1"
+julia = "1.10"

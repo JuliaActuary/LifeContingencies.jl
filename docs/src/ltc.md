@@ -1,77 +1,67 @@
-# Multi-state example: long-term care
+# LTC worked example
 
-`LifeContingencies.Experimental` values contracts on any finite-state model. This page uses
-it for an academic long-term care (LTC) model. A policyholder can fall ill, recover, claim
-again, lapse or die, and the contract remembers its elimination period and its benefit
-maximum across claims.
+This academic long-term care model builds on [Building multi-state models](multi-state-models.md).
+It adds claim-duration effects, recovery and a second claim, an elimination period (EP),
+premium waiver, and a benefit counter retained across claims.
 
-The model is a worked example, not part of the package API. Its rates are illustrative, not
-drawn from any experience study. The code lives in `examples/ltc_model.jl`, and the test
-suite runs it.
+The rates are illustrative, not experience-study estimates. The model is an example in
+`examples/ltc_model.jl`, rather than an exported LTC product. Its conventions below are part
+of the example's specification.
 
-## The model
+## Product specification
 
-**States.** Each state is an `LTCState`, which carries the contract's memory as well as the
-policyholder's status:
+| Item | Convention |
+|---|---|
+| Time step | One month, represented as `1/12` year |
+| Premium | At the start of each month while healthy; waived on claim |
+| Care | One monthly unit when qualified and benefits remain |
+| Elimination period | Three completed claim months by default; once satisfied, qualified for life |
+| Benefit maximum | 24 full continuing-claim payment months across all claims |
+| Recovery or death during a payable month | Half a monthly unit on the exit edge; that half-month does not consume the counter |
+| Death benefit | On the death transition, at month end |
+| Term | No premium, care or death payments beyond the policy term |
+
+The EP must be completed within one claim. An unqualified recovery resets claim duration;
+a qualified recovery retains qualification. The treatment of half-month exit payments is
+an approximation, so this counter is not an exact cap on total reimbursed care or money.
+The model has no inflation protection, care-setting differences or restoration of benefits.
+
+## State and transition assumptions
+
+Each `LTCState` contains:
 
 | Field | Meaning |
 |---|---|
 | `status` | `:healthy`, `:claim`, `:dead` or `:lapsed` |
-| `claim_months` | whole months in the current claim, counted up to 6, or up to the elimination period when that is longer |
-| `qualified` | whether the elimination period has been satisfied |
-| `benefit_months` | benefit months paid so far, across all claims |
+| `claim_months` | Completed months in the current claim, capped only after both the rate band and EP are settled |
+| `qualified` | Whether the lifetime EP has already been satisfied |
+| `benefit_months` | Full continuing-claim benefit months used across episodes |
 
-**Transitions.** The model moves one month at a time, with constant forces within each
-month. Over a month with total force ``\mu``, the probability of staying is
-``e^{-\mu/12}``, and exit ``j`` has probability ``\frac{\mu_j}{\mu}\left(1 - e^{-\mu/12}\right)``.
+Dead and lapsed are absorbing and discard the remaining memory. Claim duration is counted
+up to `max(6, elimination_months)`: the six-month rate band must not prevent a longer EP
+from qualifying. With EP zero, qualification starts on claim onset.
 
-- A healthy life falls ill, dies or lapses:
-  - incidence is 2% a year at issue age 75, growing 10% a year
-  - mortality is 3% a year, growing 9% a year
-  - lapse is 3% a year
+Default **annual forces**, rather than annual exit probabilities, are:
 
-  The forces step at each policy anniversary.
-- A life on claim recovers or dies:
-  - recovery is 60% a year for the first six months of a claim and 20% after
-  - mortality is 25% a year for the first six months and 15% after
-- Dead and lapsed are absorbing.
+| Origin | Destination | Force |
+|---|---|---|
+| Healthy | Claim | 0.02 at issue, multiplied by `exp(0.10*k)` in policy year `k` |
+| Healthy | Dead | 0.03 at issue, multiplied by `exp(0.09*k)` |
+| Healthy | Lapsed | 0.03 |
+| Claim, first six months | Healthy / Dead | 0.60 / 0.25 |
+| Claim, later months | Healthy / Dead | 0.20 / 0.15 |
 
-**Contract.** `ltc_contract` builds a policy of `term` years with three payments:
-- a monthly premium at the start of each month while healthy, waived on claim
-- a care benefit for each month on claim once the three-month elimination period is
-  satisfied, up to 24 benefit months in total. With no elimination period, a claim is paid
-  from its first month.
-- a death benefit at the end of the month of death
+For total exit force ``\mu=\sum_j\mu_j`` over a month, staying has probability
+``e^{-\mu/12}``, and exit ``j`` has probability
+``\frac{\mu_j}{\mu}(1-e^{-\mu/12})``. Healthy forces change at policy anniversaries.
+Only one exit is represented per step; recovery and re-entry take separate monthly steps.
+The engine itself does not infer a conversion from annual decrement rates.
 
-Nothing is paid after the term, so projecting over a longer grid gives the same values.
+## Price a monthly premium
 
-## Simplifications
-
-The engine needs every convention stated, so here are this model's:
-
-- The elimination period has to be completed within one claim, and once completed it is
-  satisfied for life. Real policies often count service days across claims within a window.
-- A month that ends in recovery or death is paid as half a month: the proration sits on the
-  exit transition. It doesn't count toward the 24-month maximum.
-- The benefit maximum counts months, not a pool of money, and there is no inflation
-  protection.
-- Claim termination depends on claim duration only through two bands, before and after six
-  months.
-- The dead and lapsed states forget the contract's memory.
-- The policy has a finite term, which justifies a terminal value of zero.
-
-## The code
-
-```@eval
-using Markdown, LifeContingencies
-Markdown.MD(Markdown.Code("julia", read(joinpath(pkgdir(LifeContingencies), "examples", "ltc_model.jl"), String)))
-```
-
-## Valuing a policy
-
-The net monthly premium for a ten-year policy balances benefits and premiums for a healthy
-life at issue. Every component is linear in the premium, so one valuation with a unit premium
-gives it:
+One valuation with a unit monthly premium gives the benefit and premium component values.
+Equivalence then sets the premium. This is a finite ten-year policy, so zero terminal value
+is justified by maturity.
 
 ```@example ltc
 using LifeContingencies
@@ -79,43 +69,83 @@ include(joinpath(pkgdir(LifeContingencies), "examples", "ltc_model.jl"))
 
 model = LTCModel()
 grid = months(10)
-unit = policy_values(ltc_contract(model; term=10, premium=1.0), model, 0.04; grid, terminal=0, roots=[HEALTHY])
-v = unit.before[HEALTHY]
+unit_contract = ltc_contract(model; term=10, premium=1.0)
+unit_values = policy_values(unit_contract, model, 0.04; grid, terminal=0, roots=[HEALTHY])
+v = unit_values.before[HEALTHY]
 premium = (v.care + v.death) / -v.premium
+premium
 ```
 
-Policy values at issue by state give the active-life reserve and the claim reserves from one
-calculation. The table covers a healthy life, a new claim, an ongoing claim with 10 benefit
-months used, and a healthy life that qualified in an earlier claim and used 10 months:
+## Active-life and claim policy values
+
+These four starts distinguish a new healthy policyholder, a new claim, an ongoing claim
+with benefits used, and a recovered life with retained qualification and benefit memory:
 
 ```@example ltc
 contract = ltc_contract(model; term=10, premium)
-starts = [HEALTHY, LTCState(:claim, 0, false, 0), LTCState(:claim, 6, true, 10), LTCState(:healthy, 0, true, 10)]
+starts = [
+    HEALTHY,
+    LTCState(:claim, 0, false, 0),
+    LTCState(:claim, 6, true, 10),
+    LTCState(:healthy, 0, true, 10),
+]
 valued = policy_values(contract, model, 0.04; grid, terminal=0, roots=starts)
-[state => round(sum(valued.before[state]), digits=4) for state in starts]
+@assert isapprox(sum(valued.before[HEALTHY]), 0.0; atol=1e-10)
+[(state=s, components=valued.before[s], total=sum(valued.before[s])) for s in starts]
 ```
 
-The healthy life's value is zero by construction. The last life is worth less than a new
-policyholder: it skips the elimination period on its next claim, but it has only 14 benefit
-months left.
+The healthy value is zero by construction. Other states change both claim eligibility and
+remaining benefits. These are policy values **before** current state payments, at the same
+policy date and with the same premium fixed at issue.
 
-A forward projection gives expected cash flows by component. The expected number of benefit
-months paid over the ten years is:
+## Project component cash flows
 
 ```@example ltc
 projection = project(contract, model; grid, initial=[HEALTHY => 1.0])
-sum(cf.amount for cf in projection.cashflows.care)
+pv = present_values(contract, model, 0.04; grid, initial=[HEALTHY => 1.0])
+@assert all(isapprox(a, b; atol=1e-10) for (a, b) in zip(pv, valued.before[HEALTHY]))
+(expected_care_units = sum(cf.amount for cf in projection.cashflows.care),
+ component_pvs = pv)
 ```
 
-## How it is checked
+Care units include the half-unit exit payments. Occupancy alone would not capture their
+within-month accrual; it is represented by transition payments, including claim self-loops.
 
-`test/ltc.jl` checks the model in four independent ways, and separately checks that payments
-stop at the term and that elimination periods of any length qualify:
+## Follow a second claim
 
-- **Reduction:** with no incidence and no lapse, the model matches a `SingleLife` on the
-  equivalent constant-force table. That covers occupancy, the premium annuity against
-  `AnnuityDue(…; frequency=12)`, and the death benefit.
-- **Enumeration:** over six months, every value matches brute-force path enumeration.
-- **A second claim:** a hand-checked path through a claim, a recovery and a second claim.
-  Qualification and the benefit count survive the recovery.
-- **Monte Carlo:** 20,000 sampled paths agree with the engine within four standard errors.
+A qualified claimant with one full benefit month used recovers. The recovery month pays
+half a unit and does not increment the benefit counter. Healthy months keep qualification
+and usage. On the next claim the EP is already satisfied:
+
+```@example ltc
+first_claim = LTCState(:claim, 4, true, 1)
+recovered = LTCState(:healthy, 0, true, 1)
+second_claim = LTCState(:claim, 0, true, 1)
+next_month = LTCState(:claim, 1, true, 2)
+row_has(from, to, interval) = any(first(edge) == to && last(edge) > 0
+                                for edge in transitions(model, interval, from))
+@assert row_has(first_claim, recovered, Interval(0.0, 1/12))
+@assert row_has(recovered, second_claim, Interval(1/12, 2/12))
+@assert row_has(second_claim, next_month, Interval(2/12, 3/12))
+(contract.care.f(Interval(0.0, 1/12), first_claim, recovered),
+ contract.care.f(Interval(1/12, 2/12), recovered, second_claim),
+ contract.care.f(Interval(2/12, 3/12), second_claim, next_month))
+```
+
+The payments are `(0.5, 0.0, 1.0)`. Losing either `qualified` or `benefit_months` on recovery
+would change the second claim's payments.
+
+## Validation and full source
+
+`test/ltc.jl` checks reduction to SingleLife when incidence and lapse are zero, exhaustive
+short-horizon path enumeration, a hand-checked second claim, and 20,000 Monte Carlo paths
+within four standard errors. It also checks EP zero and EP longer than the rate band, plus
+payments stopping at the term even when the projection grid runs further.
+
+The example uses the same transition rows for all these checks. Its full source is included
+below so the rates, memory updates and payment conventions can be inspected together.
+
+```@eval
+using Markdown, LifeContingencies
+Markdown.MD(Markdown.Code("julia", read(joinpath(pkgdir(LifeContingencies), "examples", "ltc_model.jl"), String)))
+```

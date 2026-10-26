@@ -17,8 +17,8 @@ raise errors instead of being truncated silently.
 
 ### Lives
 
-- **`alive=false`.** It now takes effect: such a life has zero survival and zero benefit
-  probabilities.
+- **`alive=false`.** It now takes effect: such a life has zero survival and zero state-contingent
+  benefit probabilities. Guaranteed installments remain payable.
 - **Joint assumptions.** A `JointLife` with an assumption other than `Frasier()` raises an
   `ArgumentError`. It used to assume independence silently.
 - **Last-survivor horizon.** The horizon follows the longer life rather than the shorter, so

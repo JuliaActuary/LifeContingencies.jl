@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="200" viewBox="0 0 760 200" role="img" aria-labelledby="title desc">
+<title id="title">Quarterly annuity payments over one year</title><desc id="desc">Due pays at 0, 0.25, 0.5 and 0.75 years. Immediate pays at 0.25, 0.5, 0.75 and 1 year. Each installment is one quarter of an annual unit.</desc>
+<rect width="760" height="200" rx="10" fill="#f8fafc"/>
+<g font-family="sans-serif" font-size="16" fill="#172033"><text x="24" y="33" font-weight="bold">Quarterly payments: 1/4 each</text><text x="24" y="84">Due</text><text x="24" y="139">Immediate</text>
+<path d="M190 80H700 M190 135H700" stroke="#64748b" stroke-width="2"/>
+<g fill="#126a64"><circle cx="190" cy="80" r="7"/><circle cx="317.5" cy="80" r="7"/><circle cx="445" cy="80" r="7"/><circle cx="572.5" cy="80" r="7"/></g>
+<g fill="#3154ac"><circle cx="317.5" cy="135" r="7"/><circle cx="445" cy="135" r="7"/><circle cx="572.5" cy="135" r="7"/><circle cx="700" cy="135" r="7"/></g>
+<g text-anchor="middle"><text x="190" y="176">0</text><text x="317.5" y="176">0.25</text><text x="445" y="176">0.5</text><text x="572.5" y="176">0.75</text><text x="700" y="176">1 year</text></g></g></svg>

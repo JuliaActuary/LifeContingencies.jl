@@ -3,9 +3,12 @@
 ###################
 
 """
-    APV(lc::LifeContingency,to_time)
+    APV(lc::LifeContingency, time)
 
-The **actuarial present value** which is the survival times the discount factor for the life contingency.
+The survival-weighted issue-date discount factor `survival(lc, time) * discount(lc, time)`.
+This values a unit survival payment at `time`, measured in years from issue. It is also
+available as the unexported commutation function `D`. To value a complete product, use
+[`present_value`](@ref) with [`Insurance`](@ref) or an annuity constructor.
 """
 function APV(lc::LifeContingency, to_time)
     return survival(lc, to_time) * discount(lc.int, to_time)
@@ -14,14 +17,17 @@ end
 """
     D(lc::LifeContingency, to_time)
 
-``D_x`` is a retrospective actuarial commutation function which is the product of the survival and discount factor: another name for [`APV`](@ref).
+The unit-radix commutation function: another name for [`APV`](@ref). Its time argument is
+policy duration, not attained age.
 """
 const D = APV
 
 """
     l(lc::LifeContingency, to_time)
 
-``l_x`` is a retrospective actuarial commutation function which is the survival up to a certain point in time. By default, will have a unitary basis (ie `1.0`), but you can specify `basis` keyword argument to use something different (e.g. `1000` is common in the literature.)
+Expected survivors at policy duration `to_time`, equal to `basis * survival(lc, to_time)`.
+The default radix is one. `basis` scales this call only; it does not change the life or
+other commutation functions. Import `l` explicitly from LifeContingencies.
 """
 function l(lc::LifeContingency, to_time; basis=1.0)
     return survival(lc.life, to_time) * basis
@@ -30,7 +36,9 @@ end
 """
     C(lc::LifeContingency, to_time)
 
-``C_x`` is a retrospective actuarial commutation function which is the product of the discount factor and the difference in `l` (``l_x``).
+The issue-date value of a unit death benefit for the year starting at policy duration
+`to_time`: `discount(lc, to_time + 1) * (survival(lc, to_time) - survival(lc, to_time + 1))`.
+Import `C` explicitly from LifeContingencies.
 """
 function C(lc::LifeContingency, to_time)
     return discount(lc.int, to_time + 1) * (l(lc, to_time) - l(lc, to_time + 1))
@@ -46,21 +54,26 @@ end
 """
     N(lc::LifeContingency, from_time)
 
-``N_x`` is a prospective actuarial commutation function which is the sum of the `D` (``D_x``) values from the given time to the end of the mortality table.
+Sum `D(lc, t)` for `t` in `from_time:(floor(Int, omega(lc)) - 1)`. Durations are in years
+from issue and the radix is one. Infinite support raises a `DomainError`; this sum does not
+supply a continuation for incomplete mortality. Import `N` explicitly.
 """
 N(lc::LifeContingency, from_time) = sum(t -> D(lc, t), from_time:last_table_year(lc); init=zero(APV(lc, 0)))
 
 """
     M(lc::LifeContingency, from_time)
 
-``M_x`` is a prospective actuarial commutation function which is the sum of the `C` (``C_x``) values from the given time to the end of the mortality table.
+Sum `C(lc, t)` for `t` in `from_time:(floor(Int, omega(lc)) - 1)`. Durations are in years
+from issue and the radix is one. Infinite support raises a `DomainError`; a fractional
+terminal age leaves its final partial year outside the sum. Import `M` explicitly.
 """
 M(lc::LifeContingency, from_time) = sum(t -> C(lc, t), from_time:last_table_year(lc); init=zero(APV(lc, 0)))
 
 """
-    survival(Insurance,time)
+    survival(ins::Insurance, time)
 
-The survivorship for the given insurance from time zero to `time`.
+The probability that the product's life contingency is in force at duration `time`, given
+its original status at issue. This is independent of the product's guarantee or schedule.
 
 """
 function MortalityTables.survival(ins::I, t) where {I<:Insurance}
@@ -78,17 +91,20 @@ MortalityTables.survival(ins::Annuity) = in_force_at(ins.life, timepoints(ins))
 
 
 """
-    discount(Insurance)
+    discount(ins::Insurance)
 
-The discount vector for the given insurance.
+A vector of issue-date discount factors at `timepoints(ins)`. These factors contain no
+mortality probabilities. For revaluation, use the curve's interval factors via
+[`present_value`](@ref).
 """
 FinanceCore.discount(ins::Insurance) = [discount(ins.int, t) for t in timepoints(ins)]
 
 
 """
-    benefit(Insurance)
+    benefit(ins::Insurance)
 
-The unit benefit for the given insurance.
+The scheduled unit amount: `1.0` for death insurance and `1.0 / frequency` for an annuity.
+Thus an annuity is normalized to one annual unit, regardless of payment frequency.
 """
 benefit(ins::DeathBenefit) = 1.0
 benefit(ins::Annuity) = 1.0 / ins.frequency
@@ -105,9 +121,12 @@ probability(ins::Insurance) = expected_payments(ins)
 
 
 """
-    cashflows(Insurance)
+    cashflows(ins::Insurance)
 
-The vector of decremented benefit cashflows for the given insurance.
+A vector of expected, undiscounted amounts, `benefit(ins) .* probability(ins)`, dated at
+[`timepoints`](@ref). Mortality has already been applied; do not multiply by survival again.
+An empty product has an empty vector. Scale these amounts or the product PV to change the
+sum insured or annual annuity amount.
 """
 function cashflows(ins::I) where {I<:Insurance}
     b = benefit(ins)
@@ -116,17 +135,22 @@ end
 
 
 """
-    timepoints(Insurance)
+    timepoints(ins::Insurance)
 
-The vector of times corresponding to the cashflow vector for the given insurance.
+A range of scheduled payment times in years from issue, aligned with [`cashflows`](@ref).
+Death insurance pays at year ends. Annuity dates depend on commencement, frequency and
+due/immediate timing. `collect(timepoints(ins))` materializes a vector.
 """
 timepoints(ins::DeathBenefit) = 1:benefit_years(ins)
 timepoints(ins::Annuity) = schedule(ins).times
 
 """
-    present_value(Insurance)
+    present_value(ins::Insurance)
 
-The actuarial present value of the given insurance benefits.
+The actuarial present value at issue of every scheduled benefit, including any payment at
+time zero. Expected payments use the original life statuses, and the curve is fixed for
+the valuation. A zero-duration product is worth zero. The two-argument method instead
+excludes payments on its valuation date.
 """
 function FinanceCore.present_value(ins::Insurance)
     (; contract, grid) = unit_payments(ins)
@@ -134,7 +158,7 @@ function FinanceCore.present_value(ins::Insurance)
 end
 
 """
-    present_value(Insurance,`time`)
+    present_value(ins::Insurance, time::Real)
 
 The actuarial present value of the given insurance benefits, as if you were standing at `time`:
 the expected payments strictly after `time`, as projected from issue, discounted to `time`
@@ -173,9 +197,13 @@ end
     premium_net(lc::LifeContingency)
     premium_net(lc::LifeContingency,to_time)
 
-The net premium for a whole life insurance (without second argument) or a term life insurance through `to_time`.
+The level annual net premium for one unit of whole-life insurance, or term insurance
+through `to_time` years. Benefits are payable at the end of the year of death; premiums are
+payable in advance while the contingency is in force, for the same term. Equivalence gives
+insurance PV divided by annuity-due PV. Expenses and profit loadings are excluded.
 
-The net premium is based on 1 unit of insurance with the death benfit payable at the end of the year and assuming annual net premiums.
+For a sum insured of `B`, multiply the result by `B`. A reserve uses the premium set at
+issue; calling this function again on a newly selected attained-age life reprices it.
 """
 function premium_net(lc::LifeContingency)
     return A(lc) / ä(lc)
