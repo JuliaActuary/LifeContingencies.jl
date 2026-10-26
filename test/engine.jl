@@ -297,14 +297,17 @@ const care = (
         @test policy_values(both, listed, 0.05; grid=0:steps, terminal=0, roots=[:alive]).before ==
               policy_values(both, discovered, 0.05; grid=0:steps, terminal=0, roots=[:alive]).before
 
-        # splitting every edge eight ways adds work but no allocation
+        # splitting every edge eight ways adds work but no allocation. The eight-way rows have
+        # over 800 more edges, so allocating on each would add over 13 KB. On some platforms
+        # the same call allocates 16 bytes more for one model type than the other, so a little
+        # slack is allowed.
         contract = (annuity=alive_annuity, death=death_benefit)
         projecting(model) = @allocated project(contract, model; grid=0:steps, initial=[:alive => 1.0])
         discounting(model) = @allocated present_values(contract, model, 0.05; grid=0:steps, initial=[:alive => 1.0])
         valuing(model) = @allocated policy_values(contract, model, 0.05; grid=0:steps, terminal=0, roots=[:alive])
         for measure in (projecting, discounting, valuing)
             measure(Repeated{1}()), measure(Repeated{8}())
-            @test measure(Repeated{8}()) == measure(Repeated{1}())
+            @test abs(measure(Repeated{8}()) - measure(Repeated{1}())) < 1024
         end
 
         # a step costs time in the states it touches, not in every state met so far, so
