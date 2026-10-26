@@ -47,6 +47,13 @@ struct Unlisted end
 Engine.transitions(::Unlisted, ::Interval, state) = (:elsewhere => 1.0,)
 Engine.states(::Unlisted) = (:here,)
 
+# Hands the engine each row of `model` as an iterator that can be read only once. Defines no
+# `states`.
+struct OneShot{M}
+    model::M
+end
+Engine.transitions(m::OneShot, interval::Interval, state) = Iterators.Stateful(Engine.transitions(m.model, interval, state))
+
 # Counts the edges the engine is handed.
 struct Counted{M}
     model::M
@@ -144,8 +151,16 @@ const care = (
         p = project(care, m; grid, initial, history=true)
         valued = policy_values(care, m, curve; grid, terminal=0, history=true)
 
-        # conservation
+        # conservation, also when each row can be read only once
         @test all(occupancy -> sum(values(occupancy)) ≈ 1, p.history)
+        once = project(care, OneShot(m); grid, initial, history=true)
+        @test once.history == p.history
+        @test once.cashflows == p.cashflows
+        @test present_values(care, OneShot(m), curve; grid, initial) == present_values(care, m, curve; grid, initial)
+        @test policy_values(care, OneShot(m), curve; grid, terminal=0, roots=states(m), history=true).history == valued.history
+        unit = (annuity=StatePayment((t, s) -> 1.0),)
+        @test present_values(unit, OneShot(Stay()), 0.0; grid=0:1, initial=[:x => 1.0]).annuity == 2
+        @test policy_values(unit, OneShot(Stay()), 0.0; grid=0:1, terminal=0, roots=[:x]).before[:x].annuity == 2
 
         # linearity in the starting distribution, and forward/backward agreement at the start
         forward = present_values(care, m, curve; grid, initial)

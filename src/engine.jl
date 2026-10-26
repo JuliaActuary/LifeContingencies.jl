@@ -37,7 +37,8 @@ end
     transitions(model, interval::Interval, state)
 
 The one-step row of `model` from `state` over `interval`: an iterable of
-`next_state => probability` pairs. Every state of a model must have the same type.
+`next_state => probability` pairs. The engine reads each row once, so it may be an iterator
+that can be read only once. Every state of a model must have the same type.
 
 Probabilities must be nonnegative, and they must sum to one up to rounding: within eight
 units in the last place of their type for each entry. The engine checks each row it uses and
@@ -252,15 +253,18 @@ function check_contract(contract::NamedTuple)
     return nothing
 end
 
-function check_row(row, state, interval, ::Type{T}) where {T}
+# Read `row` once, checking it as it goes, and fold `f(acc, next_state, q)` over its edges
+# with nonzero probability.
+function fold_row(f, acc, row, state, interval, ::Type{T}) where {T}
     total, slack = zero(T), zero(T)
     for (next_state, q) in row
         q < 0 && throw(ArgumentError("negative probability $q for $state → $next_state over $interval"))
         total += q
         slack += rounding_slack(q)
+        iszero(q) || (acc = f(acc, next_state, q))
     end
     abs(total - 1) <= slack || throw(ArgumentError("transition probabilities from $state over $interval sum to $total, not 1"))
-    return nothing
+    return acc
 end
 
 needs_occupancy(contract) = any(c -> !(c isa CertainPayment), values(contract))
@@ -321,24 +325,26 @@ function forward(step, acc, contract, model, grid, start, index, ::Type{T}) wher
         end
         acc = step(acc, k, due, current)
         k == n && break
-        interval = Interval(t, grid[k+1])
-        due = nothing_due
-        for i in current.positions
-            p = current.mass[i]
-            iszero(p) && continue
-            state = index.states[i]
-            row = transitions(model, interval, state)
-            check_row(row, state, interval, T)
-            for (next_state, q) in row
-                iszero(q) && continue
-                add!(next, position!(index, next_state), p * q)
-                due = add_transition_amounts(due, contract, p * q, interval, state, next_state)
-            end
-        end
+        due = advance!(next, current, contract, model, Interval(t, grid[k+1]), index, nothing_due, T)
         clear!(current)
         current, next = next, current
     end
     return acc, current
+end
+
+# Move the mass in `current` over `interval` into `next`, adding the transition payments for
+# the interval to `due`.
+function advance!(next, current, contract, model, interval, index, due, ::Type{T}) where {T}
+    for i in current.positions
+        p = current.mass[i]
+        iszero(p) && continue
+        state = index.states[i]
+        due = fold_row(due, transitions(model, interval, state), state, interval, T) do due, next_state, q
+            add!(next, position!(index, next_state), p * q)
+            add_transition_amounts(due, contract, p * q, interval, state, next_state)
+        end
+    end
+    return due
 end
 
 add_state_amounts(due, contract, p, t, state) =
@@ -443,11 +449,7 @@ function value_states(contract, model, curve, grid, terminal_values, roots, inde
             d = discount(curve, grid[k], grid[k+1])
             for i in frontiers[k]
                 state = index.states[i]
-                acc = map(_ -> zero(T), contract)
-                for (next_state, q) in transitions(model, interval, state)
-                    iszero(q) && continue
-                    acc = add_edge_values(acc, contract, V_next, q, interval, state, next_state, position!(index, next_state))
-                end
+                acc = expected_next(contract, model, V_next, interval, state, index, T)
                 store_values!(V_current, acc, contract, i, grid[k], state, d)
             end
             history && (records[k] = values_at(contract, V_current, frontiers[k], index, curve, grid[k], T))
@@ -464,8 +466,12 @@ function value_states(contract, model, curve, grid, terminal_values, roots, inde
     return PolicyValues(before, after, isnothing(records) ? nothing : [r for r in records])
 end
 
-add_edge_values(acc, contract, V, q, interval, from, to, j) =
-    map((a, c, v) -> a + q * (transition_amount(c, interval, from, to) + v[j]), acc, contract, V)
+# Each component's expected transition payment and next value, one step on from `state`.
+expected_next(contract, model, V, interval, state, index, ::Type{T}) where {T} =
+    fold_row(map(_ -> zero(T), contract), transitions(model, interval, state), state, interval, T) do acc, next_state, q
+        j = position!(index, next_state)
+        map((a, c, v) -> a + q * (transition_amount(c, interval, state, next_state) + v[j]), acc, contract, V)
+    end
 
 function store_values!(V, acc, contract, i, t, state, d)
     map((v, a, c) -> (v[i] = state_amount(c, t, state) + d * a; nothing), V, acc, contract)
@@ -529,16 +535,14 @@ function reachable_frontiers(model, grid, index, roots, ::Type{T}) where {T}
         found = length(positions)
         for r in ranges[k]
             state = index.states[positions[r]]
-            row = transitions(model, interval, state)
-            check_row(row, state, interval, T)
-            for (next_state, q) in row
-                iszero(q) && continue
+            fold_row(nothing, transitions(model, interval, state), state, interval, T) do _, next_state, _
                 j = position!(index, next_state)
                 grow!(marked, j)
                 if marked[j] != k + 1
                     marked[j] = k + 1
                     push!(positions, j)
                 end
+                return nothing
             end
         end
         push!(ranges, found+1:length(positions))
