@@ -33,6 +33,9 @@ export LifeContingency,
 Pair a [`SingleLife`](@ref) or [`JointLife`](@ref) with an interest assumption. A numeric
 `interest` is an annual effective rate; a yield curve must support FinanceCore's `discount`
 interface. Products inherit the original life selection and curve origin from this pair.
+Reuse it across products: `Insurance(lc, 2)` and `AnnuityDue(lc, 2)` share the assumptions
+but choose different payment rules. Equivalently, pass `(life, interest, ...)` directly to
+each product constructor.
 
 ```jldoctest
 julia> life = SingleLife(UltimateMortality([0.5, 1.0]; start_age=60));

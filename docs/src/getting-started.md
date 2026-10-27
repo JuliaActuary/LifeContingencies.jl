@@ -22,13 +22,23 @@ using LifeContingencies, MortalityTables
 
 rates = UltimateMortality([0.5, 0.5, 1.0]; start_age=60)
 life = SingleLife(rates)
-lc = LifeContingency(life, 0.05)
 
 life.issue_age, omega(life), survival.(life, 0:3)
 ```
 
-`LifeContingency` pairs the life with its interest assumption. A numeric rate such as `0.05`
-is an annual effective rate. A curve can be supplied in its place.
+## Add interest with LifeContingency
+
+The `life` supplies mortality and status. To value payments, we also need an interest
+assumption. `LifeContingency(life, interest)` keeps those assumptions together:
+
+```@example start
+lc = LifeContingency(life, 0.05)
+```
+
+Here `0.05` is an annual effective rate of 5%; a yield curve can be supplied in its place.
+The same `lc` can be reused for insurance and annuities. Their constructors will choose
+the payments and timing. See [LifeContingency: pairing the assumptions](@ref life-contingency)
+for the two constructor styles and how the pair is used.
 
 ## Value benefits
 

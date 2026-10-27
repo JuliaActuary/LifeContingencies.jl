@@ -1,7 +1,42 @@
 # Insurance and annuities
 
 Textbook products combine a life, an interest assumption and a unit-benefit schedule.
-Construct them from `(life, interest, ...)` or from a `LifeContingency`.
+
+## [LifeContingency: pairing the assumptions](@id life-contingency)
+
+`SingleLife` and `JointLife` supply mortality and starting status. An interest rate or curve
+supplies discount factors. `LifeContingency(life, interest)` holds that pair of assumptions
+so that you can reuse it across products:
+
+```@example products
+using LifeContingencies, MortalityTables
+
+life = SingleLife(UltimateMortality([0.5, 0.5, 1.0]; start_age=60))
+lc = LifeContingency(life, 0.05)
+(survival_to_year_one = survival(lc, 1), discount_to_year_one = discount(lc, 1))
+```
+
+The 50% survival probability comes from `life`; the discount factor comes from the 5%
+annual effective rate. A [yield curve](curves-and-scenarios.md) can replace that rate.
+The pair keeps the original issue-age selection and curve origin.
+
+A `LifeContingency` does not yet specify which benefits are payable or when. The product
+constructor adds those rules: `Insurance(lc, 2)` gives two-year death cover, while
+`AnnuityDue(lc, 2)` gives two years of annuity payments using the same assumptions.
+
+You can also pass the life and interest directly. These constructor styles are equivalent:
+
+```@example products
+@assert present_value(Insurance(lc, 2)) ≈ present_value(Insurance(life, 0.05, 2))
+@assert present_value(AnnuityDue(lc, 2)) ≈ present_value(AnnuityDue(life, 0.05, 2))
+(
+    insurance = present_value(Insurance(lc, 2)),
+    annuity_due = present_value(AnnuityDue(lc, 2)),
+)
+```
+
+Use `lc` when sharing a valuation basis across calculations. Use `(life, interest, ...)`
+when it is more convenient to supply the assumptions at the product call.
 
 ## Payment amounts and times
 
@@ -17,10 +52,6 @@ Omit `n` for a lifetime product when the mortality assumption supports it. The a
 ![Due and immediate payments over one year](assets/payment-timeline.svg)
 
 ```@example products
-using LifeContingencies, MortalityTables
-
-life = SingleLife(UltimateMortality([0.5, 0.5, 1.0]; start_age=60))
-lc = LifeContingency(life, 0.05)
 due = AnnuityDue(lc, 1; frequency=4)
 immediate = AnnuityImmediate(lc, 1; frequency=4)
 @assert benefit(due) == 0.25

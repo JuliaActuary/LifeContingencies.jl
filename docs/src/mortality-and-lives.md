@@ -52,19 +52,68 @@ survival(l, 0, 1.5)
 
 ## Observed status
 
-`alive=false` means the life is dead at its reference date. Its one-time survival is zero.
-The two-time form still describes the mortality assumption for a life *alive at the starting
-time*. It does not infer an observed status there.
+`alive` records what is known about the person at **issue, time zero**. Here that is age 60.
+`alive=true` means the person is alive then; mortality determines whether they survive later.
+`alive=false` means they are already dead then, so their probability of being alive at any
+future time is zero. This flag supplies a starting state, not a new mortality table.
+
+The two forms of `survival` answer different questions:
+
+| Call | Question | Uses the recorded `alive` status? |
+|---|---|---|
+| `survival(life, t)` | Given this person's status at issue, what is the probability they are alive at `t`? | Yes |
+| `survival(life, s, t)` | Under this mortality assumption, what is the probability of reaching `t` **if alive at `s`**? | No: it explicitly assumes an alive starting state |
+
+The rates `q` above have first-year mortality of 10%, so an alive person's first-year
+survival probability is 90%. Compare two lives with the same rates and different starting
+statuses:
 
 ```@example mortality
+living = SingleLife(q)  # alive=true by default
 dead = SingleLife(q; alive=false)
 @assert survival(dead, 1) == 0
-@assert survival(dead, 0, 1) == survival(l, 0, 1)
-(survival(dead, 1), survival(dead, 0, 1))
+@assert survival(dead, 0, 1) == survival(living, 0, 1)
+(
+    from_alive_at_issue = survival(living, 1),
+    from_dead_at_issue = survival(dead, 1),
+    if_alive_at_start = survival(dead, 0, 1),
+)
 ```
 
-State-contingent annuity payments then vanish, but [guaranteed payments](insurance-and-annuities.md)
-remain payable. Joint lives can combine different observed statuses.
+The answers are `0.9`, `0.0` and `0.9`. The last value is a hypothetical query of the
+**mortality assumption**. It does not say that this dead person can become alive, and it
+does not change their recorded status. In particular, it is not obtained by conditioning
+the dead person's actual projection on an impossible alive event.
+
+Use the one-time form for a person's survival from their recorded starting status. Use the
+two-time form when you explicitly want mortality conditional on an alive starting state.
+This distinction describes `SingleLife`; joint-life two-time survival conditions on the
+joint contingency, as explained in [Joint lives](joint-lives.md).
+
+### Effect on payments
+
+Product valuation starts from the recorded status. A life annuity on `dead` therefore pays
+nothing, even though a hypothetical alive-start mortality query can return `0.9`.
+[Guaranteed installments](insurance-and-annuities.md) remain payable because they do not
+require the person to be alive:
+
+```@example mortality
+life_annuity = AnnuityDue(dead, 0.0, 2)
+guaranteed_annuity = AnnuityDue(dead, 0.0, 2; certain=1)
+@assert cashflows(life_annuity) == [0.0, 0.0]
+@assert cashflows(guaranteed_annuity) == [1.0, 0.0]
+(life_annuity = cashflows(life_annuity), one_year_guarantee = cashflows(guaranteed_annuity))
+```
+
+An observed dead status is also useful for a last-survivor contract where one insured has
+already died. The joint life then starts with one dead person and one living person; its
+survival depends only on the remaining life:
+
+```@example mortality
+one_survivor = JointLife(lives=(dead, living))
+@assert survival(one_survivor, 1) == survival(living, 1)
+survival(one_survivor, 1)
+```
 
 ## [Mortality support](@id mortality-support)
 
