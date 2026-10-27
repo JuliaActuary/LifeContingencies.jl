@@ -14,13 +14,15 @@ selected = SingleLife(vbt.select[30])
 same_selection = SingleLife(vbt.select; issue_age=30)
 ultimate = SingleLife(vbt.ultimate; issue_age=60)
 @assert selected.mortality == same_selection.mortality
-(selected.issue_age, ultimate.issue_age, survival(selected, 10))
+(select_issue_age = selected.issue_age, ultimate_issue_age = ultimate.issue_age,
+ select_ten_year_survival = survival(selected, 10))
 ```
 
 Pass a rate vector, a select table's vector of rows, or a supported parametric law. Passing
 the entire `MortalityTable` is ambiguous; choose its select or ultimate data first. Rate-vector
-indices are attained ages. For an ordinary Julia vector the first index is `1`; set up an
-age-indexed `UltimateMortality` when attained age matters.
+indices are attained ages, and issue age defaults to the first index. A plain Julia vector
+starts at index 1, so `SingleLife([0.01, 0.02])` describes a life aged 1 at issue. Use
+`UltimateMortality(rates; start_age=x)` to index the rates from age `x`.
 
 ## Durations, ages and fractional survival
 
@@ -31,14 +33,16 @@ Use `decrement(life, s, t)` from MortalityTables for its complement.
 ```@example mortality
 q = UltimateMortality([0.1, 0.2, 1.0]; start_age=60)
 l = SingleLife(q)
-(survival(l, 1), survival(l, 1, 2), decrement(l, 1, 2))
+(survival_to_year_one = survival(l, 1),
+ second_year_survival_if_alive = survival(l, 1, 2),
+ second_year_death_if_alive = decrement(l, 1, 2))
 ```
 
 Fractional times use `UniformDeaths()` by default. Alternatives are `ConstantForce()` and
 `Balducci()`:
 
 ```@example mortality
-[(string(typeof(a)), survival(SingleLife(q; fractional_assump=a), 0.5))
+[(assumption = string(typeof(a)), half_year_survival = survival(SingleLife(q; fractional_assump=a), 0.5))
  for a in (UniformDeaths(), ConstantForce(), Balducci())]
 ```
 
@@ -122,8 +126,8 @@ age, and reaching it does not by itself prove extinction.
 
 | Assumption | What is known at its end? | Product consequence |
 |---|---|---|
-| Rate vector reaching a rate of 1 | The life is dead after that rate's year | Dead is an established absorbing continuation |
-| Rate vector ending below 1 | Survival beyond support is unknown | Contingent payments needing that support error |
+| Rate vector reaching a rate of 1 | The life dies by the end of that rate's year | Survival beyond it is zero, so lifetime products are defined |
+| Rate vector ending without reaching 1 | Survival beyond the table is unknown | Contingent payments past the end raise a `DomainError` |
 | Parametric law | Support follows the law's domain, possibly infinite or fractional | Give textbook products an explicit supported term |
 
 A vector whose last rate is at age 100 covers the year beginning at 100. For issue age 60,
@@ -144,7 +148,7 @@ try
     present_value(Insurance(incomplete, 0.05))
 catch err
     @assert err isa DomainError
-    sprint(showerror, err)
+    Text(sprint(showerror, err))
 end
 ```
 
@@ -157,7 +161,7 @@ happens to obligations remaining at the horizon.
 
 ```@example mortality
 gompertz = SingleLife(MortalityTables.Gompertz(a=0.0002, b=0.13); issue_age=40)
-(omega(gompertz), present_value(Insurance(gompertz, 0.05, 10)))
+(horizon = omega(gompertz), ten_year_insurance_pv = present_value(Insurance(gompertz, 0.05, 10)))
 ```
 
 Most laws have infinite support. Some, such as Wittstein, have finite support whose end need

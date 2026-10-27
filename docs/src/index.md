@@ -21,6 +21,17 @@ If you already use 2.x, start with [Migrating to 3.0](migration.md).
 [Getting started](getting-started.md) takes a small mortality table through insurance,
 annuities, pricing and a reserve. Then choose a task:
 
+```@raw html
+<a id="Constructing-lives"></a>
+<a id="When-the-mortality-assumption-runs-out"></a>
+<a id="Stochastic-interest-rates"></a>
+<a id="Premiums-across-mortality-tables"></a>
+<a id="Joint-lives"></a>
+<a id="Commutation-and-unexported-function-shorthand"></a>
+<a id="Actuarial-notation-shorthand"></a>
+<a id="Commutation-functions"></a>
+```
+
 | I want to… | Read |
 |---|---|
 | Use a select table or a mortality law | [Mortality and lives](mortality-and-lives.md) |
@@ -40,41 +51,6 @@ period and memory across claims.
 The textbook API at the top level is stable. Interfaces in `LifeContingencies.Experimental`
 may change in minor releases. Both have dedicated references: [stable](api.md) and
 [experimental](experimental-api.md).
-
-## [Constructing lives](@id Constructing-lives)
-
-See [Mortality and lives](mortality-and-lives.md) for mortality inputs, issue age and status.
-
-### [When the mortality assumption runs out](@id When-the-mortality-assumption-runs-out)
-
-See [Mortality support](@ref mortality-support) for the distinction between missing data and
-established extinction.
-
-## [Stochastic interest rates](@id Stochastic-interest-rates)
-
-[Curves and scenarios](curves-and-scenarios.md) shows valuation with a fixed curve in each
-scenario, alongside a non-flat yield curve example.
-
-### [Premiums across mortality tables](@id Premiums-across-mortality-tables)
-
-The [table comparison recipe](@ref comparing-tables) keeps the issue-age basis explicit.
-
-## [Joint lives](@id Joint-lives)
-
-The [joint-life guide](joint-lives.md) explains contingencies and the information used when
-conditioning a reserve.
-
-## [Commutation and unexported function shorthand](@id Commutation-and-unexported-function-shorthand)
-
-[Actuarial notation](actuarial-notation.md) maps symbols to constructors and functions.
-
-### [Actuarial notation shorthand](@id Actuarial-notation-shorthand)
-
-See the [alias table](@ref notation-aliases).
-
-### [Commutation functions](@id Commutation-functions)
-
-See the [commutation formulas](@ref commutation-formulas).
 
 ## References
 

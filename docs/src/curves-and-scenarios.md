@@ -2,11 +2,13 @@
 
 A `LifeContingency` accepts an annual effective rate or any curve implementing FinanceCore's
 `discount` interface. The mortality model and the curve retain their issue-date origins.
+Write the issue-date factor as ``v(t)=\operatorname{discount}(curve,t)`` and the interval
+factor as ``v(s,t)=v(t)/v(s)``.
 
 ## A non-flat curve
 
-Install the optional integration package with `pkg> add FinanceModels`. It is a documentation
-dependency, not a runtime dependency of LifeContingencies.
+LifeContingencies does not depend on FinanceModels; install it with `pkg> add FinanceModels`
+to build fitted curves like this one.
 
 ```@example curves
 using LifeContingencies, MortalityTables
@@ -17,11 +19,11 @@ curve = FinanceModels.fit(FinanceModels.Spline.Linear(), quotes, FinanceModels.F
 life = SingleLife(UltimateMortality([0.0, 1.0]; start_age=60))
 ins = Insurance(life, curve)
 @assert present_value(ins) ≈ discount(curve, 2)
-(present_value(ins), present_value(ins, 1))
+(issue_pv = present_value(ins), year_one_pv = present_value(ins, 1))
 ```
 
 Death occurs in year two with certainty. Its year-one value uses the interval factor
-``D(2)/D(1)``:
+``v(2)/v(1)``:
 
 ```@example curves
 interval_factor = discount(curve, 2) / discount(curve, 1)
@@ -33,6 +35,31 @@ interval_factor = discount(curve, 2) / discount(curve, 1)
 
 With a level rate these two factors happen to agree. With a term structure, subtracting the
 valuation date from payment times incorrectly restarts the curve.
+
+## [Implement a custom curve](@id custom-curves)
+
+A custom curve must support **both** `discount(curve, t)` and
+`discount(curve, from, to)`. The first gives the issue-date factor ``v(t)``; the second gives
+``v(\mathrm{from},\mathrm{to})=v(\mathrm{to})/v(\mathrm{from})``. Three-argument discounting
+is required by the engine, including the identity factor `discount(curve, 0, 0)` when
+valuing from issue. Defining only the issue-date method is insufficient in 3.0.
+
+Add FinanceCore directly (`pkg> add FinanceCore`) when implementing its interface. Here is
+a complete illustrative curve with ``v(t)=\exp(-0.02t-0.005t^2)``:
+
+```@example curves
+import FinanceCore
+struct ExampleCurve end
+FinanceCore.discount(::ExampleCurve, t::Real) = exp(-0.02t - 0.005t^2)
+FinanceCore.discount(c::ExampleCurve, from::Real, to::Real) = discount(c, to) / discount(c, from)
+
+custom_curve = ExampleCurve()
+custom_insurance = Insurance(life, custom_curve)
+@assert discount(custom_curve, 0, 0) == 1
+@assert present_value(custom_insurance) ≈ discount(custom_curve, 2)
+@assert present_value(custom_insurance, 1) ≈ discount(custom_curve, 2) / discount(custom_curve, 1)
+(issue_pv = present_value(custom_insurance), year_one_pv = present_value(custom_insurance, 1))
+```
 
 ## Sensitivity to level rates
 
@@ -54,13 +81,15 @@ number generator makes this illustration reproducible without changing the globa
 using Random
 rng = MersenneTwister(2026)
 rates = 0.05 .+ 0.01 .* randn(rng, 1_000)
-values = [present_value(Insurance(sensitivity_life, r, 2)) for r in rates]
-(mean_scenario_value = sum(values) / length(values),
+scenario_values = [present_value(Insurance(sensitivity_life, r, 2)) for r in rates]
+(mean_scenario_value = sum(scenario_values) / length(scenario_values),
  value_at_mean_rate = present_value(Insurance(sensitivity_life, sum(rates) / length(rates), 2)))
 ```
 
-Valuation is generally nonlinear in the interest rate, so these two numbers need not
-agree. Similarly, the mean of scenario premiums is not in general the ratio of mean benefit
+The gap is small here: rates have a standard deviation of one percentage point and
+payments fall within two years. More rate dispersion or more distant payments can make
+the gap larger. Valuation is generally nonlinear in the interest rate, so these two
+numbers need not agree. Similarly, the mean of scenario premiums is not in general the ratio of mean benefit
 PV to mean premium-annuity PV; those answer different pricing questions.
 
 ## Scope of expected-cash-flow discounting
@@ -68,8 +97,8 @@ PV to mean premium-annuity PV; those answer different pricing questions.
 For a fixed curve, value is linear in payments:
 
 ```math
-\mathbb{E}\!\left[\sum_t d(s,t)C_t\right]
-=\sum_t d(s,t)\mathbb{E}[C_t].
+\mathbb{E}\!\left[\sum_t v(s,t)C_t\right]
+=\sum_t v(s,t)\mathbb{E}[C_t].
 ```
 
 The package therefore projects expected payments and discounts them. The scenario example

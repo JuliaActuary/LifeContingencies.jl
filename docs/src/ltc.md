@@ -33,7 +33,7 @@ Each `LTCState` contains:
 | Field | Meaning |
 |---|---|
 | `status` | `:healthy`, `:claim`, `:dead` or `:lapsed` |
-| `claim_months` | Completed months in the current claim, capped only after both the rate band and EP are settled |
+| `claim_months` | Completed months in the current claim (capped; see below) |
 | `qualified` | Whether the lifetime EP has already been satisfied |
 | `benefit_months` | Full continuing-claim benefit months used across episodes |
 
@@ -41,11 +41,13 @@ Dead and lapsed are absorbing and discard the remaining memory. Claim duration i
 up to `max(6, elimination_months)`: the six-month rate band must not prevent a longer EP
 from qualifying. With EP zero, qualification starts on claim onset.
 
-Default **annual forces**, rather than annual exit probabilities, are:
+Default **annual forces**, rather than annual exit probabilities, are listed below.
+Here `k` is completed policy years at the start of the month: `k=0` during the first
+policy year, `k=1` during the second, and so on.
 
 | Origin | Destination | Force |
 |---|---|---|
-| Healthy | Claim | 0.02 at issue, multiplied by `exp(0.10*k)` in policy year `k` |
+| Healthy | Claim | 0.02 at issue, multiplied by `exp(0.10*k)` after `k` completed years |
 | Healthy | Dead | 0.03 at issue, multiplied by `exp(0.09*k)` |
 | Healthy | Lapsed | 0.03 |
 | Claim, first six months | Healthy / Dead | 0.60 / 0.25 |
@@ -76,6 +78,16 @@ premium = (v.care + v.death) / -v.premium
 premium
 ```
 
+That is a monthly premium per unit of monthly care benefit **and** unit death benefit.
+Scaling both benefits to 3,000 gives a premium of about 90 per month:
+
+```@example ltc
+(monthly_care_benefit = 3_000, death_benefit = 3_000, monthly_premium = round(3_000 * premium; digits=2))
+```
+
+If the death benefit is a different amount, scale its component separately before setting
+the premium by equivalence.
+
 ## Active-life and claim policy values
 
 These four starts distinguish a new healthy policyholder, a new claim, an ongoing claim
@@ -91,7 +103,10 @@ starts = [
 ]
 valued = policy_values(contract, model, 0.04; grid, terminal=0, roots=starts)
 @assert isapprox(sum(valued.before[HEALTHY]), 0.0; atol=1e-10)
-[(state=s, components=valued.before[s], total=sum(valued.before[s])) for s in starts]
+labels = ("Healthy at issue", "New claim", "Ongoing claim; 10 months used", "Recovered; qualified; 10 months used")
+for (label, state) in zip(labels, starts)
+    println(label, ": ", round(sum(valued.before[state]); digits=4))
+end
 ```
 
 The healthy value is zero by construction. Other states change both claim eligibility and
@@ -127,9 +142,9 @@ row_has(from, to, interval) = any(first(edge) == to && last(edge) > 0
 @assert row_has(first_claim, recovered, Interval(0.0, 1/12))
 @assert row_has(recovered, second_claim, Interval(1/12, 2/12))
 @assert row_has(second_claim, next_month, Interval(2/12, 3/12))
-(contract.care.f(Interval(0.0, 1/12), first_claim, recovered),
- contract.care.f(Interval(1/12, 2/12), recovered, second_claim),
- contract.care.f(Interval(2/12, 3/12), second_claim, next_month))
+(recovery_month = contract.care.f(Interval(0.0, 1/12), first_claim, recovered),
+ new_claim_month = contract.care.f(Interval(1/12, 2/12), recovered, second_claim),
+ continuing_claim_month = contract.care.f(Interval(2/12, 3/12), second_claim, next_month))
 ```
 
 The payments are `(0.5, 0.0, 1.0)`. Losing either `qualified` or `benefit_months` on recovery

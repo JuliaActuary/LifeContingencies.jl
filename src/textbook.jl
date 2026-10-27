@@ -6,7 +6,8 @@
     APV(lc::LifeContingency, time)
 
 The survival-weighted issue-date discount factor `survival(lc, time) * discount(lc, time)`.
-This values a unit survival payment at `time`, measured in years from issue. It is also
+This is the unit pure endowment ``{}_tE_x`` for a single life issued at age ``x``, with
+`time` measured in years from issue. It is also
 available as the unexported commutation function `D`. To value a complete product, use
 [`present_value`](@ref) with [`Insurance`](@ref) or an annuity constructor.
 """

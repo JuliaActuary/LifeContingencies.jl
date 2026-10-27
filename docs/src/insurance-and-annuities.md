@@ -55,7 +55,7 @@ Omit `n` for a lifetime product when the mortality assumption supports it. The a
 due = AnnuityDue(lc, 1; frequency=4)
 immediate = AnnuityImmediate(lc, 1; frequency=4)
 @assert benefit(due) == 0.25
-(collect(timepoints(due)), collect(timepoints(immediate)))
+(due_times = collect(timepoints(due)), immediate_times = collect(timepoints(immediate)))
 ```
 
 A monthly annuity pays twelve installments of `1/12` per full year. To model a monthly
@@ -69,12 +69,14 @@ annuity payments. The mortality and curve origins remain at issue.
 
 ```@example products
 deferred = AnnuityDue(lc, 2; start_time=1)
-(collect(timepoints(deferred)), probability(deferred), cashflows(deferred))
+(times = collect(timepoints(deferred)), probability = probability(deferred),
+ cashflows = cashflows(deferred))
 ```
 
 ## Guaranteed installments
 
-`certain` is a whole number of years of payments, starting at commencement. At frequency
+`certain` specifies the **period certain**: a whole number of years of guaranteed payments
+starting at commencement. At frequency
 `f`, it covers the first `certain*f` installments, limited by the term. It does not add
 payments before commencement. Those installments are unconditional, even if death occurs
 during deferral; later installments require the contingency to be in force.
@@ -117,24 +119,25 @@ contingency at duration `t`.
 ins = Insurance(lc)
 @assert cashflows(ins) ≈ benefit(ins) .* probability(ins)
 @assert present_value(ins) ≈ sum(cashflows(ins) .* discount(ins))
-collect(zip(timepoints(ins), survival(ins), probability(ins), cashflows(ins)))
+[(time = t, in_force_at_year_start = s, death_probability = p, cashflow = c)
+ for (t, s, p, c) in zip(timepoints(ins), survival(ins), probability(ins), cashflows(ins))]
 ```
 
-The numeric views are vectors in 3.0. `timepoints` is a range; call `collect` when a concrete
+The numeric views are vectors. `timepoints` is a range; call `collect` when a concrete
 vector is needed.
 
 ## Zero duration and invalid inputs
 
 A zero term produces an empty schedule and expected stream, with PV zero. Negative or
 fractional terms error. `frequency` must be a positive integer; `certain` and `start_time`
-must be nonnegative integers. All three keyword quantities are in years or payments per
-year as described above.
+must be nonnegative integers.
 
 ```@example products
 empty_insurance = Insurance(lc, 0)
 @assert isempty(cashflows(empty_insurance))
 @assert present_value(empty_insurance) == 0
-(collect(timepoints(empty_insurance)), cashflows(empty_insurance), present_value(empty_insurance))
+(times = collect(timepoints(empty_insurance)), cashflows = cashflows(empty_insurance),
+ pv = present_value(empty_insurance))
 ```
 
 A term ending past mortality support is allowed only where extinction supplies the needed

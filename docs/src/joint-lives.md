@@ -19,7 +19,8 @@ last_survivor = JointLife(lives=(life, life))
 first_to_die = JointLife(lives=(life, life), contingency=FirstToDie())
 @assert survival(last_survivor, 1) == 0.75
 @assert survival(first_to_die, 1) == 0.25
-(survival(last_survivor, 1), survival(first_to_die, 1))
+(last_survivor_probability = survival(last_survivor, 1),
+ first_to_die_probability = survival(first_to_die, 1))
 ```
 
 A joint insurance pays once when its contingency ends; a joint annuity pays while that
@@ -54,7 +55,8 @@ both_known_alive = 1 - (1 - one_known_alive)^2
 aggregate = survival(last_survivor, 1, 2)
 @assert aggregate ≈ 7 / 12
 @assert aggregate ≈ both_known_alive / 3 + 2one_known_alive / 3
-(one_known_alive, both_known_alive, aggregate)
+(one_known_alive = one_known_alive, both_known_alive = both_known_alive,
+ unknown_individual_statuses = aggregate)
 ```
 
 Two-time survival for `JointLife` conditions on its **contingency**, using its original
@@ -69,11 +71,14 @@ pair at the valuation date instead:
 
 ```@example joint
 lc = LifeContingency(last_survivor, 0.05)
-(
+r = (
     unknown_individual_statuses = reserve_premium_net(lc, 1),
     both_alive = reserve_premium_net(lc, 1; state=(:alive, :alive)),
     only_first_alive = reserve_premium_net(lc, 1; state=(:alive, :dead)),
 )
+# Each in-force state has probability 1/3 at year one; the two lives are identical.
+@assert r.unknown_individual_statuses ≈ r.both_alive / 3 + 2r.only_first_alive / 3
+r
 ```
 
 The state tuple follows the order of `lives`. Passing a state does not reprice the premium
@@ -88,5 +93,9 @@ an `ArgumentError` rather than silently using independence.
 
 The indicator identity
 ``S_{\mathrm{first}}(t)+S_{\mathrm{last}}(t)=S_1(t)+S_2(t)``
-also holds for correlated starting distributions. The [engine guide](multi-state-models.md)
-shows how distributions and transition rows are supplied separately.
+counts the two individual alive indicators at each date, so it also holds for correlated
+starting distributions. Here ``S_1`` and ``S_2`` are the individual survival probabilities.
+It gives ``S_{\mathrm{last}}=S_1+S_2-S_{\mathrm{first}}`` and provides a useful check of a
+joint model. With the same payment dates and discount factors, the identity also gives
+last-survivor life-annuity values from the single-life and first-to-die values. The
+[engine guide](multi-state-models.md) shows how distributions and rows are supplied separately.

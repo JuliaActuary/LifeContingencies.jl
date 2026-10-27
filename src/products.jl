@@ -129,7 +129,7 @@ out dead. Later installments require the life (or joint contingency) to be in fo
 `certain=0` guarantees none. A `term` of zero gives an empty stream with PV zero.
 
 `term`, `certain` and `start_time` are whole numbers of years; `frequency` is a positive
-whole number of payments per year. Negative values or fractional terms raise an
+whole number of payments per year. Negative or fractional values raise an
 `ArgumentError`. A monthly annuity pays `1/12` per installment; scale its value by the
 annual benefit amount, or by 12 for a monthly amount of one.
 

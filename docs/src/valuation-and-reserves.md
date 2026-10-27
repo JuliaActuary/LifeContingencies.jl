@@ -12,17 +12,19 @@ value to year five does not itself establish that the insured is alive at year f
 | `reserve_premium_net(lc, s)` | Future death benefits less premiums, including the premium at `s` | Contract in force at `s`, or an explicit `state` |
 
 The reserve convenience function is for **whole-life insurance with annual net premiums**.
-For other payment structures, construct a net contract in the
-[multi-state engine](multi-state-models.md).
+These are textbook net premium reserves on the issue basis; this function does not implement
+statutory CRVM or GAAP LDTI reserve methods. For other payment structures, construct a net
+contract in the [multi-state engine](multi-state-models.md).
 
 ## Issue-date PV and future PV
 
 Let ``\bar c_t = \mathbb{E}_{\pi_0}[C_t]`` be the expected payment at date ``t`` under the
-original issue distribution, and ``D(t)`` the issue-date discount factor. Then
+original issue distribution, and ``v(t)`` the issue-date discount factor. The interval factor
+is ``v(s,t)=v(t)/v(s)``. Then
 
 ```math
-\operatorname{PV}_0 = \sum_t D(t)\bar c_t, \qquad
-\operatorname{Tail}_s = \sum_{t>s}\frac{D(t)}{D(s)}\bar c_t.
+\operatorname{PV}_0 = \sum_t v(t)\bar c_t, \qquad
+\operatorname{Tail}_s = \sum_{t>s}v(s,t)\bar c_t.
 ```
 
 The latter is `present_value(ins, s)`. Its expected cash flows remain unconditional on any
@@ -37,7 +39,7 @@ ins = Insurance(lc)
 @assert cashflows(ins) == [0.5, 0.25, 0.25]
 @assert present_value(ins) == 1.0
 @assert present_value(ins, 1) == 0.5
-(present_value(ins), present_value(ins, 1))
+(issue_pv = present_value(ins), year_one_tail = present_value(ins, 1))
 ```
 
 Only half the original lives reach year one. For this death benefit, at a year-end valuation
@@ -59,7 +61,7 @@ PV includes a payment that `present_value(annuity, 0)` excludes.
 ```@example values
 annuity = AnnuityDue(lc)
 @assert present_value(annuity) - present_value(annuity, 0) == 1.0
-(present_value(annuity), present_value(annuity, 0))
+(including_issue_payment = present_value(annuity), after_issue_payment = present_value(annuity, 0))
 ```
 
 ## Net premiums
@@ -77,7 +79,8 @@ premiums for that term. Multiply by the sum insured to scale the premium.
 premium = premium_net(lc)
 term_premium = premium_net(lc, 2)
 @assert premium * present_value(AnnuityDue(lc)) ≈ present_value(Insurance(lc))
-(premium, term_premium, annual_premium_for_100_000 = 100_000 * premium)
+(whole_life_premium = premium, two_year_term_premium = term_premium,
+ annual_premium_for_100_000 = 100_000 * premium)
 ```
 
 These are net premiums: benefit and premium cash flows only, with no expenses, commission or
@@ -94,16 +97,17 @@ At that anniversary:
 2. The current state is observed or conditioned on.
 3. The premium due at `s` is still part of the value.
 
-For a known alive single life, the reserve is
+For a known alive single life, let ``T`` be the future lifetime measured from issue, so
+``T>s`` means the life is alive at duration ``s``. The reserve is
 
 ```math
-V^-_s = \sum_{k\ge1} d(s,s+k)\,\Pr(T\in(s+k-1,s+k]\mid T>s)
-       - P\sum_{k\ge0} d(s,s+k)\,\Pr(T>s+k\mid T>s).
+V^-_s = \sum_{k\ge1} v(s,s+k)\,\Pr(T\in(s+k-1,s+k]\mid T>s)
+       - P\sum_{k\ge0} v(s,s+k)\,\Pr(T>s+k\mid T>s).
 ```
 
-The sums end with the contract. This is a value **before** the current premium, denoted
-``V^-``. Immediately after paying that premium the insurer's liability increases by ``P``.
-The engine exposes both phases as `before` and `after`.
+The sums end with the contract. This is the value **before** the premium due at ``s``,
+written ``V^-_s``. Once that premium is received it no longer offsets future benefits, so
+``V^+_s=V^-_s+P``. The engine reports both phases as `before` and `after`.
 
 ```@example values
 reserve = reserve_premium_net(lc, 1)
@@ -123,7 +127,7 @@ different policy values. See [Joint lives](joint-lives.md).
 
 ## Curve origin and selection basis
 
-At every valuation date the discount factor is ``d(s,t)=D(t)/D(s)``. Keep the curve's original
+At every valuation date the discount factor is ``v(s,t)=v(t)/v(s)``. Keep the curve's original
 origin and the life's original select basis. Using `discount(curve, t-s)` or selecting a new
 mortality row at attained age changes the assumptions. The
 [curve example](curves-and-scenarios.md) demonstrates the difference numerically.

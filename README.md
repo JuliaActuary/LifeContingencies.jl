@@ -24,11 +24,11 @@ rates = UltimateMortality([0.5, 0.5, 1.0]; start_age=60)
 life = SingleLife(rates)
 lc = LifeContingency(life, 0.05)
 
-present_value(Insurance(lc))          # unit benefit at the end of the year of death
-present_value(Insurance(lc, 2))       # two-year term insurance
-present_value(AnnuityDue(lc))         # unit annual payments in advance while alive
-premium_net(lc)                      # net annual premium, fixed at issue
-reserve_premium_net(lc, 1)            # in force at year one, before its premium
+present_value(Insurance(lc))        # unit benefit at the end of the year of death
+present_value(Insurance(lc, 2))     # two-year term insurance
+present_value(AnnuityDue(lc))       # unit annual payments in advance while alive
+premium_net(lc)                     # net annual premium, fixed at issue
+reserve_premium_net(lc, 1)          # in force at year one, before its premium
 ```
 
 ## Learn more

@@ -1,8 +1,8 @@
 # Migrating to 3.0
 
 3.0 preserves the public textbook constructor names and rebuilds their probability and
-valuation calculations over a shared finite-state engine. Observable corrections are
-intentional; use this guide alongside [NEWS](https://github.com/JuliaActuary/LifeContingencies.jl/blob/master/NEWS.md).
+valuation calculations over a shared finite-state engine. Where results change, 3.0 is
+correcting them; each change is listed below. Use this guide alongside [NEWS](https://github.com/JuliaActuary/LifeContingencies.jl/blob/master/NEWS.md).
 
 ## Environment and fractional assumptions
 
@@ -51,7 +51,8 @@ lc = LifeContingency(life, 0.0)
 @assert probability(AnnuityDue(lc, 3; certain=1)) == [1.0, 0.5, 0.25]
 @assert probability(AnnuityDue(lc, 2; start_time=1, certain=0)) == [0.5, 0.25]
 @assert isempty(cashflows(Insurance(lc, 0)))
-(present_value(Insurance(lc, 0)), cashflows(AnnuityDue(lc, 3; certain=1)))
+(zero_term_pv = present_value(Insurance(lc, 0)),
+ guaranteed_annuity_cashflows = cashflows(AnnuityDue(lc, 3; certain=1)))
 ```
 
 Product `survival`, `probability`, `cashflows` and `discount` views now return vectors;
@@ -89,6 +90,13 @@ It now discounts using `discount(curve, s, t)`. Results change on non-flat curve
 old shifted-time discount factors differed. It remains an unconditional tail, not a
 conditional reserve.
 
+**Custom curves need an interval method.** If your 2.x extension defines only
+`FinanceCore.discount(curve, t)`, add
+`FinanceCore.discount(curve, from, to) = discount(curve, to) / discount(curve, from)` for
+your curve type, using its existing issue-date factors. The engine requires this method
+even for issue-date valuation; `discount(curve, 0, 0)` must also be defined. See the
+[runnable custom-curve example](@ref custom-curves).
+
 `reserve_premium_net` now values the remaining net stream prospectively. Its anniversary
 convention is unchanged: deaths through `s` settled, premium at `s` included. It takes an
 integer duration and retains the issue premium. Late-duration results can change because
@@ -96,9 +104,9 @@ the old subtraction lost precision.
 
 ```@example upgrade
 lc_interest = LifeContingency(life, 0.05)
-(present_value(Insurance(lc_interest), 1),
- reserve_premium_net(lc_interest, 1),
- reserve_premium_net(lc_interest, 1; state=:alive))
+(unconditional_tail = present_value(Insurance(lc_interest), 1),
+ in_force_reserve = reserve_premium_net(lc_interest, 1),
+ known_alive_reserve = reserve_premium_net(lc_interest, 1; state=:alive))
 ```
 
 Joint reserves condition on the contingency alone by default. Use `state=(:alive, :dead)`
@@ -106,13 +114,31 @@ or another observed pair when individual statuses are known. See [Joint lives](j
 
 ## Names and extension code
 
-`FirstToDie()` and scalar broadcasting for lives and products are available. The unexported
-internal types `WholeLife`, `Term`, `ZeroBenefit` and annuity payable types were removed;
-use constructors and documented views. The unexported `E` was removed. The exports
-`insurance`, `annuity_due` and `annuity_immediate` were removed because those names were
+The unexported internal types `WholeLife`, `Term`, `ZeroBenefit` and annuity payable types were removed;
+use constructors and documented views.
+
+The unexported `E(lc, t, s)` was removed. Replace it with
+`APV(lc, s + t) / APV(lc, s)`, provided the denominator is nonzero. Here `s` is a duration
+from issue, not an attained age. This is the conditional pure endowment over the next `t`
+years, on the original mortality and curve basis:
+
+```@example upgrade
+s, t = 1, 1
+conditional_endowment = APV(lc_interest, s + t) / APV(lc_interest, s)
+@assert conditional_endowment ≈ survival(life, s, s+t) * discount(lc_interest, s, s+t)
+conditional_endowment
+```
+
+The exports `insurance`, `annuity_due` and `annuity_immediate` were removed because those names were
 never defined.
 
-`LifeContingencies.Experimental` adds the finite-state engine. Import its interfaces
+## New
+
+- `FirstToDie()` adds first-death joint-life benefits.
+- Lives, products and `LifeContingency` now broadcast as scalars.
+- `LifeContingencies.Experimental` adds the finite-state engine.
+
+For the experimental engine, import its interfaces
 explicitly, and expect possible changes in minor releases. Start with
 [Building multi-state models](multi-state-models.md), rather than extending the old product
 hierarchy's death-benefit defaults.

@@ -56,6 +56,7 @@ These commutation functions are available with an explicit import. `D` is an ali
 
 ```@docs
 LifeContingencies.l
+LifeContingencies.D
 LifeContingencies.C
 LifeContingencies.N
 LifeContingencies.M

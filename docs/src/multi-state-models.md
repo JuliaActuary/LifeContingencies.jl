@@ -40,12 +40,13 @@ function LifeContingencies.Experimental.transitions(::RecoveryModel, interval::I
     throw(ArgumentError("unknown state $state"))
 end
 model = RecoveryModel()
+nothing # hide
 ```
 
 State labels must have a common type. Typed, hashable structs are useful when a state
 includes counters; the [LTC example](ltc.md) does this. `states(model)` is optional. Without
 it, forward projection discovers states from `initial`, and policy valuation needs explicit
-`roots`. A tuple returned by `states` also supplies the engine's index for a small model.
+`roots`.
 
 ## Name the payment components
 
@@ -71,6 +72,7 @@ contract = (
 grid = 0:1
 initial = [:healthy => 1.0]
 curve = 0.05
+nothing # hide
 ```
 
 ## Project forward
@@ -79,13 +81,13 @@ curve = 0.05
 projection = project(contract, model; grid, initial, history=true)
 @assert sum(values(projection.final)) ≈ 1.0
 @assert projection.final[:sick] ≈ 0.10
-projection.cashflows
+map(cfs -> [(cf.time, cf.amount) for cf in cfs], projection.cashflows)
 ```
 
 `cashflows` has one vector of dated `FinanceCore.Cashflow`s per component. State components
 include every grid time, transition components every interval end. `final` is the occupancy
 distribution at the last time. `history=true` also returns occupancy at each grid time.
-These are expected amounts; individual paths have different payments.
+The displayed pairs are `(time, expected_amount)`. Individual paths have different payments.
 
 The expected care and death payments at year end are 10 and 50. Their total PV, less the
 premium at issue, is ``-10+(10+50)/1.05``:
@@ -106,13 +108,16 @@ At a grid date `t`, incoming transition payments have already settled. The `befo
 ``V^-(t)`` includes state payments at `t`; `after`, or ``V^+(t)``, excludes them. Certain
 payments at `t` follow the same before/after distinction.
 
-For a state or transition component, write ``b_k(i)`` for its state payment and
-``r_k(i,j)`` for its edge payment. Backward valuation uses
+Let ``t_k=\mathrm{grid}[k]``, with final grid date ``t_n``, and let ``P_k(i,j)`` be the
+transition probability from ``i`` to ``j`` over ``(t_k,t_{k+1}]``. For a state or transition
+component, write ``b_k(i)`` for its state payment and ``r_k(i,j)`` for its edge payment.
+For a state component ``r_k=0``; for a transition component ``b_k=0``. Use the interval
+discount factor ``v(s,t)=v(t)/v(s)``, where ``v(t)`` discounts from issue. Backward valuation uses
 
 ```math
-V^-_k(i)=b_k(i)+d(t_k,t_{k+1})\sum_j P_k(i,j)
+V^-_k(i)=b_k(i)+v(t_k,t_{k+1})\sum_j P_k(i,j)
 \left[r_k(i,j)+V^-_{k+1}(j)\right],\qquad
-V^-(T)=b(T)+\operatorname{terminal}.
+V^-_n(i)=b_n(i)+\operatorname{terminal}(i).
 ```
 
 `terminal` supplies the **after-payment** continuation value at the final date. Zero is
@@ -123,7 +128,7 @@ truncation assumption; ending the grid alone does not settle an open obligation.
 policy = policy_values(contract, model, curve; grid, terminal=0, history=true)
 @assert all(isapprox(a, b) for (a, b) in zip(pv, policy.before[:healthy]))
 @assert sum(policy.after[:healthy]) ≈ sum(policy.before[:healthy]) + 10
-(policy.before[:healthy], policy.after[:healthy])
+(before_state_payments = policy.before[:healthy], after_state_payments = policy.after[:healthy])
 ```
 
 Results cover the requested root states, defaulting to `states(model)`. For this model that
@@ -194,11 +199,12 @@ calendar dates using your chosen day count before supplying it. Models decide wh
 intervals they accept: this model accepts one-year steps; the LTC model accepts months.
 There is no automatic fractional-step conversion.
 
-Rows must be nonnegative and sum to one up to the documented rounding allowance. The engine
+Rows must be nonnegative and sum to one up to the
+[rounding allowance](@ref LifeContingencies.Experimental.transitions). The engine
 validates rows without rescaling them. A model's state must include any duration or benefit
 memory needed to make those rows and payment functions depend only on the current state.
 
-The useful laws are concrete checks:
+Each property below can be checked numerically, and makes a good test for a new model:
 
 - **Composition:** projection over successive supported intervals composes. A direct coarse
   interval must be consistent if the model supports it. Payment accrual needs its own
@@ -210,7 +216,11 @@ The useful laws are concrete checks:
 - **Discounting:** interval factors compose on a fixed curve.
 
 Forward/backward agreement is supplemented by hand calculations and path enumeration in
-`test/engine.jl`. `project` stores dated streams even without history; `present_values` folds
+`test/engine.jl`.
+
+## Performance
+
+`project` stores dated streams even without history; `present_values` folds
 forward. Backward values use rolling buffers plus stored reachable frontiers, so discovering
 an expanding state space still consumes memory. Requesting history stores the additional
 occupancy or policy-value records.

@@ -56,6 +56,9 @@ raise errors instead of being truncated silently.
 
 ### Valuation
 
+- **Custom curves.** Implement both `discount(curve, t)` and `discount(curve, from, to)`.
+  An issue-date method alone no longer suffices; interval factors use the ratio of the
+  original factors, including `discount(curve, 0, 0) = 1`.
 - **`present_value(ins, time)`** discounts with the curve's own interval factors,
   `discount(curve, time, t)`, rather than `discount(curve, t - time)`. Results change on
   non-flat curves only.
@@ -68,7 +71,8 @@ raise errors instead of being truncated silently.
 - **Exports.** `insurance`, `annuity_due` and `annuity_immediate` are no longer exported;
   they were never defined.
 - **Removed:**
-  - the unexported `E`
+  - the unexported `E`; replace `E(lc, t, s)` with `APV(lc, s + t) / APV(lc, s)`
+    when the denominator is nonzero
   - the internal types `WholeLife`, `Term` and `ZeroBenefit`, and the annuity payable types
 - **`decrement(::LifeContingency, …)`** now comes from MortalityTables' generic fallback, with
   the same results.
