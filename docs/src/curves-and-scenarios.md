@@ -38,11 +38,16 @@ valuation date from payment times incorrectly restarts the curve.
 
 ## [Implement a custom curve](@id custom-curves)
 
-A custom curve must support **both** `discount(curve, t)` and
+A custom curve must supply correct values for **both** `discount(curve, t)` and
 `discount(curve, from, to)`. The first gives the issue-date factor ``v(t)``; the second gives
 ``v(\mathrm{from},\mathrm{to})=v(\mathrm{to})/v(\mathrm{from})``. Three-argument discounting
 is required by the engine, including the identity factor `discount(curve, 0, 0)` when
-valuing from issue. Defining only the issue-date method is insufficient in 3.0.
+valuing from issue.
+
+FinanceCore's generic interval method calls `discount(curve, to - from)`. That is correct
+for a level rate, but generally restarts a non-flat curve at the wrong origin. A custom
+non-flat curve must override that fallback with the ratio of its original factors. With
+only the issue-date method, a calculation can run without an error yet return a wrong PV.
 
 Add FinanceCore directly (`pkg> add FinanceCore`) when implementing its interface. Here is
 a complete illustrative curve with ``v(t)=\exp(-0.02t-0.005t^2)``:

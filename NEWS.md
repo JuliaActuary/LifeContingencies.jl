@@ -56,9 +56,9 @@ raise errors instead of being truncated silently.
 
 ### Valuation
 
-- **Custom curves.** Implement both `discount(curve, t)` and `discount(curve, from, to)`.
-  An issue-date method alone no longer suffices; interval factors use the ratio of the
-  original factors, including `discount(curve, 0, 0) = 1`.
+- **Custom non-flat curves.** Supply `discount(curve, from, to)` as the ratio of the original
+  issue-date factors. FinanceCore's generic fallback shifts time and can silently return
+  wrong values. Interval factors include the identity `discount(curve, 0, 0) = 1`.
 - **`present_value(ins, time)`** discounts with the curve's own interval factors,
   `discount(curve, time, t)`, rather than `discount(curve, t - time)`. Results change on
   non-flat curves only.

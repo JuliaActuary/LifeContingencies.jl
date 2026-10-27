@@ -90,11 +90,13 @@ It now discounts using `discount(curve, s, t)`. Results change on non-flat curve
 old shifted-time discount factors differed. It remains an unconditional tail, not a
 conditional reserve.
 
-**Custom curves need an interval method.** If your 2.x extension defines only
+**Custom non-flat curves need their own interval method.** If your 2.x extension defines only
 `FinanceCore.discount(curve, t)`, add
 `FinanceCore.discount(curve, from, to) = discount(curve, to) / discount(curve, from)` for
-your curve type, using its existing issue-date factors. The engine requires this method
-even for issue-date valuation; `discount(curve, 0, 0)` must also be defined. See the
+your curve type, using its existing issue-date factors. FinanceCore's generic fallback uses
+`discount(curve, to - from)`, which can silently give wrong values on a non-flat curve.
+The engine uses interval discounting even for issue-date valuation, including the identity
+factor `discount(curve, 0, 0)`. See the
 [runnable custom-curve example](@ref custom-curves).
 
 `reserve_premium_net` now values the remaining net stream prospectively. Its anniversary
