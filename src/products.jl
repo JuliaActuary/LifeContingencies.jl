@@ -239,3 +239,66 @@ function in_force_at(life, dates)
     cashflows = project_from_issue((in_force=in_force_payment(life, dates),), life, from_issue(dates)).cashflows
     return [cf.amount for cf in last(cashflows.in_force, length(dates))]
 end
+
+"""
+    Endowment(lc, term)
+    Endowment(life, interest, term)
+
+A unit benefit on death during the positive whole-year `term`, payable at year end,
+or on survival to maturity. For joint lives, death means the contingency ending.
+Maturity is explicit: incomplete mortality can support an endowment through its last
+covered year without imposing a terminal death rate.
+"""
+struct Endowment{L,Y} <: Insurance
+    life::L
+    int::Y
+    term::Int
+    function Endowment(life::L, int::Y, term) where {L,Y}
+        n = checked_term(term)
+        !isnothing(n) && n > 0 || throw(ArgumentError("an endowment term must be a positive whole number of years"))
+        return new{L,Y}(life, int, n)
+    end
+end
+Endowment(lc::LifeContingency, term) = Endowment(lc.life, lc.int, term)
+
+function unit_payments(ins::Endowment)
+    benefit_years(Insurance(ins.life, ins.int, ins.term)) # validate mortality coverage
+    contract = (death=death_payment(ins.life), maturity=in_force_payment(ins.life, ins.term:ins.term))
+    return (; contract, grid=0:ins.term)
+end
+
+function expected_payments(ins::Endowment)
+    (; contract, grid) = unit_payments(ins)
+    cfs = project_from_issue(contract, ins.life, grid).cashflows
+    return [cfs.death[k].amount + cfs.maturity[k+1].amount for k in 1:ins.term]
+end
+
+# Products settle end-period benefits before beginning-period installments.
+is_due(::Insurance) = false
+is_due(ins::Annuity) = ins.kind isa Due
+
+function check_valuation(time, phase, life, state)
+    isfinite(time) && time >= 0 || throw(ArgumentError("valuation time must be finite and nonnegative; got $time"))
+    phase in (:before, :after) || throw(ArgumentError("phase must be :before or :after; got $phase"))
+    isnothing(state) || state in Experimental.states(life) ||
+        throw(ArgumentError("state must be one of $(Experimental.states(life)); got $state"))
+end
+
+# State and certain payments at a date; incoming transition payments have already settled.
+function payment_now(contract, t, state)
+    return sum(values(contract)) do c
+        c isa CertainPayment && return sum((a for (date, a) in zip(c.times, c.amounts) if date == t); init=0)
+        return Experimental.state_amount(c, t, state)
+    end
+end
+
+function conditional_product_value(ins, time, state, phase)
+    ins isa Union{DeathBenefit,Endowment} && !isinteger(time) &&
+        throw(ArgumentError("conditional death-benefit values require an integer anniversary; an alive/dead state does not describe incurred-but-unpaid claims"))
+    (; contract, grid) = unit_payments(ins)
+    future_grid = sort!(unique!([time; filter(t -> t > time, collect(grid))]))
+    T = value_type(ins.life, ins.int)
+    v = sum(present_values(contract, ins.life, ins.int; grid=future_grid, initial=[state => one(T)], numbertype=T))
+    (is_due(ins) && phase === :before) || (v -= payment_now(contract, time, state))
+    return benefit(ins) * v
+end

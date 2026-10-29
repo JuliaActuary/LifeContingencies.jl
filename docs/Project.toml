@@ -7,6 +7,9 @@ Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 MortalityTables = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
+[sources]
+LifeContingencies = {path = "/Users/alecloudenback/.julia/dev/LifeContingencies-v3-api"}
+
 [compat]
 Documenter = "1"
 FinanceCore = "3"

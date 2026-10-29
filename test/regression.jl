@@ -197,7 +197,8 @@ end
         # the one-time value includes the payment at issue; the value at a time excludes payments then
         two = AnnuityDue(ultimate_life([0.5, 1.0]), 0.0, 2)
         @test present_value(two) ≈ 1.5
-        @test present_value(two, 0) ≈ 0.5
+        @test present_value(two, 0) ≈ 1.5
+        @test present_value(two, 0; phase=:after) ≈ 0.5
         # a zero term keeps its life and curve and has no payments
         none = AnnuityImmediate(life5, 0.05, 0)
         @test none isa Insurance && none.life === life5

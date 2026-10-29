@@ -11,7 +11,7 @@ using .Experimental: StatePayment, TransitionPayment, CertainPayment, project, p
 include("lives.jl")
 
 export LifeContingency,
-    Insurance, AnnuityDue, AnnuityImmediate,
+    Insurance, Endowment, AnnuityDue, AnnuityImmediate,
     APV,
     SingleLife, Independent, Frasier, JointLife,
     LastSurvivor, FirstToDie,

@@ -78,7 +78,6 @@ conditional_due = sum(survival(lc.life, s, t) * discount(lc, s, t) for t in s:(o
 (conditional_annuity_due = N(lc, s) / D(lc, s), conditional_insurance = M(lc, s) / D(lc, s))
 ```
 
-These sums stop at the last whole year covered by the mortality assumption. They are not
-a continuation of an incomplete table, and infinite-horizon laws have no finite terminal
-sum. Use an explicitly termed product for that calculation. Incomplete tables and fractional
-terminal ages also mean that the sums need not represent a complete lifetime obligation.
+Lifetime sums require extinction by the last whole year covered by the mortality assumption.
+Incomplete tables, uncovered fractional terminal years and infinite support raise a `DomainError`.
+Use an explicitly termed product or endowment instead.

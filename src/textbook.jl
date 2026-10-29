@@ -89,6 +89,7 @@ The survivorship vector for the given insurance: for life insurance, the probabi
 in force at the start of each year of cover; for an annuity, at each payment time.
 """
 MortalityTables.survival(ins::DeathBenefit) = in_force_at(ins.life, 0:benefit_years(ins)-1)
+MortalityTables.survival(ins::Endowment) = in_force_at(ins.life, 0:ins.term-1)
 MortalityTables.survival(ins::Annuity) = in_force_at(ins.life, timepoints(ins))
 
 
@@ -108,7 +109,7 @@ FinanceCore.discount(ins::Insurance) = [discount(ins.int, t) for t in timepoints
 The scheduled unit amount: `1.0` for death insurance and `1.0 / frequency` for an annuity.
 Thus an annuity is normalized to one annual unit, regardless of payment frequency.
 """
-benefit(ins::DeathBenefit) = 1.0
+benefit(ins::Union{DeathBenefit,Endowment}) = 1.0
 benefit(ins::Annuity) = 1.0 / ins.frequency
 
 
@@ -144,6 +145,7 @@ Death insurance pays at year ends. Annuity dates depend on commencement, frequen
 due/immediate timing. `collect(timepoints(ins))` materializes a vector.
 """
 timepoints(ins::DeathBenefit) = 1:benefit_years(ins)
+timepoints(ins::Endowment) = 1:ins.term
 timepoints(ins::Annuity) = schedule(ins).times
 
 """
@@ -151,8 +153,7 @@ timepoints(ins::Annuity) = schedule(ins).times
 
 The actuarial present value at issue of every scheduled benefit, including any payment at
 time zero. Expected payments use the original life statuses, and the curve is fixed for
-the valuation. A zero-duration product is worth zero. The two-argument method instead
-excludes payments on its valuation date.
+the valuation. A zero-duration product is worth zero. The two-argument method uses the selected settlement phase at its valuation date.
 """
 function FinanceCore.present_value(ins::Insurance)
     (; contract, grid) = unit_payments(ins)
@@ -160,16 +161,18 @@ function FinanceCore.present_value(ins::Insurance)
 end
 
 """
-    present_value(ins::Insurance, time::Real)
+    present_value(ins::Insurance, time::Real; state=nothing, phase=:before)
 
 The actuarial present value of the given insurance benefits, as if you were standing at `time`:
-the expected payments strictly after `time`, as projected from issue, discounted to `time`
+the expected outstanding payments as projected from issue, discounted to `time`
 with the curve's own factors `discount(interest, time, t)`.
 
 For example, if the given `Insurance` has *decremented* payments `[1,2,3,4,5]` at times `[1,2,3,4,5]` and you call `pv(ins,3)`,
 you will get the present value of the payments `[4,5]` at times `[4,5]`, discounted to time 3.
 
-This is not a value for a life known to be in force at `time`. Dividing by the survivorship
+At `phase=:before`, end-period benefits have settled but annuity-due installments remain.
+`phase=:after` also settles due installments. Pass `state` for a known current status;
+otherwise the value retains the issue distribution. Dividing by the survivorship
 gives one only when every remaining payment depends on being in force at `time`, as for a
 life annuity outside its guarantee period, or a death benefit valued at the end of a policy
 year:
@@ -190,9 +193,12 @@ julia> present_value(ins, 1) / survival(ins, 1)  # for a life in force at time 1
 1.0
 ```
 """
-function FinanceCore.present_value(ins::Insurance, time::Real)
+function FinanceCore.present_value(ins::Insurance, time::Real; state=nothing, phase=:before)
+    check_valuation(time, phase, ins.life, state)
+    isnothing(state) || return conditional_product_value(ins, time, state, phase)
     cfs = cashflows(ins)
-    return sum((cf * discount(ins.int, time, t) for (cf, t) in zip(cfs, timepoints(ins)) if t > time); init=zero(eltype(cfs)))
+    include_now = is_due(ins) && phase === :before
+    return sum((cf * discount(ins.int, time, t) for (cf, t) in zip(cfs, timepoints(ins)) if t > time || (include_now && t == time)); init=zero(eltype(cfs)))
 end
 
 """

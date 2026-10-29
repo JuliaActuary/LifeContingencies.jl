@@ -29,6 +29,7 @@ See [Insurance and annuities](insurance-and-annuities.md) for amounts, dates and
 
 ```@docs
 Insurance
+Endowment
 AnnuityDue
 AnnuityImmediate
 timepoints

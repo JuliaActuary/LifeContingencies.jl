@@ -1,3 +1,10 @@
+## Product values and settlement
+
+- `Endowment` supplies explicit maturity on supported mortality.
+- `present_value(product, t)` includes due installments at `t`; use `phase=:after` for the former strict-future convention.
+- `state` supplies known single/joint statuses. Guarantees remain payable after observed death.
+- Conditional annual death-benefit values reject fractional settlement dates.
+
 ## Additional 3.0 API safeguards
 
 - FinanceCore 3 is required. Custom curves must implement interval discounting explicitly.
