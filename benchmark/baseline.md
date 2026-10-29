@@ -65,8 +65,8 @@ MortalityTables 3.0.0 and FinanceCore 3.0.1 for **both** runs:
 | annuity due PV | 8.8 μs | 8.6 μs | 2,544 bytes |
 | monthly annuity, 10 years certain | 55.1 μs | 57.3 μs | 11,488 bytes |
 | whole-life scalar reserves, durations 1–70 | 1,359.2 μs | 1,364.3 μs | 994,448 bytes |
-| priced-policy scalar reserves, durations 1–70 | — | 397.0 μs | 772,688 bytes |
-| priced-policy reserve column, durations 1–70 | — | 209.9 μs | 351,200 bytes |
+| priced-policy scalar values, durations 1–70 | — | 397.0 μs | 772,688 bytes |
+| priced-policy value column, durations 1–70 | — | 209.9 μs | 351,200 bytes |
 | joint last-survivor annuity | 14.3 μs | 13.5 μs | 3,408 bytes |
 
 The whole-life convenience path retains the existing backward kernel without history.
@@ -75,3 +75,8 @@ repeated occupancy and backward passes. The column is about 6.5× faster than th
 convenience loop in this workload. The suite checks linear mortality-read growth when the
 column horizon doubles, including the terminal zero reserve. Exact term cash-flow read
 counts remain 100 and 400 for 100- and 400-period tables.
+
+The public priced-policy API is now `PricedPolicy` / `policy_value`; the timings above
+refer to the same valuation kernels. [Issue #94](https://github.com/JuliaActuary/LifeContingencies.jl/issues/94)
+tracks typed column storage and removal of the scalar special case once its performance
+is matched.

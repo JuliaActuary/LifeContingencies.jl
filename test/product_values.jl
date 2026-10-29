@@ -32,3 +32,23 @@
     @test present_value(a, 1; state=(:alive, :dead)) ≈ 1.8
     @test present_value(a, 1; state=(:alive, :alive)) ≈ 1.96
 end
+
+@testset "annuity valuation dates snap within rounding" begin
+    lc = LifeContingency(SingleLife(UltimateMortality([0.1, 0.2, 1.0])), 0.04)
+    for constructor in (AnnuityDue, AnnuityImmediate), certain in (0, 1)
+        ann = constructor(lc, 2; frequency=10, certain)
+        for state in (nothing, :alive, :dead), phase in (:before, :after)
+            exact = present_value(ann, 0.3; state, phase)
+            @test present_value(ann, 0.1*3; state, phase) == exact
+            @test present_value(ann, prevfloat(0.3); state, phase) == exact
+            @test present_value(ann, nextfloat(0.3); state, phase) == exact
+        end
+        # A materially later time must still exclude a due installment.
+        if constructor === AnnuityDue
+            @test present_value(ann, 0.3; state=:alive) > present_value(ann, 0.3 + 1e-8; state=:alive)
+        end
+    end
+    monthly = AnnuityDue(lc, 2; frequency=12)
+    @test present_value(monthly, sum(fill(1/12, 23))) ≈ present_value(monthly, 23/12)
+    @test present_value(monthly, big"0.5") ≈ present_value(monthly, 0.5)
+end

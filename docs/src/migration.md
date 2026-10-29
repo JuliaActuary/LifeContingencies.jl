@@ -64,7 +64,7 @@ Product `survival`, `probability`, `cashflows` and `discount` views now return v
 |---|---|
 | `alive=false` takes effect | Expect zero survival and state-contingent benefits; guarantees remain payable |
 | Last-survivor horizon follows the longer life | Recheck joint-life tails previously cut off |
-| Only `Frasier()` is implemented | Other joint assumptions now error instead of silently using independence |
+| Only `Independent()` (alias `Frasier()`) is implemented | Other joint assumptions now error instead of silently using independence |
 | Conditional joint survival at an impossible in-force date errors | Handle a `DomainError` instead of a `NaN` |
 | A rate vector ending below 1 is incomplete | Supply longer rates, or an explicit supported term |
 
@@ -154,11 +154,14 @@ hierarchy's death-benefit defaults.
 - `Endowment(lc, n)` expresses explicit maturity without changing mortality rates.
 - `present_value(product, t; state=...)` values known statuses, including dead annuitants with guarantees.
 
-### Priced policies and reserve columns
+### Priced policies and policy-value columns
 
-`NetPremiumPolicy(benefit, premiums; premium=...)` stores the established premium; omission
-prices it once by equivalence. `reserve_premium_net(policy, times; valuation_basis=...)`
-uses a complete new `LifeContingency` without changing that premium. Passing products
-directly remains an equivalence-pricing convenience. Reserve columns return numeric vectors.
+`PricedPolicy(benefit, premiums; premium=...)` stores the established premium; omission
+prices it once by equivalence. `policy_value(policy, times; basis=...)`
+uses a complete new `LifeContingency` without changing that premium.
+`premium_net(benefit, premiums)` explicitly calculates an equivalence premium.
+`policy_value` takes a priced policy, with no product-pair reserve shortcut.
+`reserve_premium_net(lc, times)` establishes its premium on the supplied `lc` basis and
+accepts only `state` and `phase` keywords. Both column methods return numeric vectors.
 Settled contracts now return zero, including at and after endowment or term maturity.
 See [Valuation and reserves](valuation-and-reserves.md) for worked examples.

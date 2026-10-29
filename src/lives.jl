@@ -132,10 +132,15 @@ julia> survival(JointLife(lives=lives, contingency=FirstToDie()), 40)  # both al
 0.5468053463643783
 ```
 """
-Base.@kwdef struct JointLife{L<:Tuple{SingleLife,SingleLife},C<:Contingency,J<:JointAssumption} <: Life
+struct JointLife{L<:Tuple{SingleLife,SingleLife},C<:Contingency,J<:JointAssumption} <: Life
     lives::L
     contingency::C
-    joint_assumption::J = Independent()
+    joint_assumption::J
+end
+
+function JointLife(; lives, contingency=nothing, joint_assumption=Independent())
+    isnothing(contingency) && throw(ArgumentError("specify contingency=FirstToDie() or contingency=LastSurvivor()"))
+    return JointLife(lives, contingency, joint_assumption)
 end
 
 JointLife(l1::SingleLife, l2::SingleLife; kwargs...) = JointLife(; lives=(l1, l2), kwargs...)

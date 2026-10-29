@@ -12,7 +12,7 @@ value to year five does not itself establish that the insured is alive at year f
 | `reserve_premium_net(lc, s)` | Future death benefits less premiums, including the premium at `s` | Contract in force at `s`, or an explicit `state` |
 
 The `lc` convenience method is for **whole-life insurance with annual net premiums**.
-For term, limited-pay, endowment and annuity contracts, use `NetPremiumPolicy` below.
+For term, limited-pay, endowment and annuity contracts, use `PricedPolicy` below.
 These are textbook net premium reserves on the issue basis; this function does not implement
 statutory CRVM or GAAP LDTI reserve methods. Custom multi-state contracts use the [multi-state engine](multi-state-models.md).
 
@@ -92,8 +92,8 @@ profit margin.
 
 ## Policy values and anniversary timing
 
-`reserve_premium_net(lc, s)` keeps the premium fixed at issue and values the **net** future
-stream prospectively. The time `s` is a nonnegative integer policy duration.
+`reserve_premium_net(lc, s)` establishes the equivalence premium on the supplied basis
+and values the **net** future stream prospectively. The time `s` is a nonnegative integer policy duration.
 
 At that anniversary:
 
@@ -138,14 +138,14 @@ mortality row at attained age changes the assumptions. The
 
 ## Establish the policy premium once
 
-A `NetPremiumPolicy` keeps the benefit, premium annuity and established premium together.
+A `PricedPolicy` keeps the benefit, premium annuity and established premium together.
 Both products share their issue basis. Premium annuities are annualized: monthly premiums
 are `premium/12` per installment. Supply `premium=...` when loading an existing policy.
 
 ```@example values
-term_policy = NetPremiumPolicy(Insurance(lc, 2), AnnuityDue(lc, 2))
-@assert premium_net(term_policy) ≈ premium_net(lc, 2)
-term_reserves = reserve_premium_net(term_policy, 0:3)
+term_policy = PricedPolicy(Insurance(lc, 2), AnnuityDue(lc, 2))
+@assert term_policy.premium ≈ premium_net(lc, 2)
+term_reserves = policy_value(term_policy, 0:3)
 @assert abs(first(term_reserves)) < 1e-14
 @assert term_reserves[3:4] == [0, 0]
 (premium = term_policy.premium, reserves = term_reserves)
@@ -156,23 +156,23 @@ example is two-pay whole life. On a complete real mortality basis, `AnnuityDue(l
 expresses 20-pay whole life without using the experimental API.
 
 ```@example values
-limited_pay = NetPremiumPolicy(Insurance(lc), AnnuityDue(lc, 2))
-reserve_premium_net(limited_pay, 0:3)
+limited_pay = PricedPolicy(Insurance(lc), AnnuityDue(lc, 2))
+policy_value(limited_pay, 0:3)
 ```
 
 An explicit endowment maturity also works when the mortality table ends below a rate of one:
 
 ```@example values
 short_basis = LifeContingency(SingleLife(UltimateMortality([0.1, 0.2]; start_age=60)), 0.05)
-endowment_policy = NetPremiumPolicy(Endowment(short_basis, 2), AnnuityDue(short_basis, 2))
-@assert abs(reserve_premium_net(endowment_policy, 0)) < 1e-14
-@assert reserve_premium_net(endowment_policy, 2) == 0
-reserve_premium_net(endowment_policy, 0:3)
+endowment_policy = PricedPolicy(Endowment(short_basis, 2), AnnuityDue(short_basis, 2))
+@assert abs(policy_value(endowment_policy, 0)) < 1e-14
+@assert policy_value(endowment_policy, 2) == 0
+policy_value(endowment_policy, 0:3)
 ```
 
 ## Revalue without repricing
 
-A complete `valuation_basis=LifeContingency(...)` replaces valuation mortality and interest.
+A complete `basis=LifeContingency(...)` replaces valuation mortality and interest.
 It retains the original age origins, starting statuses, joint contingency and life order.
 Contract terms and payment rules remain fixed; lifetime horizons follow the new mortality.
 The stored premium remains the premium established on the issue basis.
@@ -180,27 +180,49 @@ The stored premium remains the premium established on the issue basis.
 ```@example values
 new_basis = LifeContingency(life, 0.03)
 stored_premium = term_policy.premium
-revalued = reserve_premium_net(term_policy, 0:2; valuation_basis=new_basis)
+revalued = policy_value(term_policy, 0:2; basis=new_basis)
 @assert term_policy.premium == stored_premium
 (issue_basis = term_reserves[1:3], revised_basis = revalued)
 ```
 
-A column call prices once and uses one forward occupancy pass and one backward valuation
-pass. It returns a numeric vector aligned with the supplied integer anniversaries, including
+A column call uses the established premium with one forward occupancy pass and one
+backward valuation pass. It returns a numeric vector aligned with the supplied integer anniversaries, including
 unsorted or repeated requests. Use `state` for a fixed known status across the requested
-column. Fractional reserves require additional settlement information and are rejected.
+column. Fractional policy values require additional settlement information and are rejected.
 
 ## Guaranteed annuities and observed death
 
 ```@example values
 guaranteed_benefit = AnnuityDue(lc, 4; certain=3)
-payout = NetPremiumPolicy(guaranteed_benefit, AnnuityDue(lc, 1))
-@assert reserve_premium_net(payout, 1; state=:dead) == 2
-@assert reserve_premium_net(payout, 1; state=:dead, phase=:after) == 1
-reserve_premium_net(payout, 1:4; state=:dead)
+payout = PricedPolicy(guaranteed_benefit, AnnuityDue(lc, 1))
+@assert policy_value(payout, 1; state=:dead) == 2
+@assert policy_value(payout, 1; state=:dead, phase=:after) == 1
+policy_value(payout, 1:4; state=:dead)
 ```
 
 At an annual premium date, `phase=:before` is the **terminal reserve** ``{}_tV``;
 `phase=:after` is the **initial reserve** ``{}_tV+P`` when no other beginning-period payment
 falls due. End-period death, maturity and immediate-annuity payments at that date have
 already settled in both phases. Guarantees remain unconditional during deferral.
+
+## Established premium versus valuation net premium
+
+`policy_value` retains `policy.premium` when `basis` changes. A supplied premium can be a
+contractual or gross amount; the value is still benefits less those premiums, with no
+expenses supplied by these unit products. It is not a statutory net premium reserve.
+To establish a new equivalence premium on a revised basis, construct a new policy:
+
+```@example values
+repriced = PricedPolicy(Insurance(new_basis, 2), AnnuityDue(new_basis, 2))
+@assert abs(policy_value(repriced, 0)) < 1e-14
+(retained_premium = term_policy.premium, revised_net_premium = repriced.premium)
+```
+
+`reserve_premium_net(new_basis, t)` is the whole-life textbook equivalent: its premium is
+calculated on `new_basis`. It has no alternate-basis keyword. Neither operation implements
+regulatory reserve methodology.
+
+For a single-premium payout annuity, `AnnuityDue(lc, 1)` deliberately represents one
+premium at issue. Once that premium is paid, use `present_value(annuity, t; state=:alive)`
+for the benefit-only liability, or `policy_value` for the policy's net stream. Premium
+annuities require `certain=0`; benefit annuities may still have guaranteed installments.

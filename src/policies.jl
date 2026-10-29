@@ -1,24 +1,24 @@
 """
-    NetPremiumPolicy(benefit, premiums; premium=nothing)
+    PricedPolicy(benefit, premiums; premium=nothing)
 
 An immutable priced policy holding a benefit product, a premium annuity and its established
 annualized premium. Products must share their issue mortality and interest basis. Omit
 `premium` to price by equivalence once, or supply a finite premium for an existing policy.
-Revaluation via [`reserve_premium_net`](@ref) retains this premium and contractual timing.
+Revaluation via [`policy_value`](@ref) retains this premium and contractual timing.
 At frequency `f`, each premium installment is `premium/f`.
 """
-struct NetPremiumPolicy{B,A,T}
+struct PricedPolicy{B,A,T}
     benefit::B
     premiums::A
     premium::T
-    function NetPremiumPolicy(benefit::Insurance, premiums::Annuity; premium=nothing)
+    function PricedPolicy(benefit::Insurance, premiums::Annuity; premium=nothing)
         check_common_basis(benefit, premiums)
         p = isnothing(premium) ? premium_net(benefit, premiums) : premium
         p isa Real && isfinite(p) || throw(ArgumentError("premium must be a finite real amount; got $p"))
         return new{typeof(benefit),typeof(premiums),typeof(p)}(benefit, premiums, p)
     end
 end
-Base.broadcastable(p::NetPremiumPolicy) = Ref(p)
+Base.broadcastable(p::PricedPolicy) = Ref(p)
 
 same_life(a::SingleLife, b::SingleLife) =
     same_origin(a, b) && isequal(a.mortality, b.mortality) && isequal(a.fractional_assump, b.fractional_assump)
@@ -31,22 +31,22 @@ same_origin(a::JointLife, b::JointLife) =
 same_origin(a::Life, b::Life) = false
 
 function check_common_basis(b, p)
+    p.certain == 0 || throw(ArgumentError("premium annuities cannot guarantee premiums after death; use certain=0"))
     same_life(b.life, p.life) && isequal(b.int, p.int) ||
         throw(ArgumentError("benefits and premiums must share an issue mortality and interest basis"))
 end
 
 """
     premium_net(benefit, premiums)
-    premium_net(policy::NetPremiumPolicy)
 
-Price the benefit by equivalence against an annualized premium annuity, or retrieve the
-premium already established for a priced policy. A zero premium-annuity PV is undefined.
+Price the benefit by equivalence against an annualized premium annuity on their common
+basis. A zero premium-annuity PV is undefined. Access `policy.premium` for an established
+premium, which may differ from this equivalence premium.
 """
 function premium_net(benefit::Insurance, premiums::Annuity)
     check_common_basis(benefit, premiums)
     return equivalence_premium(present_value(benefit), present_value(premiums))
 end
-premium_net(p::NetPremiumPolicy) = p.premium
 premium_net(life::Life, interest, args...) = premium_net(LifeContingency(life, interest), args...)
 
 rebase(p::DeathBenefit, basis) = Insurance(basis, p.term)
@@ -142,9 +142,9 @@ end
 outstanding(dates, due, t, phase) =
     !isempty(dates) && (last(dates) > t || (due && phase === :before && insorted(t, dates)))
 
-function policy_basis(policy, valuation_basis)
-    basis = isnothing(valuation_basis) ? LifeContingency(policy.benefit) : valuation_basis
-    basis isa LifeContingency || throw(ArgumentError("valuation_basis must be a LifeContingency"))
+function policy_basis(policy, basis)
+    basis = isnothing(basis) ? LifeContingency(policy.benefit) : basis
+    basis isa LifeContingency || throw(ArgumentError("basis must be a LifeContingency"))
     same_origin(policy.benefit.life, basis.life) ||
         throw(ArgumentError("valuation basis must retain original age origins, starting statuses, life order and contingency"))
     return basis
@@ -156,8 +156,8 @@ classic_whole_life(p) = p.benefit isa DeathBenefit && isnothing(p.benefit.term) 
     p.premiums.kind isa Due && isnothing(p.premiums.term) && p.premiums.frequency == 1 &&
     p.premiums.start_time == 0 && p.premiums.certain == 0
 
-function whole_life_reserve(policy, time; valuation_basis=nothing, state=nothing, phase=:before)
-    basis = policy_basis(policy, valuation_basis)
+function whole_life_value(policy, time; basis=nothing, state=nothing, phase=:before)
+    basis = policy_basis(policy, basis)
     life, premium = basis.life, policy.premium
     check_valuation(time, phase, life, state)
     T = promote_type(value_type(life, basis.int), typeof(premium))
@@ -173,8 +173,8 @@ function whole_life_reserve(policy, time; valuation_basis=nothing, state=nothing
     return sum(q * sum(values[s]) for (s, q) in initial)
 end
 
-function reserve_column(policy, times; valuation_basis=nothing, state=nothing, phase=:before)
-    basis = policy_basis(policy, valuation_basis)
+function policy_value_column(policy, times; basis=nothing, state=nothing, phase=:before)
+    basis = policy_basis(policy, basis)
     for t in times
         t isa Integer || throw(ArgumentError("reserves require integer anniversaries; got $t"))
         check_valuation(t, phase, basis.life, state)
@@ -251,23 +251,45 @@ function reserve_column(policy, times; valuation_basis=nothing, state=nothing, p
 end
 
 """
-    reserve_premium_net(policy::NetPremiumPolicy, time_or_times; valuation_basis=nothing, state=nothing, phase=:before)
-    reserve_premium_net(benefit, premiums, time_or_times; kwargs...)
+    policy_value(policy::PricedPolicy, time_or_times; basis=nothing, state=nothing, phase=:before)
 
-Prospective net premium reserves at integer anniversaries. A collection returns a numeric
-vector in the supplied order, computed with one backward pass and one occupancy pass.
-The priced policy's premium is retained under a new `LifeContingency` valuation basis.
-Product-pair calls price once by equivalence on their issue basis.
+Prospective benefit values less the policy's scheduled premiums at integer anniversaries.
+A new `LifeContingency` `basis` changes valuation assumptions while retaining the stored
+premium. This does not recompute a valuation net premium. A collection returns a numeric
+vector in the supplied order, using one occupancy pass and one backward pass.
 
-By default, condition on the contingency remaining active; `state` supplies a known status
-instead. End-period benefits have settled; `phase=:before` includes due installments and
-`phase=:after` settles them too. These are the terminal and initial reserves respectively
-when only an annual premium falls due. Return zero after all obligations have settled.
+By default, condition on the contingency remaining active; `state` supplies a known status.
+End-period benefits have settled; `phase=:before` includes due installments and `:after`
+settles them too. With only an annual premium due, these are the terminal and initial
+values respectively. Settled contracts have zero value; impossible conditioning before
+termination raises `DomainError`. Expenses are not modeled by these unit products.
 """
-reserve_premium_net(p::NetPremiumPolicy, t::Integer; kwargs...) =
-    classic_whole_life(p) ? whole_life_reserve(p, t; kwargs...) : only(reserve_column(p, [t]; kwargs...))
-reserve_premium_net(p::NetPremiumPolicy, times::AbstractVector; kwargs...) = reserve_column(p, collect(times); kwargs...)
-reserve_premium_net(p::NetPremiumPolicy, t::Real; kwargs...) = throw(ArgumentError("reserves require integer anniversaries; got $t"))
-reserve_premium_net(b::Insurance, p::Annuity, times; kwargs...) = reserve_premium_net(NetPremiumPolicy(b, p), times; kwargs...)
-reserve_premium_net(lc::LifeContingency, times; kwargs...) = reserve_premium_net(NetPremiumPolicy(Insurance(lc), AnnuityDue(lc)), times; kwargs...)
-reserve_premium_net(life::Life, interest, times; kwargs...) = reserve_premium_net(LifeContingency(life, interest), times; kwargs...)
+policy_value(p::PricedPolicy, t::Integer; kwargs...) =
+    classic_whole_life(p) ? whole_life_value(p, t; kwargs...) : only(policy_value_column(p, [t]; kwargs...))
+policy_value(p::PricedPolicy, times::AbstractVector; kwargs...) = policy_value_column(p, collect(times); kwargs...)
+policy_value(p::PricedPolicy, t::Real; kwargs...) = throw(ArgumentError("policy values require integer anniversaries; got $t"))
+
+# Textbook NPR: establish the equivalence premium on the very basis being valued.
+# Revaluation with a retained premium is deliberately available only via policy_value.
+"""
+    reserve_premium_net(lc::LifeContingency, time_or_times; state=nothing, phase=:before)
+    reserve_premium_net(life, interest, time_or_times; state=nothing, phase=:before)
+
+Textbook whole-life net premium reserves with annual premiums. Both the equivalence premium
+and the future benefits are calculated on the supplied `lc` basis. Pass a nonnegative
+integer anniversary or a vector/range of anniversaries; a collection returns values in
+its supplied order. No alternative valuation basis or stored-premium policy is accepted.
+Use [`policy_value`](@ref) with a [`PricedPolicy`](@ref) for established premiums, finite
+contracts, limited-pay business or revaluation on another basis. These unit products do
+not implement statutory or GAAP reserve methods.
+
+Death benefits through the valuation anniversary have settled. `phase=:before` includes
+the premium due then (terminal reserve); `phase=:after` settles it (initial reserve).
+Default conditioning is on the contingency remaining active; `state` supplies a known
+single or joint status. Impossible conditioning before contractual termination raises
+`DomainError`; once all obligations have settled, the reserve is zero.
+"""
+reserve_premium_net(lc::LifeContingency, times; state=nothing, phase=:before) =
+    policy_value(PricedPolicy(Insurance(lc), AnnuityDue(lc)), times; state, phase)
+reserve_premium_net(life::Life, interest, times; state=nothing, phase=:before) =
+    reserve_premium_net(LifeContingency(life, interest), times; state, phase)
