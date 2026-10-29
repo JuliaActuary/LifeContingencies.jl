@@ -317,19 +317,20 @@ function conditional_product_value(ins, time, state, phase)
     return benefit(ins) * v
 end
 
-# Treat a valuation date within four representable steps of an installment as that
-# installment date. The half-period cap prevents snapping across distinct payments.
-valuation_time(::Insurance, time) = time
-function valuation_time(ins::Annuity, time)
+# Projection loops can accumulate more than a few ulps of date drift. Use a small
+# period-based tolerance, retaining four ulps for lower-precision inputs. The
+# half-period cap prevents snapping across distinct payments.
+function valuation_time(ins::Insurance, time)
     dates = timepoints(ins)
     isempty(dates) && return time
+    frequency = ins isa Annuity ? ins.frequency : 1
     i = searchsortedfirst(dates, time)
     for k in (i-1, i)
         checkbounds(Bool, dates, k) || continue
         date = dates[k]
         distance = abs(time - date)
-        tolerance = 4max(eps(float(time)), eps(float(date)))
-        distance <= tolerance && distance < 0.5 / ins.frequency && return date
+        tolerance = max(1e-9 / frequency, 4max(eps(float(time)), eps(float(date))))
+        distance <= tolerance && distance < 0.5 / frequency && return date
     end
     return time
 end

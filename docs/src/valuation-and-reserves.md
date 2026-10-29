@@ -138,6 +138,12 @@ origin and the life's original select basis. Using `discount(curve, t-s)` or sel
 mortality row at attained age changes the assumptions. The
 [curve example](curves-and-scenarios.md) demonstrates the difference numerically.
 
+Product valuation dates within `1e-9 / frequency` years of a scheduled payment snap to that
+date (or within four floating-point ulps, if larger), capped below half a payment period.
+Insurance and endowments use annual frequency. This keeps dates built by repeated additions
+such as `t += 1/12` consistent with the schedule, for premiums and benefits in both phases.
+Dates outside this tolerance retain their actual settlement position.
+
 ## Establish the policy premium once
 
 A `PricedPolicy` keeps the benefit, premium annuity and established premium together.
