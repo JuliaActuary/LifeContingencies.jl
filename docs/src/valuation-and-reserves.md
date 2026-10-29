@@ -11,10 +11,10 @@ value to year five does not itself establish that the insured is alive at year f
 | `present_value(ins, s)` | Outstanding payments at the selected phase, discounted to `s` | Original statuses at issue; no new conditioning |
 | `reserve_premium_net(lc, s)` | Future death benefits less premiums, including the premium at `s` | Contract in force at `s`, or an explicit `state` |
 
-The reserve convenience function is for **whole-life insurance with annual net premiums**.
+The `lc` convenience method is for **whole-life insurance with annual net premiums**.
+For term, limited-pay, endowment and annuity contracts, use `NetPremiumPolicy` below.
 These are textbook net premium reserves on the issue basis; this function does not implement
-statutory CRVM or GAAP LDTI reserve methods. For other payment structures, construct a net
-contract in the [multi-state engine](multi-state-models.md).
+statutory CRVM or GAAP LDTI reserve methods. Custom multi-state contracts use the [multi-state engine](multi-state-models.md).
 
 ## Issue-date PV and future PV
 
@@ -135,3 +135,72 @@ At every valuation date the discount factor is ``v(s,t)=v(t)/v(s)``. Keep the cu
 origin and the life's original select basis. Using `discount(curve, t-s)` or selecting a new
 mortality row at attained age changes the assumptions. The
 [curve example](curves-and-scenarios.md) demonstrates the difference numerically.
+
+## Establish the policy premium once
+
+A `NetPremiumPolicy` keeps the benefit, premium annuity and established premium together.
+Both products share their issue basis. Premium annuities are annualized: monthly premiums
+are `premium/12` per installment. Supply `premium=...` when loading an existing policy.
+
+```@example values
+term_policy = NetPremiumPolicy(Insurance(lc, 2), AnnuityDue(lc, 2))
+@assert premium_net(term_policy) ≈ premium_net(lc, 2)
+term_reserves = reserve_premium_net(term_policy, 0:3)
+@assert abs(first(term_reserves)) < 1e-14
+@assert term_reserves[3:4] == [0, 0]
+(premium = term_policy.premium, reserves = term_reserves)
+```
+
+Use different benefit and premium terms for limited-pay business. This short hand-checkable
+example is two-pay whole life. On a complete real mortality basis, `AnnuityDue(lc, 20)`
+expresses 20-pay whole life without using the experimental API.
+
+```@example values
+limited_pay = NetPremiumPolicy(Insurance(lc), AnnuityDue(lc, 2))
+reserve_premium_net(limited_pay, 0:3)
+```
+
+An explicit endowment maturity also works when the mortality table ends below a rate of one:
+
+```@example values
+short_basis = LifeContingency(SingleLife(UltimateMortality([0.1, 0.2]; start_age=60)), 0.05)
+endowment_policy = NetPremiumPolicy(Endowment(short_basis, 2), AnnuityDue(short_basis, 2))
+@assert abs(reserve_premium_net(endowment_policy, 0)) < 1e-14
+@assert reserve_premium_net(endowment_policy, 2) == 0
+reserve_premium_net(endowment_policy, 0:3)
+```
+
+## Revalue without repricing
+
+A complete `valuation_basis=LifeContingency(...)` replaces valuation mortality and interest.
+It retains the original age origins, starting statuses, joint contingency and life order.
+Contract terms and payment rules remain fixed; lifetime horizons follow the new mortality.
+The stored premium remains the premium established on the issue basis.
+
+```@example values
+new_basis = LifeContingency(life, 0.03)
+stored_premium = term_policy.premium
+revalued = reserve_premium_net(term_policy, 0:2; valuation_basis=new_basis)
+@assert term_policy.premium == stored_premium
+(issue_basis = term_reserves[1:3], revised_basis = revalued)
+```
+
+A column call prices once and uses one forward occupancy pass and one backward valuation
+pass. It returns a numeric vector aligned with the supplied integer anniversaries, including
+unsorted or repeated requests. Use `state` for a fixed known status across the requested
+column. Fractional reserves require additional settlement information and are rejected.
+
+## Guaranteed annuities and observed death
+
+```@example values
+guaranteed_benefit = AnnuityDue(lc, 4; certain=3)
+payout = NetPremiumPolicy(guaranteed_benefit, AnnuityDue(lc, 1))
+@assert reserve_premium_net(payout, 1; state=:dead) == 2
+@assert reserve_premium_net(payout, 1; state=:dead, phase=:after) == 1
+reserve_premium_net(payout, 1:4; state=:dead)
+```
+
+At an annual premium date, `phase=:before` is the **terminal reserve** ``{}_tV``;
+`phase=:after` is the **initial reserve** ``{}_tV+P`` when no other beginning-period payment
+falls due. End-period death, maturity and immediate-annuity payments at that date have
+already settled in both phases. Guarantees remain unconditional during deferral.

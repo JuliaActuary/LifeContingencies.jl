@@ -45,6 +45,7 @@ See [Valuation and reserves](valuation-and-reserves.md) for conditioning and pay
 
 ```@docs
 present_value
+NetPremiumPolicy
 premium_net
 reserve_premium_net
 APV

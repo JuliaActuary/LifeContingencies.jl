@@ -5,7 +5,7 @@ premiums and net premium reserves. It combines mortality from
 [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl) with a rate or yield
 curve and a payment schedule.
 
-These are the **3.0** docs: Julia **1.10+**, MortalityTables **3**, and FinanceCore **2 or 3**.
+These are the **3.0** docs: Julia **1.10+**, MortalityTables **3**, and FinanceCore **3**.
 If you already use 2.x, start with [Migrating to 3.0](migration.md).
 
 ## [Features](@id Features)

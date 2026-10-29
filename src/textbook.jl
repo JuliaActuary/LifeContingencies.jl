@@ -66,8 +66,8 @@ N(lc::LifeContingency, from_time) = sum(t -> D(lc, t), from_time:last_table_year
     M(lc::LifeContingency, from_time)
 
 Sum `C(lc, t)` for `t` in `from_time:(floor(Int, omega(lc)) - 1)`. Durations are in years
-from issue and the radix is one. Infinite support raises a `DomainError`; a fractional
-terminal age leaves its final partial year outside the sum. Import `M` explicitly.
+from issue and the radix is one. Infinite support raises a `DomainError`; incomplete or uncovered fractional
+terminal support raises a `DomainError`. Import `M` explicitly.
 """
 M(lc::LifeContingency, from_time) = sum(t -> C(lc, t), from_time:last_table_year(lc); init=zero(APV(lc, 0)))
 
@@ -238,22 +238,8 @@ are alive. Pass `state` to value it from a known state instead: `:alive` for a `
 or a pair of statuses such as `(:alive, :dead)` for a `JointLife`. Throws a `DomainError` when
 the contract cannot be in force at `time`.
 """
-function reserve_premium_net(lc::LifeContingency, time::Integer; state=nothing)
-    life = lc.life
-    time >= 0 || throw(ArgumentError("`time` must be nonnegative; got $time"))
-    isnothing(state) || state in Experimental.states(life) ||
-        throw(ArgumentError("`state` must be one of $(Experimental.states(life)); got $state"))
-    premium = premium_net(lc)
-    contract = (
-        benefit=death_payment(life),
-        premium=StatePayment((t, s) -> active(life, s) ? -premium : zero(premium)),
-    )
-    initial = isnothing(state) ? in_force_distribution(life, time) : [state => one(probability_type(life))]
-    T = promote_type(value_type(life, lc.int), typeof(premium))
-    grid = time:benefit_years(Insurance(lc))
-    values = policy_values(contract, life, lc.int; grid, terminal=0, roots=first.(initial), numbertype=T)
-    return sum(p * sum(values.before[s]) for (s, p) in initial)
-end
+
+function reserve_premium_net end
 
 # The distribution of states at `time` among contracts still in force, given each life's status at issue.
 function in_force_distribution(life, time)

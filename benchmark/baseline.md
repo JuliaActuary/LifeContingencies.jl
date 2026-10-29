@@ -53,3 +53,25 @@ Where the time goes:
 - **Annuity grids.** Annuities step over a floating-point grid, which makes each row's fractional-age survival dearer than on the death benefit's integer grid.
 - **Allocation.** A scalar value allocates under a kilobyte for its buffers, independent of the contract length. An annuity whose first life-contingent payment comes after issue, because of a guarantee, a deferral or payment in arrears, also builds its grid of dates as a vector; that is most of the monthly annuity's 11 KB.
 - **Reserves.** Each reserve runs four linear passes: two for the issue premium, one for the in-force distribution at `t`, and the backward valuation.
+
+## After the 3.0 API follow-ups
+
+Same-machine comparison against the documentation tip `4811d11`, using Julia 1.13.1,
+MortalityTables 3.0.0 and FinanceCore 3.0.1 for **both** runs:
+
+| Workload | Documentation tip | API follow-ups | Follow-up allocation |
+|---|---:|---:|---:|
+| whole life PV | 4.1 μs | 3.9 μs | 816 bytes |
+| annuity due PV | 8.8 μs | 8.6 μs | 2,544 bytes |
+| monthly annuity, 10 years certain | 55.1 μs | 57.3 μs | 11,488 bytes |
+| whole-life scalar reserves, durations 1–70 | 1,359.2 μs | 1,364.3 μs | 994,448 bytes |
+| priced-policy scalar reserves, durations 1–70 | — | 397.0 μs | 772,688 bytes |
+| priced-policy reserve column, durations 1–70 | — | 209.9 μs | 351,200 bytes |
+| joint last-survivor annuity | 14.3 μs | 13.5 μs | 3,408 bytes |
+
+The whole-life convenience path retains the existing backward kernel without history.
+Storing the issue premium avoids repeated pricing; requesting a column additionally avoids
+repeated occupancy and backward passes. The column is about 6.5× faster than the existing
+convenience loop in this workload. The suite checks linear mortality-read growth when the
+column horizon doubles, including the terminal zero reserve. Exact term cash-flow read
+counts remain 100 and 400 for 100- and 400-period tables.

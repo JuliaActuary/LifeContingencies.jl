@@ -1,3 +1,17 @@
+# LifeContingencies v3.0.0
+
+A breaking release. Lives and products are now valued by one linear-time engine. Several
+long-standing defects are fixed. Contracts that the mortality assumption can't cover now
+raise errors instead of being truncated silently.
+
+## Priced policies and reserve schedules
+
+- `NetPremiumPolicy(benefit, premiums; premium=...)` stores the established premium.
+- Product-pair premium and reserve calls support term, limited-pay, endowment and annuity contracts.
+- `valuation_basis=LifeContingency(...)` revalues without repricing or changing contractual timing.
+- A reserve-column call returns a numeric vector using one occupancy pass and one backward pass.
+- `phase=:before` and `:after` distinguish terminal and initial reserves; settled contracts have zero reserve.
+
 ## Product values and settlement
 
 - `Endowment` supplies explicit maturity on supported mortality.
@@ -14,19 +28,13 @@
 - Mortality support errors include attained ages. Invalid age origins and undefined equivalence premiums fail clearly.
 - Unbounded `survival(life)` requires explicit finite evaluation dates.
 
-# LifeContingencies v3.0.0
-
-A breaking release. Lives and products are now valued by one linear-time engine. Several
-long-standing defects are fixed. Contracts that the mortality assumption can't cover now
-raise errors instead of being truncated silently.
-
 ## Requirements
 
 - Julia 1.10 or newer.
 - MortalityTables 3. Its fractional-age assumptions are renamed, so the default `Uniform()`
   is now `UniformDeaths()`. Pass `UniformDeaths()`, `ConstantForce()` or `Balducci()` as
   `fractional_assump`. Fractional survival now composes across intervals.
-- FinanceCore 2 or 3.
+- FinanceCore 3.
 - Transducers is no longer a dependency.
 
 ## Breaking changes
@@ -73,11 +81,11 @@ raise errors instead of being truncated silently.
 ### Valuation
 
 - **Custom non-flat curves.** Supply `discount(curve, from, to)` as the ratio of the original
-  issue-date factors. FinanceCore's generic fallback shifts time and can silently return
-  wrong values. Interval factors include the identity `discount(curve, 0, 0) = 1`.
+  issue-date factors. FinanceCore 3 has no generic interval fallback for custom curves;
+  omitting it raises a `MethodError`. Interval factors include the identity `discount(curve, 0, 0) = 1`.
 - **`present_value(ins, time)`** discounts with the curve's own interval factors,
   `discount(curve, time, t)`, rather than `discount(curve, t - time)`. Results change on
-  non-flat curves only.
+  non-flat curves and due-annuity payment dates.
 - **`reserve_premium_net`** is computed prospectively and takes an integer `time`. As before,
   it conditions on the contract being in force at `time`. Results change only where the old
   subtraction lost precision.

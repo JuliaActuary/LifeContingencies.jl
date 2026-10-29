@@ -1,11 +1,11 @@
 # Joint lives
 
-A `JointLife` combines two `SingleLife`s and a contingency. `Frasier()` models independent
+A `JointLife` combines two `SingleLife`s and a contingency. `Independent()` (also available as `Frasier()`) models independent
 future transitions. It is the only supported dependence assumption.
 
 | Contingency | In force in these states | Death benefit triggers when… |
 |---|---|---|
-| `LastSurvivor()` (default) | Both alive, or either one alive | The last survivor dies |
+| `LastSurvivor()` | Both alive, or either one alive | The last survivor dies |
 | `FirstToDie()` | Both alive | The first death occurs |
 
 The lives keep their own issue ages and mortality selection. An observed dead life stays

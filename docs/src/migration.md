@@ -153,3 +153,12 @@ hierarchy's death-benefit defaults.
 - `N` and `M` now reject incomplete mortality and uncovered partial terminal years.
 - `Endowment(lc, n)` expresses explicit maturity without changing mortality rates.
 - `present_value(product, t; state=...)` values known statuses, including dead annuitants with guarantees.
+
+### Priced policies and reserve columns
+
+`NetPremiumPolicy(benefit, premiums; premium=...)` stores the established premium; omission
+prices it once by equivalence. `reserve_premium_net(policy, times; valuation_basis=...)`
+uses a complete new `LifeContingency` without changing that premium. Passing products
+directly remains an equivalence-pricing convenience. Reserve columns return numeric vectors.
+Settled contracts now return zero, including at and after endowment or term maturity.
+See [Valuation and reserves](valuation-and-reserves.md) for worked examples.
