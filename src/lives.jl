@@ -46,21 +46,27 @@ end
 SingleLife(; mortality, kwargs...) = SingleLife(mortality; kwargs...)
 
 function SingleLife(mortality::AbstractVector; issue_age=firstindex(mortality), alive=true, fractional_assump=mt.UniformDeaths())
+    issue_age isa Integer && firstindex(mortality) <= issue_age <= lastindex(mortality) ||
+        throw(ArgumentError("`issue_age` must be an integer within the rate ages $(firstindex(mortality)):$(lastindex(mortality)); got $issue_age"))
     return SingleLife(mortality, issue_age, alive, fractional_assump)
 end
 
 # a select table: one vector of rates per issue age
-SingleLife(mortality::AbstractVector{<:AbstractVector}; issue_age=firstindex(mortality), kwargs...) =
-    SingleLife(mortality[issue_age]; issue_age, kwargs...)
+function SingleLife(mortality::AbstractVector{<:AbstractVector}; issue_age=firstindex(mortality), kwargs...)
+    issue_age isa Integer && checkbounds(Bool, mortality, issue_age) ||
+        throw(ArgumentError("`issue_age` is outside the select table: $issue_age"))
+    return SingleLife(mortality[issue_age]; issue_age, kwargs...)
+end
 
 function SingleLife(mortality::mt.ParametricMortality; issue_age, alive=true, fractional_assump=mt.UniformDeaths())
+    issue_age isa Integer && issue_age >= 0 || throw(ArgumentError("`issue_age` must be a nonnegative integer; got $issue_age"))
     return SingleLife(mortality, issue_age, alive, fractional_assump)
 end
 
 SingleLife(::mt.MortalityTable; kwargs...) =
     throw(ArgumentError("pass a vector of rates, such as `table.ultimate` or `table.select[issue_age]`, rather than the whole table"))
 
-""" 
+"""
     JointAssumption()
 
 An abstract type representing the different assumed relationship between the survival of the lives on a JointLife. Available options to use include:
@@ -68,15 +74,18 @@ An abstract type representing the different assumed relationship between the sur
 """
 abstract type JointAssumption end
 
-""" 
-    Frasier()
+"""
+    Independent()
 
 The assumption of independent lives in a joint life calculation.
 Is a subtype of `JointAssumption`.
 """
-struct Frasier <: JointAssumption end
+struct Independent <: JointAssumption end
 
-""" 
+"""Compatibility alias for [`Independent`](@ref), the assumption of independent lives."""
+const Frasier = Independent
+
+"""
     Contingency()
 
 An abstract type representing the different triggers for contingent benefits. Available options to use include:
@@ -100,14 +109,14 @@ Is a subtype of `Contingency`
 struct FirstToDie <: Contingency end
 
 """
-    JointLife(; lives, contingency=LastSurvivor(), joint_assumption=Frasier())
+    JointLife(; lives, contingency, joint_assumption=Independent())
 
-A `Life` object containing the necessary assumptions for contingent maths related to a joint life insurance. Use with a `LifeContingency` to do many actuarial present value calculations. 
+A `Life` object containing the necessary assumptions for contingent maths related to a joint life insurance. Use with a `LifeContingency` to do many actuarial present value calculations.
 
 Keyword arguments:
 - `lives` is a tuple of two `SingleLife`s
-- `contingency` default is `LastSurvivor()`. It is the trigger for contingent benefits: `LastSurvivor()` or `FirstToDie()`. See `?Contingency`. 
-- `joint_assumption` Default value is `Frasier()`, independent lives, the only assumption implemented. See `?JointAssumption`. 
+- `contingency` is required. It is the trigger for contingent benefits: `LastSurvivor()` or `FirstToDie()`. See `?Contingency`.
+- `joint_assumption` Default value is `Independent()`, independent lives, the only assumption implemented. See `?JointAssumption`.
 
 # Examples
 
@@ -116,7 +125,7 @@ julia> vbt = MortalityTables.table("2001 VBT Residual Standard Select and Ultima
 
 julia> lives = (SingleLife(vbt.select[30]), SingleLife(vbt.select[35]));
 
-julia> survival(JointLife(lives=lives), 40)                           # at least one alive
+julia> survival(JointLife(lives=lives, contingency=LastSurvivor()), 40)                           # at least one alive
 0.935943451146974
 
 julia> survival(JointLife(lives=lives, contingency=FirstToDie()), 40)  # both alive
@@ -125,9 +134,11 @@ julia> survival(JointLife(lives=lives, contingency=FirstToDie()), 40)  # both al
 """
 Base.@kwdef struct JointLife{L<:Tuple{SingleLife,SingleLife},C<:Contingency,J<:JointAssumption} <: Life
     lives::L
-    contingency::C = LastSurvivor()
-    joint_assumption::J = Frasier()
+    contingency::C
+    joint_assumption::J = Independent()
 end
+
+JointLife(l1::SingleLife, l2::SingleLife; kwargs...) = JointLife(; lives=(l1, l2), kwargs...)
 
 # A rate vector's last rate covers the year from its last age, while a parametric law ends at
 # its own `omega`, the last age at which it is defined.
@@ -187,6 +198,7 @@ Return a survival vector for the given life.
 """
 function mt.survival(l::L) where {L<:Life}
     ω = omega(l)
+    isfinite(ω) || throw(DomainError(ω, "supply explicit finite dates, for example survival.(life, 0:20), for an unbounded mortality law"))
     return Iterators.map(t -> survival(l, t), 0:ω)
 end
 

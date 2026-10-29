@@ -114,7 +114,7 @@ already died. The joint life then starts with one dead person and one living per
 survival depends only on the remaining life:
 
 ```@example mortality
-one_survivor = JointLife(lives=(dead, living))
+one_survivor = JointLife(lives=(dead, living), contingency=LastSurvivor())
 @assert survival(one_survivor, 1) == survival(living, 1)
 survival(one_survivor, 1)
 ```

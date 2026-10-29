@@ -14,7 +14,7 @@ correcting them; each change is listed below. Use this guide alongside [NEWS](ht
 | `Constant()` | `ConstantForce()` |
 | `Balducci()` | `Balducci()` |
 
-FinanceCore 2 and 3 are supported. Transducers is no longer a direct dependency. Rename
+FinanceCore 3 is required. Transducers is no longer a direct dependency. Rename
 explicit fractional-assumption arguments as well as any imports. Historical 2.x snippets
 on this page illustrate the old API and are not run by the documentation build.
 
@@ -93,8 +93,7 @@ conditional reserve.
 **Custom non-flat curves need their own interval method.** If your 2.x extension defines only
 `FinanceCore.discount(curve, t)`, add
 `FinanceCore.discount(curve, from, to) = discount(curve, to) / discount(curve, from)` for
-your curve type, using its existing issue-date factors. FinanceCore's generic fallback uses
-`discount(curve, to - from)`, which can silently give wrong values on a non-flat curve.
+your curve type, using its existing issue-date factors. FinanceCore 3 has no generic interval fallback for custom curves: omitting the method raises a `MethodError`.
 The engine uses interval discounting even for issue-date valuation, including the identity
 factor `discount(curve, 0, 0)`. See the
 [runnable custom-curve example](@ref custom-curves).

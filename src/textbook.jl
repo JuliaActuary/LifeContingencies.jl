@@ -49,6 +49,7 @@ end
 function last_table_year(lc::LifeContingency)
     ω = omega(lc)
     isinf(ω) && throw(DomainError(ω, "commutation sums run to the end of the mortality table, and parametric mortality defined at every age has none"))
+    iszero(survival(lc, floor(Int, ω))) || throw(beyond_assumption(lc.life, ω))
     return floor(Int, ω) - 1
 end
 
@@ -207,10 +208,15 @@ For a sum insured of `B`, multiply the result by `B`. A reserve uses the premium
 issue; calling this function again on a newly selected attained-age life reprices it.
 """
 function premium_net(lc::LifeContingency)
-    return A(lc) / ä(lc)
+    return equivalence_premium(A(lc), ä(lc))
 end
 
-premium_net(lc::LifeContingency, to_time) = A(lc, to_time) / ä(lc, to_time)
+premium_net(lc::LifeContingency, to_time) = equivalence_premium(A(lc, to_time), ä(lc, to_time))
+
+function equivalence_premium(benefits, premiums)
+    iszero(premiums) && throw(DomainError(premiums, "the premium annuity has zero present value; an equivalence premium is undefined"))
+    return benefits / premiums
+end
 
 """
      reserve_premium_net(lc::LifeContingency, time; state=nothing)

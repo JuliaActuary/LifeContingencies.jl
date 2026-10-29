@@ -1,3 +1,12 @@
+## Additional 3.0 API safeguards
+
+- FinanceCore 3 is required. Custom curves must implement interval discounting explicitly.
+- `JointLife` requires `contingency`; positional two-life construction is supported.
+- `Independent()` names the independence assumption; `Frasier` remains an alias.
+- Lifetime commutation sums reject incomplete mortality, including uncovered partial years.
+- Mortality support errors include attained ages. Invalid age origins and undefined equivalence premiums fail clearly.
+- Unbounded `survival(life)` requires explicit finite evaluation dates.
+
 # LifeContingencies v3.0.0
 
 A breaking release. Lives and products are now valued by one linear-time engine. Several

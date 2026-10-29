@@ -44,10 +44,8 @@ A custom curve must supply correct values for **both** `discount(curve, t)` and
 is required by the engine, including the identity factor `discount(curve, 0, 0)` when
 valuing from issue.
 
-FinanceCore's generic interval method calls `discount(curve, to - from)`. That is correct
-for a level rate, but generally restarts a non-flat curve at the wrong origin. A custom
-non-flat curve must override that fallback with the ratio of its original factors. With
-only the issue-date method, a calculation can run without an error yet return a wrong PV.
+FinanceCore 3 requires a custom curve to implement the interval method explicitly.
+Use the ratio of the original issue-date factors, so the curve origin is retained.
 
 Add FinanceCore directly (`pkg> add FinanceCore`) when implementing its interface. Here is
 a complete illustrative curve with ``v(t)=\exp(-0.02t-0.005t^2)``:

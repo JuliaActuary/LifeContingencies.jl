@@ -15,7 +15,7 @@ dead; a table ending with unknown survival does not establish death.
 using LifeContingencies, MortalityTables
 
 life = SingleLife(UltimateMortality([0.5, 0.5, 1.0]; start_age=60))
-last_survivor = JointLife(lives=(life, life))
+last_survivor = JointLife(lives=(life, life), contingency=LastSurvivor())
 first_to_die = JointLife(lives=(life, life), contingency=FirstToDie())
 @assert survival(last_survivor, 1) == 0.75
 @assert survival(first_to_die, 1) == 0.25
