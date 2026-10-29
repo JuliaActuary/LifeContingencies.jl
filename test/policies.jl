@@ -82,6 +82,28 @@
     @test policy_value(bp, 1) ≈ present_value(bp.benefit, 1; state=:alive) - bp.premium * present_value(bp.premiums, 1; state=:alive)
 end
 
+@testset "conditioning after the last possible survivor" begin
+    life = SingleLife(UltimateMortality([0.1, 0.2, 1.0]; start_age=60))
+    lc = LifeContingency(life, 0.0)
+    guaranteed = PricedPolicy(AnnuityDue(lc, 6; certain=6), AnnuityDue(lc, 1))
+    @test_throws DomainError policy_value(guaranteed, 3)
+    @test_throws DomainError policy_value(guaranteed, 0:6)
+    @test policy_value(guaranteed, 3:6; state=:dead) == [3, 2, 1, 0]
+    @test policy_value(guaranteed, 6) == 0
+
+    dead_long = SingleLife(UltimateMortality([fill(0.1, 5); 1.0]; start_age=60); alive=false)
+    joint = JointLife(dead_long, life; contingency=LastSurvivor())
+    jp = PricedPolicy(Insurance(joint, 0.0), AnnuityDue(joint, 0.0))
+    @test omega(joint) == 6
+    @test isfinite(policy_value(jp, 2))
+    for t in 3:5
+        @test_throws DomainError policy_value(jp, t)
+    end
+    @test_throws DomainError policy_value(jp, 0:8)
+    @test policy_value(jp, 0:8; state=(:dead, :dead)) == zeros(9)
+    @test policy_value(jp, 6:8) == zeros(3)
+end
+
 @testset "monthly premiums retain annual death settlement" begin
     life = SingleLife(UltimateMortality([0.1,0.2,0.3,1.0]; start_age=60))
     lc = LifeContingency(life, RegressionCurve())
@@ -205,4 +227,10 @@ end
     column = policy_value(policy, 0:3)
     @test column isa Vector{Float32}
     @test column ≈ [policy_value(policy, t) for t in 0:3]
+end
+
+@testset "fixed-state mask capacity" begin
+    @test_throws ArgumentError LifeContingencies.fixed_policy_values(
+        nothing, nothing, nothing, nothing, nothing, nothing, [0], nothing, :before,
+        ntuple(identity, 9), Float64)
 end

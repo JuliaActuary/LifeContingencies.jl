@@ -90,7 +90,8 @@ raise errors instead of being truncated silently.
 - **`PricedPolicy` and `policy_value`** keep benefits, a premium schedule and an established
   premium together. `basis=LifeContingency(...)` changes valuation assumptions while
   retaining that premium. Term, limited-pay, endowment and annuity values are supported;
-  vector calls return a numeric column using one occupancy pass and one backward pass.
+  vector calls return a numeric column using one occupancy pass and one backward pass,
+  with typed state buffers and cached transition rows shared by scalar and column calls.
   This is a retained-premium policy value; it does not recompute a valuation net premium.
 - **`premium_net(benefit, premiums)`** prices by equivalence on the products' common basis.
   Premium annuities require `certain=0`.
@@ -113,10 +114,6 @@ raise errors instead of being truncated silently.
 
 ## Fixed
 
-- **Policy-value column overhead.** Fixed two/four-state buffers and cached transition rows
-  replace dictionary distributions and untyped value histories. Scalar and column calls
-  share one kernel; the annual whole-life scalar special case is removed. The benchmark
-  matrix records warm times and allocations without imposing wall-clock CI thresholds.
 - **Payment-date rounding.** Annuity valuation times within four floating-point ulps of an
   installment date snap to the grid, so expressions such as `0.1*3` do not drop a payment.
 - **Input diagnostics.** Invalid age origins and zero premium denominators fail clearly;

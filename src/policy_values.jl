@@ -74,6 +74,7 @@ end
 
 function fixed_policy_values(b, p, bdates, pdates, life, curve, times, state, phase,
                              states::NTuple{N,S}, ::Type{T}) where {N,S,T}
+    N <= 8 || throw(ArgumentError("fixed policy values support at most eight states; got $N"))
     result = zeros(T, length(times))
     for product in (b, p), c in values(product.contract)
         c isa CertainPayment && certain_tails!(result, c, curve, times, product.due && phase === :before)

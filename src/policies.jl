@@ -155,6 +155,9 @@ End-period benefits have settled; `phase=:before` includes due installments and 
 settles them too. With only an annual premium due, these are the terminal and initial
 values respectively. Settled contracts have zero value; impossible conditioning before
 termination raises `DomainError`. Expenses are not modeled by these unit products.
+Remaining guarantees do not make impossible active-state conditioning valid: pass a known
+`state` (for example, `:dead`) to value those obligations after extinction. Joint horizons
+retain both lives' mortality support even if one life was dead at issue.
 """
 policy_value(p::PricedPolicy, t::Integer; kwargs...) =
     only(policy_value_column(p, (t,); kwargs...))
@@ -172,6 +175,7 @@ Textbook whole-life net premium reserves with annual premiums. Both the equivale
 and the future benefits are calculated on the supplied `lc` basis. Pass a nonnegative
 integer anniversary or a vector/range of anniversaries; a collection returns values in
 its supplied order. No alternative valuation basis or stored-premium policy is accepted.
+Pass a range for a reserve column; each call establishes the equivalence premium anew.
 Use [`policy_value`](@ref) with a [`PricedPolicy`](@ref) for established premiums, finite
 contracts, limited-pay business or revaluation on another basis. These unit products do
 not implement statutory or GAAP reserve methods.
