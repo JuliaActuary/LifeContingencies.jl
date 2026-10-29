@@ -62,7 +62,8 @@ scale_component(c::CertainPayment, a) = CertainPayment(c.times, a .* c.amounts)
 # linear discount work, without rescanning every guarantee at every state and date.
 function certain_tails!(result, component, curve, times, include_now)
     c = component
-    order = sortperm(times; rev=true)
+    isempty(c.times) && return result
+    order = sortperm(collect(times); rev=true)
     k = length(c.times)
     tail = zero(eltype(result))
     anchor = nothing
@@ -80,9 +81,9 @@ function certain_tails!(result, component, curve, times, include_now)
     end
 end
 
-function prepare_product(product, coefficient, prefix)
+function prepare_product(product, coefficient)
     (; contract, grid) = unit_payments(product)
-    scaled = map(values(contract)) do c
+    scaled = map(contract) do c
         if c isa TransitionPayment && product isa Union{DeathBenefit,Endowment}
             # Premium dates may refine an annual death interval. Carry the value of
             # the claim at its contractual year-end settlement back to this edge.
@@ -91,40 +92,12 @@ function prepare_product(product, coefficient, prefix)
                 i.stop > last_year && return zero(coefficient)
                 amount = coefficient * c.f(i, from, to)
                 iszero(amount) && return amount
-                return amount * discount(product.int, i.stop, ceil(i.stop))
+                return isinteger(i.stop) ? amount : amount * discount(product.int, i.stop, ceil(i.stop))
             end
         end
         return scale_component(c, coefficient)
     end
-    named = NamedTuple{Tuple(Symbol(prefix, "_", k) for k in keys(contract))}(scaled)
-    contingent = (; (k => c for (k, c) in pairs(named) if !(c isa CertainPayment))...)
-    certain = [c for c in values(named) if c isa CertainPayment]
-    return (; contingent, certain, grid, due=is_due(product))
-end
-
-# One frontier per date, seeded at each requested known/conditioned status. Unlike seeding
-# only at issue, this also values observed states with zero issue probability.
-function seeded_frontiers(life, grid, seeds, index, ::Type{T}) where {T}
-    positions, ranges, current = Int[], UnitRange{Int}[], Int[]
-    for k in eachindex(grid)
-        append!(current, get(seeds, k, Int[]))
-        unique!(current)
-        start = length(positions) + 1
-        append!(positions, current)
-        push!(ranges, start:length(positions))
-        k == length(grid) && break
-        next = Int[]
-        interval = Experimental.Interval(grid[k], grid[k+1])
-        for i in current
-            state = index.states[i]
-            Experimental.fold_row(nothing, Experimental.transitions(life, interval, state), state, interval, T) do _, dest, _
-                push!(next, Experimental.position!(index, dest))
-                nothing
-            end
-        end
-        current = unique!(next)
-    end
-    return Experimental.Frontiers(positions, ranges)
+    return (; contract=scaled, grid, due=is_due(product))
 end
 
 function outstanding_dates(product)
@@ -150,105 +123,24 @@ function policy_basis(policy, basis)
     return basis
 end
 
-# The common annual whole-life case needs neither a union grid nor stored histories.
-# Keep it on the same backward engine kernel used before product composition.
-classic_whole_life(p) = p.benefit isa DeathBenefit && isnothing(p.benefit.term) &&
-    p.premiums.kind isa Due && isnothing(p.premiums.term) && p.premiums.frequency == 1 &&
-    p.premiums.start_time == 0 && p.premiums.certain == 0
-
-function whole_life_value(policy, time; basis=nothing, state=nothing, phase=:before)
-    basis = policy_basis(policy, basis)
-    life, premium = basis.life, policy.premium
-    check_valuation(time, phase, life, state)
-    T = promote_type(value_type(life, basis.int), typeof(premium))
-    horizon = benefit_years(Insurance(basis))
-    time >= horizon && return zero(T)
-    initial = isnothing(state) ? in_force_distribution(life, time) : [state => one(T)]
-    contract = (
-        benefit=death_payment(life),
-        premium=StatePayment((t, s) -> active(life, s) ? -premium : zero(premium)),
-    )
-    valued = policy_values(contract, life, basis.int; grid=time:horizon, terminal=0, roots=first.(initial), numbertype=T)
-    values = phase === :before ? valued.before : valued.after
-    return sum(q * sum(values[s]) for (s, q) in initial)
-end
-
 function policy_value_column(policy, times; basis=nothing, state=nothing, phase=:before)
     basis = policy_basis(policy, basis)
     for t in times
-        t isa Integer || throw(ArgumentError("reserves require integer anniversaries; got $t"))
+        t isa Integer || throw(ArgumentError("policy values require integer anniversaries; got $t"))
         check_valuation(t, phase, basis.life, state)
     end
-    # Validate keywords even for an empty column.
     check_valuation(0, phase, basis.life, state)
     T = promote_type(value_type(basis.life, basis.int), typeof(policy.premium))
-    result = zeros(T, length(times))
-    isempty(times) && return result
+    isempty(times) && return T[]
     benefit_product, premium_product = rebase(policy.benefit, basis), rebase(policy.premiums, basis)
-    b = prepare_product(benefit_product, benefit(benefit_product), :benefit)
-    p = prepare_product(premium_product, -policy.premium * benefit(premium_product), :premium)
-    for prepared in (b, p), c in prepared.certain
-        certain_tails!(result, c, basis.int, times, prepared.due && phase === :before)
-    end
+    b = prepare_product(benefit_product, benefit(benefit_product))
+    p = prepare_product(premium_product, -policy.premium * benefit(premium_product))
     bdates, pdates = outstanding_dates(benefit_product), outstanding_dates(premium_product)
-    live_queries = findall(i -> outstanding(bdates, b.due, times[i], phase) || outstanding(pdates, p.due, times[i], phase), eachindex(times))
-    isempty(live_queries) && return result
-    horizon = max(last(b.grid), last(p.grid))
-    # Occupancy is needed for default conditioning even if only guarantees remain.
-    occupancy_end = isnothing(state) ? max(horizon, maximum(times[live_queries])) : horizon
-    grid = sort!(unique!([collect(b.grid); collect(p.grid); filter(t -> t <= occupancy_end, times[live_queries])]))
-    weights = nothing
-    # Request history once, rather than repeating issue-to-date projection per reserve.
-    if isnothing(state)
-        occupancy_grid = filter(t -> t <= maximum(times[live_queries]), grid)
-        if length(live_queries) == 1
-            final = project((;), basis.life; grid=occupancy_grid, initial=initial_distribution(basis.life), numbertype=T).final
-            weights = Dict(length(occupancy_grid) => final)
-        else
-            weights = project((;), basis.life; grid=occupancy_grid, initial=initial_distribution(basis.life), history=true, numbertype=T).history
-        end
-    end
-    distributions = Dict{Int,Vector{Pair{eltype(Experimental.states(basis.life)),T}}}()
-    for i in live_queries
-        t = times[i]
-        if isnothing(state)
-            k = searchsortedfirst(grid, t)
-            distributions[i] = condition(weights[k], s -> active(basis.life, s))
-        else
-            distributions[i] = [state => one(T)]
-        end
-    end
-    # Past contingent dates, only directly discounted guarantees remain.
-    first_query = minimum(times[live_queries])
-    grid = filter(t -> first_query <= t <= horizon, grid)
-    index = Experimental.state_index(basis.life, eltype(Experimental.states(basis.life)))
-    seeds = Dict{Int,Vector{Int}}()
-    for i in live_queries
-        times[i] > horizon && continue
-        k = searchsortedfirst(grid, times[i])
-        append!(get!(seeds, k, Int[]), [Experimental.position!(index, s) for (s, q) in distributions[i] if !iszero(q)])
-    end
-    isempty(seeds) && return result
-    contract = merge(b.contingent, p.contingent)
-    frontiers = seeded_frontiers(basis.life, grid, seeds, index, T)
-    terminal = Experimental.terminal_functions(contract, 0)
-    history = length(live_queries) > 1
-    roots = history ? Int[] : collect(frontiers[1])
-    valued = Experimental.value_frontiers(contract, basis.life, basis.int, grid, terminal, roots, index, frontiers, T, history)
-    for i in live_queries
-        times[i] > horizon && continue
-        t = times[i]
-        k = searchsortedfirst(grid, t)
-        result[i] += sum(distributions[i]) do (s, q)
-            iszero(q) && return zero(T)
-            v = sum(history ? valued.history[k][s].before : valued.before[s])
-            (b.due && phase === :before) || (v -= payment_now(b.contingent, t, s))
-            (p.due && phase === :before) || (v -= payment_now(p.contingent, t, s))
-            return q * v
-        end
-    end
-    return result
+    return fixed_policy_values(b, p, bdates, pdates, basis.life, basis.int, times,
+        state, phase, Experimental.states(basis.life), T)
 end
+
+include("policy_values.jl")
 
 """
     policy_value(policy::PricedPolicy, time_or_times; basis=nothing, state=nothing, phase=:before)
@@ -265,8 +157,9 @@ values respectively. Settled contracts have zero value; impossible conditioning 
 termination raises `DomainError`. Expenses are not modeled by these unit products.
 """
 policy_value(p::PricedPolicy, t::Integer; kwargs...) =
-    classic_whole_life(p) ? whole_life_value(p, t; kwargs...) : only(policy_value_column(p, [t]; kwargs...))
-policy_value(p::PricedPolicy, times::AbstractVector; kwargs...) = policy_value_column(p, collect(times); kwargs...)
+    only(policy_value_column(p, (t,); kwargs...))
+policy_value(p::PricedPolicy, times::AbstractVector; kwargs...) =
+    policy_value_column(p, Base.has_offset_axes(times) ? collect(times) : times; kwargs...)
 policy_value(p::PricedPolicy, t::Real; kwargs...) = throw(ArgumentError("policy values require integer anniversaries; got $t"))
 
 # Textbook NPR: establish the equivalence premium on the very basis being valued.

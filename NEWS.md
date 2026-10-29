@@ -1,7 +1,7 @@
 # LifeContingencies v3.0.0
 
-A breaking release. Lives and products are now valued by one linear-time engine. Several
-long-standing defects are fixed. Contracts that the mortality assumption can't cover now
+A breaking release. Lives and products share finite-state transition and payment
+interfaces, with linear-time valuation passes. Several long-standing defects are fixed. Contracts that the mortality assumption can't cover now
 raise errors instead of being truncated silently.
 
 ## Requirements
@@ -113,6 +113,10 @@ raise errors instead of being truncated silently.
 
 ## Fixed
 
+- **Policy-value column overhead.** Fixed two/four-state buffers and cached transition rows
+  replace dictionary distributions and untyped value histories. Scalar and column calls
+  share one kernel; the annual whole-life scalar special case is removed. The benchmark
+  matrix records warm times and allocations without imposing wall-clock CI thresholds.
 - **Payment-date rounding.** Annuity valuation times within four floating-point ulps of an
   installment date snap to the grid, so expressions such as `0.1*3` do not drop a payment.
 - **Input diagnostics.** Invalid age origins and zero premium denominators fail clearly;

@@ -436,12 +436,6 @@ function value_states(contract, model, curve, grid, terminal_values, roots, inde
     n = length(grid)
     frontiers = needs_occupancy(contract) ? reachable_frontiers(model, grid, index, root_positions, T) :
                 Frontiers(root_positions, fill(1:length(root_positions), n))
-    return value_frontiers(contract, model, curve, grid, terminal_values, root_positions, index, frontiers, T, history)
-end
-
-# Shared backward kernel; product adapters may seed observed states at later dates.
-function value_frontiers(contract, model, curve, grid, terminal_values, root_positions, index, frontiers, ::Type{T}, history) where {T}
-    n = length(grid)
     V_next = map(_ -> zeros(T, length(index.states)), contract)
     V_current = map(_ -> zeros(T, length(index.states)), contract)
     records = history ? Vector{Any}(undef, n) : nothing

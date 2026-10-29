@@ -147,3 +147,62 @@ end
     @test occursin("FirstToDie()", sprint(showerror, err))
     @test occursin("LastSurvivor()", sprint(showerror, err))
 end
+
+@testset "typed policy columns preserve reachable and observed states" begin
+    # Later observations must be seeded even after certain prior extinction.
+    life = SingleLife(UltimateMortality([1.0, 1.0, 0.3, 1.0]; start_age=60))
+    lc = LifeContingency(life, 0.04)
+    p = PricedPolicy(Insurance(lc), AnnuityDue(lc))
+    times = [2, 0, 2, 1, 4]
+    @test policy_value(p, times; state=:alive) ≈ [policy_value(p, t; state=:alive) for t in times]
+    # A guarantee past contingent support must not request additional living rows.
+    short = LifeContingency(SingleLife(UltimateMortality([0.1, 0.2]; start_age=60)), 0.04)
+    certain = PricedPolicy(AnnuityDue(short, 5; certain=5), AnnuityDue(short, 1))
+    @test policy_value(certain, [2, 3, 4]; state=:alive) ≈ [present_value(certain.benefit, t; state=:alive) for t in 2:4]
+    for contingency in (FirstToDie(), LastSurvivor()), numeric in (Float64, BigFloat)
+        one = SingleLife(UltimateMortality(numeric.([0.1,0.2,0.3,1.0]); start_age=60))
+        two = SingleLife(UltimateMortality(numeric.([0.2,0.3,0.4,1.0]); start_age=63))
+        basis = LifeContingency(JointLife(one, two; contingency), numeric(0.04))
+        benefit = AnnuityDue(basis, 3; frequency=12, certain=2)
+        policy = PricedPolicy(benefit, AnnuityDue(basis, 2; frequency=12))
+        for state in (nothing, (:alive,:alive), (:alive,:dead), (:dead,:alive), (:dead,:dead)), phase in (:before,:after)
+            column = policy_value(policy, 0:4; state, phase)
+            @test column isa Vector{numeric}
+            @test column ≈ [policy_value(policy, t; state, phase) for t in 0:4]
+            if !isnothing(state)
+                oracle = [present_value(benefit, t; state, phase) - policy.premium * present_value(policy.premiums, t; state, phase) for t in 0:4]
+                @test column ≈ oracle
+            end
+        end
+    end
+    bad = LifeContingency(SingleLife(UltimateMortality([-0.1,1.0])), 0.04)
+    invalid = PricedPolicy(Insurance(bad), AnnuityDue(bad); premium=0)
+    @test_throws ArgumentError policy_value(invalid, 0)
+    @test_throws ArgumentError policy_value(invalid, 0:1)
+end
+
+@testset "column inference and allocation regression" begin
+    life = SingleLife(UltimateMortality([fill(0.01,75);1.0]; start_age=45))
+    lc = LifeContingency(life, 0.04)
+    policy = PricedPolicy(Insurance(lc), AnnuityDue(lc))
+    @test (@inferred policy_value(policy, 0:75)) isa Vector{Float64}
+    @test (@inferred policy_value(policy, 10)) isa Float64
+    @test policy_value(policy, [10]) == [policy_value(policy, 10)]
+    offset_times = UltimateMortality([2, 0, 1]; start_age=10)
+    @test policy_value(policy, offset_times) == policy_value(policy, [2, 0, 1])
+    # Deliberately loose, portable budget: catches reintroduced per-date dictionaries
+    # without depending on exact allocator bytes or wall-clock CI timing.
+    policy_value(policy, 0:75)
+    allocated_column(p) = @allocated policy_value(p, 0:75)
+    allocated_column(policy)
+    @test allocated_column(policy) < 512 * 76 + 8192
+end
+
+@testset "rolling buffers retain the chosen numeric type" begin
+    life = SingleLife(UltimateMortality(Float32[0.1,0.2,1.0]))
+    lc = LifeContingency(life, Float32(0.04))
+    policy = PricedPolicy(Insurance(lc), AnnuityDue(lc); premium=Float32(0.2))
+    column = policy_value(policy, 0:3)
+    @test column isa Vector{Float32}
+    @test column ≈ [policy_value(policy, t) for t in 0:3]
+end

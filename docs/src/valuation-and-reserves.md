@@ -186,7 +186,8 @@ revalued = policy_value(term_policy, 0:2; basis=new_basis)
 ```
 
 A column call uses the established premium with one forward occupancy pass and one
-backward valuation pass. It returns a numeric vector aligned with the supplied integer anniversaries, including
+backward valuation pass. Single and joint lives use typed fixed-state buffers and cached
+transition rows; scalar and column calls share the same calculation. It returns a numeric vector aligned with the supplied integer anniversaries, including
 unsorted or repeated requests. Use `state` for a fixed known status across the requested
 column. Fractional policy values require additional settlement information and are rejected.
 
