@@ -27,7 +27,7 @@ is ``v(s,t)=v(t)/v(s)``. Then
 \operatorname{Tail}_s = \sum_{t>s}v(s,t)\bar c_t.
 ```
 
-The latter is the strict-future value, `present_value(ins, s; phase=:after)`. Its expected cash flows remain unconditional on any
+The latter is `present_value(ins, s)`. Its expected cash flows remain unconditional on any
 new information at `s`.
 
 ```@example values
