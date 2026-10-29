@@ -8,7 +8,7 @@ MortalityTables = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [sources]
-LifeContingencies = {path = "/Users/alecloudenback/.julia/dev/LifeContingencies-v3-api"}
+LifeContingencies = {path = ".."}
 
 [compat]
 Documenter = "1"
