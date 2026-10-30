@@ -72,11 +72,15 @@
             jl = JointLife(lives=(l1, l2), contingency=LastSurvivor(), joint_assumption=Frasier())
 
             @testset "independent lives" begin
+                first_to_die = JointLife(lives=(l1, l2), contingency=FirstToDie())
                 for time = 1:40
                     tpx = survival(l1, time)
                     tpy = survival(l2, time)
 
-                    @test survival(jl, time) == tpx + tpy - tpx * tpy
+                    @test survival(jl, time) ≈ tpx + tpy - tpx * tpy
+                    @test survival(first_to_die, time) ≈ tpx * tpy
+                    # inclusion–exclusion
+                    @test survival(first_to_die, time) + survival(jl, time) ≈ tpx + tpy
                 end
             end
 

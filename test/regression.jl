@@ -56,20 +56,29 @@ end
     @testset "life status" begin
         dead = ultimate_life([0.5, 0.5, 1.0]; alive=false)
         survivor = ultimate_life([0.1, 0.1, 1.0])
-        @test_broken survival(JointLife(lives=(dead, survivor)), 1) ≈ survival(survivor, 1)
-        @test_broken present_value(AnnuityDue(dead, 0.0)) ≈ 0.0
+        @test survival(JointLife(lives=(dead, survivor)), 1) ≈ survival(survivor, 1)
+        @test present_value(AnnuityDue(dead, 0.0)) ≈ 0.0
+        @test survival(dead, 0) == 0
+        @test survival(LifeContingency(dead, 0.05), 1) == 0
+        # two-time survival is the mortality assumption's, for a life alive at the start
+        @test survival(dead, 1, 2) == survival(ultimate_life([0.5, 0.5, 1.0]), 1, 2)
+        @test survival(JointLife(lives=(dead, dead)), 0) == 0
+        # conditioning on a contingency that cannot be active is undefined
+        @test_throws DomainError survival(JointLife(lives=(dead, dead)), 0, 1)
     end
 
     @testset "joint lives" begin
         short = ultimate_life([0.1, 1.0])
         # only independence is implemented; other assumptions must not silently use it
-        @test_broken threw(() -> survival(JointLife(lives=(short, short), joint_assumption=RegressionDependence()), 1))
+        @test_throws ArgumentError survival(JointLife(lives=(short, short), joint_assumption=RegressionDependence()), 1)
         # joint survival infers a concrete type
         j = JointLife(lives=(short, ultimate_life([0.2, 1.0])))
-        @test_broken isconcretetype(only(Base.return_types(survival, Tuple{typeof(j),Int})))
+        @test isconcretetype(only(Base.return_types(survival, Tuple{typeof(j),Int})))
         # the last-survivor status lasts as long as the longer life
         unequal = JointLife(lives=(ultimate_life([1.0]), ultimate_life([0.0, 0.0, 1.0])))
-        @test_broken present_value(Insurance(unequal, 0.0)) ≈ 1.0
+        @test present_value(Insurance(unequal, 0.0)) ≈ 1.0
+        @test omega(unequal) == 3
+        @test omega(JointLife(lives=unequal.lives, contingency=FirstToDie())) == 1
         # death cash flows stay finite after both lives are extinct
         both_extinct = JointLife(lives=(ultimate_life([1.0, 0.5, 1.0]), ultimate_life([1.0, 0.5, 1.0])))
         @test_broken collect(cashflows(Insurance(both_extinct, 0.0))) ≈ [1.0, 0.0, 0.0]
@@ -101,9 +110,15 @@ end
 
     @testset "parametric mortality" begin
         m = MortalityTables.Gompertz(a=0.0002, b=0.13)
-        @test_broken SingleLife(mortality=m, issue_age=40) isa SingleLife
+        @test SingleLife(mortality=m, issue_age=40) isa SingleLife
+        @test SingleLife(m, issue_age=40).mortality === m
         life = SingleLife(m, 40, true, UniformDeaths())
-        @test_broken omega(LifeContingency(life, 0.05)) == Inf
+        @test omega(LifeContingency(life, 0.05)) == Inf
+        # a law that ends at age 100.5 covers 60.5 years from age 40
+        bounded = SingleLife(MortalityTables.Wittstein(m=100.5), issue_age=40)
+        @test omega(bounded) == 60.5
+        @test survival(bounded, omega(bounded)) == survival(bounded.mortality, 40, 100.5)
+        @test_throws DomainError survival(bounded, omega(bounded) + 0.5)
         term_reference = sum(1.05^-t * (survival(m, 40, 40 + t - 1) - survival(m, 40, 40 + t)) for t in 1:10)
         @test_broken present_value(Insurance(life, 0.05, 10)) ≈ term_reference
     end

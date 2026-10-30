@@ -145,13 +145,13 @@ end
     @test FinanceCore.present_value(AnnuityDue(ins; start_time=1)) ≈ 2
     @test FinanceCore.present_value(AnnuityDue(ins, 1)) ≈ 1
     @test FinanceCore.present_value(AnnuityDue(ins, 2)) ≈ 2
-    @test_throws BoundsError FinanceCore.present_value(AnnuityDue(ins, 2; start_time=2))
+    @test_throws DomainError FinanceCore.present_value(AnnuityDue(ins, 2; start_time=2))
     @test FinanceCore.present_value(AnnuityDue(ins, 3)) ≈ 3
     @test FinanceCore.present_value(AnnuityDue(ins, 0)) == 0
     @test FinanceCore.present_value(AnnuityImmediate(ins, 0)) == 0
     @test FinanceCore.present_value(AnnuityImmediate(ins, 1)) ≈ 1
     @test FinanceCore.present_value(AnnuityImmediate(ins, 1; start_time=1)) ≈ 1
-    @test_throws BoundsError FinanceCore.present_value(AnnuityImmediate(ins; start_time=2))
+    @test_throws DomainError FinanceCore.present_value(AnnuityImmediate(ins; start_time=2))
     @test FinanceCore.present_value(AnnuityImmediate(ins, 2)) ≈ 2
     @test FinanceCore.present_value(AnnuityImmediate(ins)) ≈ 2
     @test FinanceCore.present_value(AnnuityImmediate(ins; certain=0)) ≈ 2
