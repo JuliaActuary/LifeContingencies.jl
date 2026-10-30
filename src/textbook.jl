@@ -66,8 +66,8 @@ N(lc::LifeContingency, from_time) = sum(t -> D(lc, t), from_time:last_table_year
     M(lc::LifeContingency, from_time)
 
 Sum `C(lc, t)` for `t` in `from_time:(floor(Int, omega(lc)) - 1)`. Durations are in years
-from issue and the radix is one. Infinite support raises a `DomainError`; a fractional
-terminal age leaves its final partial year outside the sum. Import `M` explicitly.
+from issue and the radix is one. Infinite support raises a `DomainError`; incomplete or uncovered fractional
+terminal support raises a `DomainError`. Import `M` explicitly.
 """
 M(lc::LifeContingency, from_time) = sum(t -> C(lc, t), from_time:last_table_year(lc); init=zero(APV(lc, 0)))
 
@@ -170,8 +170,12 @@ with the curve's own factors `discount(interest, time, t)`.
 For example, if the given `Insurance` has *decremented* payments `[1,2,3,4,5]` at times `[1,2,3,4,5]` and you call `pv(ins,3)`,
 you will get the present value of the payments `[4,5]` at times `[4,5]`, discounted to time 3.
 
-At `phase=:before`, end-period benefits have settled but annuity-due installments remain.
-`phase=:after` also settles due installments. Pass `state` for a known current status;
+At `phase=:before`, end-period benefits (including immediate-annuity installments) have
+settled but beginning-period annuity-due installments remain. `phase=:after` also settles
+due installments. For a net stream with only an annual premium due, these correspond to
+the terminal reserve and initial reserve respectively; they differ from the engine
+phases, which apply before/after every state payment. Annuity valuation times within
+four floating-point ulps of a scheduled installment are snapped to its date in both phases. Pass `state` for a known current status;
 otherwise the value retains the issue distribution. Dividing by the survivorship
 gives one only when every remaining payment depends on being in force at `time`, as for a
 life annuity outside its guarantee period, or a death benefit valued at the end of a policy
@@ -195,6 +199,7 @@ julia> present_value(ins, 1) / survival(ins, 1)  # for a life in force at time 1
 """
 function FinanceCore.present_value(ins::Insurance, time::Real; state=nothing, phase=:before)
     check_valuation(time, phase, ins.life, state)
+    time = valuation_time(ins, time)
     isnothing(state) || return conditional_product_value(ins, time, state, phase)
     cfs = cashflows(ins)
     include_now = is_due(ins) && phase === :before
@@ -224,36 +229,7 @@ function equivalence_premium(benefits, premiums)
     return benefits / premiums
 end
 
-"""
-     reserve_premium_net(lc::LifeContingency, time; state=nothing)
-
-The net premium reserve at the end of year `time` for whole life insurance with annual net
-premiums: the value at `time` of future death benefits less future net premiums. The death
-benefits of the year ending at `time` have been paid; the premium due at `time` has not. The
-premium is the one set at issue, `premium_net(lc)`.
-
-By default the reserve is for a contract still in force at `time`, given each life's status at
-issue; for a `JointLife` that conditions on the joint contingency alone, not on which lives
-are alive. Pass `state` to value it from a known state instead: `:alive` for a `SingleLife`,
-or a pair of statuses such as `(:alive, :dead)` for a `JointLife`. Throws a `DomainError` when
-the contract cannot be in force at `time`.
-"""
-function reserve_premium_net(lc::LifeContingency, time::Integer; state=nothing)
-    life = lc.life
-    time >= 0 || throw(ArgumentError("`time` must be nonnegative; got $time"))
-    isnothing(state) || state in Experimental.states(life) ||
-        throw(ArgumentError("`state` must be one of $(Experimental.states(life)); got $state"))
-    premium = premium_net(lc)
-    contract = (
-        benefit=death_payment(life),
-        premium=StatePayment((t, s) -> active(life, s) ? -premium : zero(premium)),
-    )
-    initial = isnothing(state) ? in_force_distribution(life, time) : [state => one(probability_type(life))]
-    T = promote_type(value_type(life, lc.int), typeof(premium))
-    grid = time:benefit_years(Insurance(lc))
-    values = policy_values(contract, life, lc.int; grid, terminal=0, roots=first.(initial), numbertype=T)
-    return sum(p * sum(values.before[s]) for (s, p) in initial)
-end
+function reserve_premium_net end
 
 # The distribution of states at `time` among contracts still in force, given each life's status at issue.
 function in_force_distribution(life, time)

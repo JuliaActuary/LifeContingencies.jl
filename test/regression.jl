@@ -260,7 +260,7 @@ FinanceCore.discount(::MissingIntervalCurve, t) = exp(-0.1t^2)
 @testset "3.0 API safeguards" begin
     life = SingleLife(UltimateMortality([0.1, 0.2, 1.0]; start_age=60))
     lc = LifeContingency(life, 0.05)
-    @test_throws UndefKeywordError JointLife(lives=(life, life))
+    @test_throws ArgumentError JointLife(lives=(life, life))
     @test JointLife(life, life; contingency=FirstToDie()).contingency isa FirstToDie
     @test Independent === Frasier
     @test_throws ArgumentError SingleLife(life.mortality; issue_age=59)

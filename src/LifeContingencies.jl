@@ -11,7 +11,7 @@ using .Experimental: StatePayment, TransitionPayment, CertainPayment, project, p
 include("lives.jl")
 
 export LifeContingency,
-    Insurance, Endowment, AnnuityDue, AnnuityImmediate,
+    Insurance, Endowment, PricedPolicy, policy_value, AnnuityDue, AnnuityImmediate,
     APV,
     SingleLife, Independent, Frasier, JointLife,
     LastSurvivor, FirstToDie,
@@ -33,8 +33,7 @@ export LifeContingency,
 Pair a [`SingleLife`](@ref) or [`JointLife`](@ref) with an interest assumption. A numeric
 `interest` is an annual effective rate. A custom yield curve must supply correct values for
 FinanceCore's `discount(curve, t)` and `discount(curve, from, to)` methods. For a non-flat
-curve, override the generic shifted-time interval method with the ratio of issue-date
-factors. Products inherit the original life selection and curve origin from this pair.
+curve, implement interval discounting with the ratio of issue-date factors. Products inherit the original life selection and curve origin from this pair.
 Reuse it across products: `Insurance(lc, 2)` and `AnnuityDue(lc, 2)` share the assumptions
 but choose different payment rules. Equivalently, pass `(life, interest, ...)` directly to
 each product constructor.
@@ -103,5 +102,6 @@ FinanceCore.discount(lc::LifeContingency, t1, t2) = discount(lc.int, t1, t2)
 
 include("products.jl")
 include("textbook.jl")
+include("policies.jl")
 
 end # module

@@ -248,6 +248,20 @@ A unit benefit on death during the positive whole-year `term`, payable at year e
 or on survival to maturity. For joint lives, death means the contingency ending.
 Maturity is explicit: incomplete mortality can support an endowment through its last
 covered year without imposing a terminal death rate.
+
+# Examples
+
+```jldoctest
+julia> lc = LifeContingency(SingleLife(UltimateMortality([0.1, 0.2]; start_age=60)), 0.0);
+
+julia> e = Endowment(lc, 2);
+
+julia> round(present_value(e); digits=6)  # death during cover or survival to maturity
+1.0
+
+julia> present_value(e, 2; state=:alive)  # maturity benefit has settled
+0.0
+```
 """
 struct Endowment{L,Y} <: Insurance
     life::L
@@ -301,4 +315,21 @@ function conditional_product_value(ins, time, state, phase)
     v = sum(present_values(contract, ins.life, ins.int; grid=future_grid, initial=[state => one(T)], numbertype=T))
     (is_due(ins) && phase === :before) || (v -= payment_now(contract, time, state))
     return benefit(ins) * v
+end
+
+# Treat a valuation date within four representable steps of an installment as that
+# installment date. The half-period cap prevents snapping across distinct payments.
+valuation_time(::Insurance, time) = time
+function valuation_time(ins::Annuity, time)
+    dates = timepoints(ins)
+    isempty(dates) && return time
+    i = searchsortedfirst(dates, time)
+    for k in (i-1, i)
+        checkbounds(Bool, dates, k) || continue
+        date = dates[k]
+        distance = abs(time - date)
+        tolerance = 4max(eps(float(time)), eps(float(date)))
+        distance <= tolerance && distance < 0.5 / ins.frequency && return date
+    end
+    return time
 end
