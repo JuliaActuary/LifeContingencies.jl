@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>LTC worked example · LifeContingencies.jl</title><meta name="title" content="LTC worked example · LifeContingencies.jl"/><meta property="og:title" content="LTC worked example · LifeContingencies.jl"/><meta property="twitter:title" content="LTC worked example · LifeContingencies.jl"/><meta name="description" content="Documentation for LifeContingencies.jl."/><meta property="og:description" content="Documentation for LifeContingencies.jl."/><meta property="twitter:description" content="Documentation for LifeContingencies.jl."/><meta property="og:url" content="https://docs.juliaactuary.org/LifeContingencies/stable/ltc/"/><meta property="twitter:url" content="https://docs.juliaactuary.org/LifeContingencies/stable/ltc/"/><link rel="canonical" href="https://docs.juliaactuary.org/LifeContingencies/stable/ltc/"/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.svg" alt="LifeContingencies.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">LifeContingencies.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../getting-started/">Getting started</a></li><li><span class="tocitem">User guide</span><ul><li><a class="tocitem" href="../mortality-and-lives/">Mortality and lives</a></li><li><a class="tocitem" href="../insurance-and-annuities/">Insurance and annuities</a></li><li><a class="tocitem" href="../valuation-and-reserves/">Valuation and reserves</a></li><li><a class="tocitem" href="../joint-lives/">Joint lives</a></li><li><a class="tocitem" href="../curves-and-scenarios/">Curves and scenarios</a></li><li><a class="tocitem" href="../actuarial-notation/">Actuarial notation</a></li></ul></li><li><span class="tocitem">Multi-state models</span><ul><li><a class="tocitem" href="../multi-state-models/">Building multi-state models</a></li><li class="is-active"><a class="tocitem" href>LTC worked example</a><ul class="internal"><li><a class="tocitem" href="#Product-specification"><span>Product specification</span></a></li><li><a class="tocitem" href="#State-and-transition-assumptions"><span>State and transition assumptions</span></a></li><li><a class="tocitem" href="#Price-a-monthly-premium"><span>Price a monthly premium</span></a></li><li><a class="tocitem" href="#Active-life-and-claim-policy-values"><span>Active-life and claim policy values</span></a></li><li><a class="tocitem" href="#Project-component-cash-flows"><span>Project component cash flows</span></a></li><li><a class="tocitem" href="#Follow-a-second-claim"><span>Follow a second claim</span></a></li><li><a class="tocitem" href="#Validation-and-full-source"><span>Validation and full source</span></a></li></ul></li></ul></li><li><span class="tocitem">Reference and upgrading</span><ul><li><a class="tocitem" href="../api/">Stable API</a></li><li><a class="tocitem" href="../experimental-api/">Experimental API</a></li><li><a class="tocitem" href="../migration/">Migrating to 3.0</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Multi-state models</a></li><li class="is-active"><a href>LTC worked example</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>LTC worked example</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaActuary/LifeContingencies.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaActuary/LifeContingencies.jl/blob/master/docs/src/ltc.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="LTC-worked-example"><a class="docs-heading-anchor" href="#LTC-worked-example">LTC worked example</a><a id="LTC-worked-example-1"></a><a class="docs-heading-anchor-permalink" href="#LTC-worked-example" title="Permalink"></a></h1><p>This academic long-term care model builds on <a href="../multi-state-models/">Building multi-state models</a>. It adds claim-duration effects, recovery and a second claim, an elimination period (EP), premium waiver, and a benefit counter retained across claims.</p><p>The rates are illustrative, not experience-study estimates. The model is an example in <code>examples/ltc_model.jl</code>, rather than an exported LTC product. Its conventions below are part of the example&#39;s specification.</p><h2 id="Product-specification"><a class="docs-heading-anchor" href="#Product-specification">Product specification</a><a id="Product-specification-1"></a><a class="docs-heading-anchor-permalink" href="#Product-specification" title="Permalink"></a></h2><table><tr><th style="text-align: right">Item</th><th style="text-align: right">Convention</th></tr><tr><td style="text-align: right">Time step</td><td style="text-align: right">One month, represented as <code>1/12</code> year</td></tr><tr><td style="text-align: right">Premium</td><td style="text-align: right">At the start of each month while healthy; waived on claim</td></tr><tr><td style="text-align: right">Care</td><td style="text-align: right">One monthly unit when qualified and benefits remain</td></tr><tr><td style="text-align: right">Elimination period</td><td style="text-align: right">Three completed claim months by default; once satisfied, qualified for life</td></tr><tr><td style="text-align: right">Benefit maximum</td><td style="text-align: right">24 full continuing-claim payment months across all claims</td></tr><tr><td style="text-align: right">Recovery or death during a payable month</td><td style="text-align: right">Half a monthly unit on the exit edge; that half-month does not consume the counter</td></tr><tr><td style="text-align: right">Death benefit</td><td style="text-align: right">On the death transition, at month end</td></tr><tr><td style="text-align: right">Term</td><td style="text-align: right">No premium, care or death payments beyond the policy term</td></tr></table><p>The EP must be completed within one claim. An unqualified recovery resets claim duration; a qualified recovery retains qualification. The treatment of half-month exit payments is an approximation, so this counter is not an exact cap on total reimbursed care or money. The model has no inflation protection, care-setting differences or restoration of benefits.</p><h2 id="State-and-transition-assumptions"><a class="docs-heading-anchor" href="#State-and-transition-assumptions">State and transition assumptions</a><a id="State-and-transition-assumptions-1"></a><a class="docs-heading-anchor-permalink" href="#State-and-transition-assumptions" title="Permalink"></a></h2><p>Each <code>LTCState</code> contains:</p><table><tr><th style="text-align: right">Field</th><th style="text-align: right">Meaning</th></tr><tr><td style="text-align: right"><code>status</code></td><td style="text-align: right"><code>:healthy</code>, <code>:claim</code>, <code>:dead</code> or <code>:lapsed</code></td></tr><tr><td style="text-align: right"><code>claim_months</code></td><td style="text-align: right">Completed months in the current claim (capped; see below)</td></tr><tr><td style="text-align: right"><code>qualified</code></td><td style="text-align: right">Whether the lifetime EP has already been satisfied</td></tr><tr><td style="text-align: right"><code>benefit_months</code></td><td style="text-align: right">Full continuing-claim benefit months used across episodes</td></tr></table><p>Dead and lapsed are absorbing and discard the remaining memory. Claim duration is counted up to <code>max(6, elimination_months)</code>: the six-month rate band must not prevent a longer EP from qualifying. With EP zero, qualification starts on claim onset.</p><p>Default <strong>annual forces</strong>, rather than annual exit probabilities, are listed below. Here <code>k</code> is completed policy years at the start of the month: <code>k=0</code> during the first policy year, <code>k=1</code> during the second, and so on.</p><table><tr><th style="text-align: right">Origin</th><th style="text-align: right">Destination</th><th style="text-align: right">Force</th></tr><tr><td style="text-align: right">Healthy</td><td style="text-align: right">Claim</td><td style="text-align: right">0.02 at issue, multiplied by <code>exp(0.10*k)</code> after <code>k</code> completed years</td></tr><tr><td style="text-align: right">Healthy</td><td style="text-align: right">Dead</td><td style="text-align: right">0.03 at issue, multiplied by <code>exp(0.09*k)</code></td></tr><tr><td style="text-align: right">Healthy</td><td style="text-align: right">Lapsed</td><td style="text-align: right">0.03</td></tr><tr><td style="text-align: right">Claim, first six months</td><td style="text-align: right">Healthy / Dead</td><td style="text-align: right">0.60 / 0.25</td></tr><tr><td style="text-align: right">Claim, later months</td><td style="text-align: right">Healthy / Dead</td><td style="text-align: right">0.20 / 0.15</td></tr></table><p>For total exit force <span>$\mu=\sum_j\mu_j$</span> over a month, staying has probability <span>$e^{-\mu/12}$</span>, and exit <span>$j$</span> has probability <span>$\frac{\mu_j}{\mu}(1-e^{-\mu/12})$</span>. Healthy forces change at policy anniversaries. Only one exit is represented per step; recovery and re-entry take separate monthly steps. The engine itself does not infer a conversion from annual decrement rates.</p><h2 id="Price-a-monthly-premium"><a class="docs-heading-anchor" href="#Price-a-monthly-premium">Price a monthly premium</a><a id="Price-a-monthly-premium-1"></a><a class="docs-heading-anchor-permalink" href="#Price-a-monthly-premium" title="Permalink"></a></h2><p>One valuation with a unit monthly premium gives the benefit and premium component values. Equivalence then sets the premium. This is a finite ten-year policy, so zero terminal value is justified by maturity.</p><pre><code class="language-julia hljs">using LifeContingencies
+include(joinpath(pkgdir(LifeContingencies), &quot;examples&quot;, &quot;ltc_model.jl&quot;))
+
+model = LTCModel()
+grid = months(10)
+unit_contract = ltc_contract(model; term=10, premium=1.0)
+unit_values = policy_values(unit_contract, model, 0.04; grid, terminal=0, roots=[HEALTHY])
+v = unit_values.before[HEALTHY]
+premium = (v.care + v.death) / -v.premium
+premium</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.030097661908736834</code></pre><p>That is a monthly premium per unit of monthly care benefit <strong>and</strong> unit death benefit. Scaling both benefits to 3,000 gives a premium of about 90 per month:</p><pre><code class="language-julia hljs">(monthly_care_benefit = 3_000, death_benefit = 3_000, monthly_premium = round(3_000 * premium; digits=2))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(monthly_care_benefit = 3000, death_benefit = 3000, monthly_premium = 90.29)</code></pre><p>If the death benefit is a different amount, scale its component separately before setting the premium by equivalence.</p><h2 id="Active-life-and-claim-policy-values"><a class="docs-heading-anchor" href="#Active-life-and-claim-policy-values">Active-life and claim policy values</a><a id="Active-life-and-claim-policy-values-1"></a><a class="docs-heading-anchor-permalink" href="#Active-life-and-claim-policy-values" title="Permalink"></a></h2><p>These four starts distinguish a new healthy policyholder, a new claim, an ongoing claim with benefits used, and a recovered life with retained qualification and benefit memory:</p><pre><code class="language-julia hljs">contract = ltc_contract(model; term=10, premium)
+starts = [
+    HEALTHY,
+    LTCState(:claim, 0, false, 0),
+    LTCState(:claim, 6, true, 10),
+    LTCState(:healthy, 0, true, 10),
+]
+valued = policy_values(contract, model, 0.04; grid, terminal=0, roots=starts)
+@assert isapprox(sum(valued.before[HEALTHY]), 0.0; atol=1e-10)
+labels = (&quot;Healthy at issue&quot;, &quot;New claim&quot;, &quot;Ongoing claim; 10 months used&quot;, &quot;Recovered; qualified; 10 months used&quot;)
+for (label, state) in zip(labels, starts)
+    println(label, &quot;: &quot;, round(sum(valued.before[state]); digits=4))
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Healthy at issue: 0.0
+New claim: 12.0325
+Ongoing claim; 10 months used: 11.057
+Recovered; qualified; 10 months used: -0.3287</code></pre><p>The healthy value is zero by construction. Other states change both claim eligibility and remaining benefits. These are policy values <strong>before</strong> current state payments, at the same policy date and with the same premium fixed at issue.</p><h2 id="Project-component-cash-flows"><a class="docs-heading-anchor" href="#Project-component-cash-flows">Project component cash flows</a><a id="Project-component-cash-flows-1"></a><a class="docs-heading-anchor-permalink" href="#Project-component-cash-flows" title="Permalink"></a></h2><pre><code class="language-julia hljs">projection = project(contract, model; grid, initial=[HEALTHY =&gt; 1.0])
+pv = present_values(contract, model, 0.04; grid, initial=[HEALTHY =&gt; 1.0])
+@assert all(isapprox(a, b; atol=1e-10) for (a, b) in zip(pv, valued.before[HEALTHY]))
+(expected_care_units = sum(cf.amount for cf in projection.cashflows.care),
+ component_pvs = pv)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(expected_care_units = 2.23843612899034, component_pvs = (premium = -2.0925284729337905, care = 1.8025863741737058, death = 0.28994209876008403))</code></pre><p>Care units include the half-unit exit payments. Occupancy alone would not capture their within-month accrual; it is represented by transition payments, including claim self-loops.</p><h2 id="Follow-a-second-claim"><a class="docs-heading-anchor" href="#Follow-a-second-claim">Follow a second claim</a><a id="Follow-a-second-claim-1"></a><a class="docs-heading-anchor-permalink" href="#Follow-a-second-claim" title="Permalink"></a></h2><p>A qualified claimant with one full benefit month used recovers. The recovery month pays half a unit and does not increment the benefit counter. Healthy months keep qualification and usage. On the next claim the EP is already satisfied:</p><pre><code class="language-julia hljs">first_claim = LTCState(:claim, 4, true, 1)
+recovered = LTCState(:healthy, 0, true, 1)
+second_claim = LTCState(:claim, 0, true, 1)
+next_month = LTCState(:claim, 1, true, 2)
+row_has(from, to, interval) = any(first(edge) == to &amp;&amp; last(edge) &gt; 0
+                                for edge in transitions(model, interval, from))
+@assert row_has(first_claim, recovered, Interval(0.0, 1/12))
+@assert row_has(recovered, second_claim, Interval(1/12, 2/12))
+@assert row_has(second_claim, next_month, Interval(2/12, 3/12))
+(recovery_month = contract.care.f(Interval(0.0, 1/12), first_claim, recovered),
+ new_claim_month = contract.care.f(Interval(1/12, 2/12), recovered, second_claim),
+ continuing_claim_month = contract.care.f(Interval(2/12, 3/12), second_claim, next_month))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(recovery_month = 0.5, new_claim_month = 0.0, continuing_claim_month = 1.0)</code></pre><p>The payments are <code>(0.5, 0.0, 1.0)</code>. Losing either <code>qualified</code> or <code>benefit_months</code> on recovery would change the second claim&#39;s payments.</p><h2 id="Validation-and-full-source"><a class="docs-heading-anchor" href="#Validation-and-full-source">Validation and full source</a><a id="Validation-and-full-source-1"></a><a class="docs-heading-anchor-permalink" href="#Validation-and-full-source" title="Permalink"></a></h2><p><code>test/ltc.jl</code> checks reduction to SingleLife when incidence and lapse are zero, exhaustive short-horizon path enumeration, a hand-checked second claim, and 20,000 Monte Carlo paths within four standard errors. It also checks EP zero and EP longer than the rate band, plus payments stopping at the term even when the projection grid runs further.</p><p>The example uses the same transition rows for all these checks. Its full source is included below so the rates, memory updates and payment conventions can be inspected together.</p><pre><code class="language-julia hljs"># An academic long-term care model for `LifeContingencies.Experimental`.
+#
+# Monthly steps. A policyholder is healthy, on claim, dead or lapsed, and each state also
+# carries the contract&#39;s memory: how long the current claim has lasted, whether the
+# elimination period has been satisfied, and how many benefit months have been paid.
+# The rates are illustrative, not from any experience study. docs/src/ltc.md gives the
+# specification and its simplifications.
+
+using LifeContingencies.Experimental
+
+struct LTCState
+    status::Symbol         # :healthy, :claim, :dead or :lapsed
+    claim_months::Int      # whole months in the current claim, counted up to `claim_months_counted`
+    qualified::Bool        # whether the elimination period has been satisfied (once per lifetime)
+    benefit_months::Int    # benefit months paid so far, across all claims
+end
+
+const HEALTHY = LTCState(:healthy, 0, false, 0)
+const DEAD = LTCState(:dead, 0, false, 0)
+const LAPSED = LTCState(:lapsed, 0, false, 0)
+
+# claim termination rates change after this many months on claim
+const RATE_BANDS = 6
+
+Base.@kwdef struct LTCModel
+    issue_age::Int = 75
+    elimination_months::Int = 3
+    maximum_benefit_months::Int = 24
+    # annual forces, by completed years since issue
+    healthy_mortality::Float64 = 0.03     # at issue, growing by `mortality_growth` a year
+    mortality_growth::Float64 = 0.09
+    incidence::Float64 = 0.02             # at issue, growing by `incidence_growth` a year
+    incidence_growth::Float64 = 0.10
+    lapse::Float64 = 0.03
+    # annual forces on claim, for the first `RATE_BANDS` months and after
+    recovery::NTuple{2,Float64} = (0.6, 0.2)
+    claim_mortality::NTuple{2,Float64} = (0.25, 0.15)
+end
+
+const MONTH = 1 / 12
+months(years) = range(0, years, length=12years + 1)
+
+# Probabilities of staying and of each exit over a step of length h, under constant forces.
+function exits(forces, h)
+    total = sum(forces)
+    stay = exp(-total * h)
+    return stay, map(μ -&gt; iszero(total) ? zero(μ) : μ / total * (1 - stay), forces)
+end
+
+care_payable(m::LTCModel, s::LTCState) =
+    s.status === :claim &amp;&amp; s.qualified &amp;&amp; s.benefit_months &lt; m.maximum_benefit_months
+
+# Claim duration matters until both the rate band and the elimination period are settled,
+# so it is counted that far and no further, which keeps the states few.
+claim_months_counted(m::LTCModel) = max(RATE_BANDS, m.elimination_months)
+
+# A claim that has lasted `months` whole months. It qualifies once it has lasted the
+# elimination period, so with no elimination period it qualifies as it starts.
+on_claim(m::LTCModel, months, qualified, benefit_months) =
+    LTCState(:claim, min(months, claim_months_counted(m)), qualified || months &gt;= m.elimination_months, benefit_months)
+
+# Every row has four entries so that all rows have one type.
+function LifeContingencies.Experimental.transitions(m::LTCModel, interval::Interval, s::LTCState)
+    isapprox(interval.stop - interval.start, MONTH) ||
+        throw(ArgumentError(&quot;the LTC model moves in steps of one month; got $interval&quot;))
+    years = round(Int, 12 * interval.start) ÷ 12
+    if s.status === :healthy
+        forces = (m.incidence * exp(m.incidence_growth * years), m.healthy_mortality * exp(m.mortality_growth * years), m.lapse)
+        stay, (incidence, death, lapse) = exits(forces, MONTH)
+        claim = on_claim(m, 0, s.qualified, s.benefit_months)
+        return (s =&gt; stay, claim =&gt; incidence, DEAD =&gt; death, LAPSED =&gt; lapse)
+    elseif s.status === :claim
+        band = s.claim_months &lt; RATE_BANDS ? 1 : 2
+        stay, (recovery, death) = exits((m.recovery[band], m.claim_mortality[band]), MONTH)
+        continuing = on_claim(m, s.claim_months + 1, s.qualified, s.benefit_months + care_payable(m, s))
+        recovered = LTCState(:healthy, 0, s.qualified, s.benefit_months)
+        return (continuing =&gt; stay, recovered =&gt; recovery, DEAD =&gt; death, DEAD =&gt; 0.0)
+    else
+        return (s =&gt; 1.0, s =&gt; 0.0, s =&gt; 0.0, s =&gt; 0.0)
+    end
+end
+
+# A month on claim is paid in full. A month that ends in recovery or death is paid for half,
+# and doesn&#39;t count toward the maximum.
+function care_payment(m::LTCModel, from::LTCState, to::LTCState)
+    care_payable(m, from) || return 0.0
+    to.status === :claim &amp;&amp; return 1.0
+    to.status in (:healthy, :dead) &amp;&amp; return 0.5
+    return 0.0
+end
+
+# A `term`-year policy: a monthly premium at the start of each month while healthy (waived on
+# claim), a monthly care benefit, and a benefit on death. Nothing is paid for a month that
+# ends after the term, however far the projection grid runs.
+function ltc_contract(m::LTCModel; term, premium, care=1.0, death=1.0)
+    return (
+        premium=StatePayment((t, s) -&gt; s.status === :healthy &amp;&amp; t &lt; term ? -premium : 0.0),
+        care=TransitionPayment((interval, from, to) -&gt; interval.stop &lt;= term ? care * care_payment(m, from, to) : 0.0),
+        death=TransitionPayment((interval, from, to) -&gt;
+            interval.stop &lt;= term &amp;&amp; from.status in (:healthy, :claim) &amp;&amp; to.status === :dead ? death : 0.0),
+    )
+end
+</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../multi-state-models/">« Building multi-state models</a><a class="docs-footer-nextpage" href="../api/">Stable API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Friday 30 October 2026 04:39">Friday 30 October 2026</span>. Using Julia version 1.13.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
