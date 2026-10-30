@@ -78,5 +78,45 @@ counts remain 100 and 400 for 100- and 400-period tables.
 
 The public priced-policy API is now `PricedPolicy` / `policy_value`; the timings above
 refer to the same valuation kernels. [Issue #94](https://github.com/JuliaActuary/LifeContingencies.jl/issues/94)
-tracks typed column storage and removal of the scalar special case once its performance
-is matched.
+is addressed by the typed column implementation below.
+
+## Typed policy-value columns (#94)
+
+Same-machine warm comparison with Julia 1.13.1, FinanceCore 3.0.1 and MortalityTables
+3.0.0, against `de823e4`. Run `julia --project=. benchmark/policy_values.jl --profile`.
+The script uses identical workload definitions in each worktree, warms every call, reports
+minimum bulk timings across 20 samples, and reports allocations separately from profiling.
+It prints the package source path to confirm which implementation is being measured.
+
+| Workload | Before | Typed buffers | Before allocation | Typed allocation |
+|---|---:|---:|---:|---:|
+| Whole-life scalar at duration 10 | 5.8 μs | 4.1 μs | 14,816 bytes | 6,944 bytes |
+| Whole-life one-element column at 10 | 28.0 μs | 4.5 μs | 45,712 bytes | 6,976 bytes |
+| Whole-life 76-date column | 226.0 μs | 4.9 μs | 339,872 bytes | 10,992 bytes |
+| 20-pay life 76-date column | 231.8 μs | 4.9 μs | 338,848 bytes | 10,992 bytes |
+| Monthly-premium endowment column | 188.9 μs | 20.9 μs | 594,800 bytes | 33,968 bytes |
+| Guaranteed annuity, observed dead | 73.3 μs | 9.2 μs | 187,424 bytes | 23,104 bytes |
+| Joint monthly-premium column | 302.0 μs | 51.7 μs | 881,920 bytes | 60,048 bytes |
+
+The whole-life column is about 46× faster and allocates about 97% less. The one-element
+column now costs about the same as the scalar, so both use the same kernel; the annual
+whole-life scalar special case is removed. Timing ratios are observations, not CI gates.
+
+Warm profiling isolated per-date value extraction, dictionaries, snapshot construction and
+allocation in the former adapter. The new adapter separates these costs as follows:
+
+- Mortality rows are read and validated once during the forward pass, then cached in typed
+  two- or four-state tuples for backward reuse. Annual grids stay integer ranges, avoiding
+  unnecessary sorting and fractional-age survival calculations.
+- Reachability is a byte mask per date. Later observations seed their own states, including
+  states with zero issue probability; unneeded rows beyond mortality support are not read.
+- Discounting and contract state/transition amounts remain in the backward recurrence.
+  Certain-payment suffixes retain their stable interval-factor sweep.
+- Result storage holds typed query distributions and rolling state values, with no Dict
+  distributions or Vector{Any} value histories. Conditioning uses immutable tuple bindings
+  so normalization does not introduce boxed numeric temporaries.
+
+The suite checks scalar/column equality, independent prospective oracles, both joint
+contingencies and payment phases, late guarantees, invalid rows, BigFloat output, inference,
+linear mortality-read growth, and a loose allocation ceiling that detects per-date dictionary
+regressions. There are no absolute wall-clock test thresholds.

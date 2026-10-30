@@ -1,7 +1,7 @@
 # LifeContingencies v3.0.0
 
-A breaking release. Lives and products are now valued by one linear-time engine. Several
-long-standing defects are fixed. Contracts that the mortality assumption can't cover now
+A breaking release. Lives and products share finite-state transition and payment
+interfaces, with linear-time valuation passes. Several long-standing defects are fixed. Contracts that the mortality assumption can't cover now
 raise errors instead of being truncated silently.
 
 ## Requirements
@@ -90,7 +90,8 @@ raise errors instead of being truncated silently.
 - **`PricedPolicy` and `policy_value`** keep benefits, a premium schedule and an established
   premium together. `basis=LifeContingency(...)` changes valuation assumptions while
   retaining that premium. Term, limited-pay, endowment and annuity values are supported;
-  vector calls return a numeric column using one occupancy pass and one backward pass.
+  vector calls return a numeric column using one occupancy pass and one backward pass,
+  with typed state buffers and cached transition rows shared by scalar and column calls.
   This is a retained-premium policy value; it does not recompute a valuation net premium.
 - **`premium_net(benefit, premiums)`** prices by equivalence on the products' common basis.
   Premium annuities require `certain=0`.

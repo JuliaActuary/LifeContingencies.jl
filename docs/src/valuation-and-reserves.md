@@ -124,7 +124,9 @@ reserve = reserve_premium_net(lc, 1)
 The implementation values that small remaining stream directly, avoiding cancellation
 between two almost equal lifetime values. A reserve conditional on being in force is
 undefined after the contingency has become impossible; the default conditioning then
-throws a `DomainError`.
+throws a `DomainError` while scheduled obligations remain. Pass a range such as
+`reserve_premium_net(lc, 0:75)` for a reserve column: each separate call establishes
+the equivalence premium anew.
 
 For a joint life, aggregate in-force conditioning and known individual statuses give
 different policy values. See [Joint lives](joint-lives.md).
@@ -186,7 +188,8 @@ revalued = policy_value(term_policy, 0:2; basis=new_basis)
 ```
 
 A column call uses the established premium with one forward occupancy pass and one
-backward valuation pass. It returns a numeric vector aligned with the supplied integer anniversaries, including
+backward valuation pass. Single and joint lives use typed fixed-state buffers and cached
+transition rows; scalar and column calls share the same calculation. It returns a numeric vector aligned with the supplied integer anniversaries, including
 unsorted or repeated requests. Use `state` for a fixed known status across the requested
 column. Fractional policy values require additional settlement information and are rejected.
 
@@ -204,6 +207,14 @@ At an annual premium date, `phase=:before` is the **terminal reserve** ``{}_tV``
 `phase=:after` is the **initial reserve** ``{}_tV+P`` when no other beginning-period payment
 falls due. End-period death, maturity and immediate-annuity payments at that date have
 already settled in both phases. Guarantees remain unconditional during deferral.
+
+A guarantee can outlive all possible survivors. Default active-state conditioning is
+then undefined even though guaranteed payments remain; pass `state=:dead` (or
+`state=(:dead, :dead)` for joint lives) to value the remaining obligations. A joint
+horizon retains both lives' mortality support even if one life was dead at issue, so it
+may extend beyond the last possible survivor from the recorded issue statuses. Explicit
+observed states can differ from those statuses; the horizon does not change with them.
+Once every scheduled obligation has settled, all state choices return zero.
 
 ## Established premium versus valuation net premium
 
