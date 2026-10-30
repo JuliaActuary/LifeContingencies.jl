@@ -28,8 +28,25 @@ export LifeContingency,
 
 
 """
-    struct LifeContingency
-        life::Life
+    LifeContingency(life, interest)
+
+Pair a [`SingleLife`](@ref) or [`JointLife`](@ref) with an interest assumption. A numeric
+`interest` is an annual effective rate. A custom yield curve must supply correct values for
+FinanceCore's `discount(curve, t)` and `discount(curve, from, to)` methods. For a non-flat
+curve, override the generic shifted-time interval method with the ratio of issue-date
+factors. Products inherit the original life selection and curve origin from this pair.
+Reuse it across products: `Insurance(lc, 2)` and `AnnuityDue(lc, 2)` share the assumptions
+but choose different payment rules. Equivalently, pass `(life, interest, ...)` directly to
+each product constructor.
+
+```jldoctest
+julia> life = SingleLife(UltimateMortality([0.5, 1.0]; start_age=60));
+
+julia> lc = LifeContingency(life, 0.05);
+
+julia> present_value(Insurance(lc, 1))
+0.47619047619047616
+```
 """
 struct LifeContingency{L,Y}
     life::L
@@ -40,9 +57,16 @@ end
     omega(lc::LifeContingency)
     omega(l::Life)
 
-The number of years from issue that the mortality assumption covers: survival to `omega` uses the last defined rate. For parametric mortality, it is the time from issue to the law's own `omega`, the last age at which the law is defined, which need not be a whole number of years; for most laws it is `Inf`. A `JointLife` lasts as long as its contingency can be active: the longer life's `omega` for `LastSurvivor`, and the shorter life's for `FirstToDie`.
+The duration in years from issue covered by the mortality assumption. For a rate vector,
+survival to this duration uses its last defined rate. For a parametric law it is the time
+to the law's own terminal age, possibly fractional or `Inf`. Ending a table does not by
+itself establish extinction.
 
-This differs from `omega` of a mortality vector, which is the last attained age with a rate. For example, with issue age 60 and rates through age 100, `omega` of the vector is `100` and `omega` of the life is `41`.
+For a `JointLife`, this is the longer horizon for `LastSurvivor` and the shorter for
+`FirstToDie`. Each individual still needs support for the transitions being requested.
+
+`omega(rate_vector)` instead gives the last attained age with a rate. With issue age 60 and
+rates through age 100, the vector's `omega` is `100` and the life's is `41`.
 """
 mt.omega(lc::LifeContingency) = omega(lc.life)
 
@@ -50,10 +74,11 @@ mt.omega(lc::LifeContingency) = omega(lc.life)
     survival(lc::LifeContingency, to_time)
     survival(lc::LifeContingency, from_time, to_time)
 
-The survival probabilities of `lc`'s life. With one time, the probability that the life is
-alive at `to_time`, given its status at issue. With two, the probability of surviving from
-`from_time` to `to_time` for a life alive at `from_time`. `decrement` gives the complementary
-probabilities of death.
+Delegate to `lc.life`'s survival probabilities, with times measured in years from issue.
+One-time survival uses the observed status at issue. For a `SingleLife`, two-time survival
+is the mortality assumption conditional on being alive at `from_time`; for a `JointLife`,
+it conditions on its contingency being active then. See [`SingleLife`](@ref) and
+[`JointLife`](@ref). MortalityTables' `decrement` gives the complementary probability.
 
 # Examples
 

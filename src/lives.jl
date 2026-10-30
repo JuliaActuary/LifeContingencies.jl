@@ -144,9 +144,14 @@ horizon(::FirstToDie, omegas) = minimum(omegas)
     survival(life::SingleLife, to_time)
     survival(life::SingleLife, from_time, to_time)
 
-With one time, the probability that `life` is alive at `to_time`, given its status at issue.
-With two, the probability of surviving from `from_time` to `to_time` for a life alive at
-`from_time`, which depends only on the mortality assumption.
+Times are durations in years from issue. With one time, use the observed status at issue:
+`alive=false` gives zero, while `alive=true` uses the mortality assumption from issue.
+
+With two times, ask the hypothetical question of surviving to `to_time` if alive at
+`from_time`. This uses the mortality assumption alone, regardless of the recorded `alive`
+flag. A positive result for an initially dead life does not change its status or imply
+that it can become alive. Use the one-time form or product valuation when the observed
+starting status should determine the result.
 """
 mt.survival(l::SingleLife, to_time) = l.alive ? survival(l, 0, to_time) : zero(survival(l, 0, 0))
 mt.survival(l::SingleLife, from_time, to_time) = survival(l.mortality, l.issue_age + from_time, l.issue_age + to_time, l.fractional_assump)

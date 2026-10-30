@@ -404,9 +404,11 @@ Payment phases:
   certain payments.
 - `V⁻(t)` is the value before `b(t)`, and `V⁺(t) = V⁻(t) - b(t)`.
 - State and transition components follow
-  `V⁻ₖ(i) = bₖ(i) + d(tₖ, tₖ₊₁) Σⱼ Pₖ(i,j) (rₖ(i,j) + V⁻ₖ₊₁(j))`, with
-  `V⁻(T) = b(T) + terminal`, where `rₖ(i,j)` is the transition payment.
-- Certain components are valued directly at every date: `Σ_{τ ≥ t} d(t,τ) aτ` before the
+  `V⁻ₖ(i) = bₖ(i) + v(tₖ, tₖ₊₁) Σⱼ Pₖ(i,j) (rₖ(i,j) + V⁻ₖ₊₁(j))`, with
+  `V⁻ₙ(i) = bₙ(i) + terminal(i)` at the final grid date. Here `tₖ = grid[k]`,
+  `v(s,t) = discount(curve, s, t)`, and `rₖ(i,j)` is the transition payment.
+  State components have `rₖ = 0`; transition components have `bₖ = 0`.
+- Certain components are valued directly at every date: `Σ_{τ ≥ t} v(t,τ) aτ` before the
   payments at `t` and `Σ_{τ > t}` after. They are the same in every state.
 
 `terminal` supplies `V⁺` at the last grid time for each state or transition component: a

@@ -123,9 +123,15 @@ end
 An annuity due: `frequency` payments a year of `1/frequency` each, at the start of each period,
 beginning at `start_time` and lasting `term` years, or for life when `term` is omitted.
 
-The first `certain` years of payments are guaranteed: they are paid whether or not the life
-survives, including during any deferral. Later payments are made only while the life (or a
-`JointLife`'s contingency) is in force. A `term` of zero gives an annuity with no payments.
+The first `certain * frequency` installments, limited by the term, are guaranteed. They
+begin at commencement and remain payable if death occurs during deferral or the life starts
+out dead. Later installments require the life (or joint contingency) to be in force.
+`certain=0` guarantees none. A `term` of zero gives an empty stream with PV zero.
+
+`term`, `certain` and `start_time` are whole numbers of years; `frequency` is a positive
+whole number of payments per year. Negative or fractional values raise an
+`ArgumentError`. A monthly annuity pays `1/12` per installment; scale its value by the
+annual benefit amount, or by 12 for a monthly amount of one.
 
 The mortality assumption has to cover the life-contingent payments. A life annuity needs rates
 that reach extinction (a rate of 1), so give a `term` for a table whose rates stop short of 1,

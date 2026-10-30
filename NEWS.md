@@ -17,8 +17,8 @@ raise errors instead of being truncated silently.
 
 ### Lives
 
-- **`alive=false`.** It now takes effect: such a life has zero survival and zero benefit
-  probabilities.
+- **`alive=false`.** It now takes effect: such a life has zero survival and zero state-contingent
+  benefit probabilities. Guaranteed installments remain payable.
 - **Joint assumptions.** A `JointLife` with an assumption other than `Frasier()` raises an
   `ArgumentError`. It used to assume independence silently.
 - **Last-survivor horizon.** The horizon follows the longer life rather than the shorter, so
@@ -56,6 +56,9 @@ raise errors instead of being truncated silently.
 
 ### Valuation
 
+- **Custom non-flat curves.** Supply `discount(curve, from, to)` as the ratio of the original
+  issue-date factors. FinanceCore's generic fallback shifts time and can silently return
+  wrong values. Interval factors include the identity `discount(curve, 0, 0) = 1`.
 - **`present_value(ins, time)`** discounts with the curve's own interval factors,
   `discount(curve, time, t)`, rather than `discount(curve, t - time)`. Results change on
   non-flat curves only.
@@ -68,7 +71,8 @@ raise errors instead of being truncated silently.
 - **Exports.** `insurance`, `annuity_due` and `annuity_immediate` are no longer exported;
   they were never defined.
 - **Removed:**
-  - the unexported `E`
+  - the unexported `E`; replace `E(lc, t, s)` with `APV(lc, s + t) / APV(lc, s)`
+    when the denominator is nonzero
   - the internal types `WholeLife`, `Term` and `ZeroBenefit`, and the annuity payable types
 - **`decrement(::LifeContingency, …)`** now comes from MortalityTables' generic fallback, with
   the same results.
