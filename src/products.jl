@@ -59,16 +59,19 @@ The mortality assumption has to cover the contract. Whole-life insurance needs r
 extinction (a rate of 1), so give a `term` for a table whose rates stop short of 1, or for
 parametric mortality.
 
-Issue age is based on the `issue_age` in the LifeContingency `lc`.
+Issue age is based on the `issue_age` in the LifeContingency `lc`. `interest` is a rate such as
+`0.05`, or any yield curve that FinanceCore can discount with, such as one from FinanceModels.
 
 # Examples
 
-```
-ins = Insurance(
-    SingleLife(mortality = UltimateMortality([0.5,0.5]),issue_age = 0),
-    FinanceModels.Yield.Constant(0.05),
-    1           # 1 year term
-)
+```jldoctest
+julia> life = SingleLife(UltimateMortality([0.5, 1.0]));   # the rates reach 1, so whole life is defined
+
+julia> present_value(Insurance(life, 0.05, 1))   # one-year term
+0.47619047619047616
+
+julia> present_value(Insurance(life, 0.05))      # whole life
+0.9297052154195011
 ```
 """
 Insurance(life, int, term=nothing) = DeathBenefit(life, int, checked_term(term))
@@ -130,12 +133,21 @@ or for parametric mortality.
 
 # Examples
 
-```
-ins = AnnuityDue(
-    SingleLife(mortality = UltimateMortality([0.5,0.5]),issue_age = 0),
-    FinanceModels.Yield.Constant(0.05),
-    1, # term of policy
-) 
+```jldoctest
+julia> life = SingleLife(UltimateMortality([0.5, 1.0]));
+
+julia> present_value(AnnuityDue(life, 0.05))             # 1 now, and 1 a year later if alive
+1.4761904761904763
+
+julia> present_value(AnnuityDue(life, 0.05; certain=2))  # both payments guaranteed
+1.9523809523809523
+
+julia> collect(timepoints(AnnuityDue(life, 0.05, 1; frequency=4)))
+4-element Vector{Float64}:
+ 0.0
+ 0.25
+ 0.5
+ 0.75
 ```
 """
 AnnuityDue(life, int, term=nothing; certain=0, start_time=0, frequency=1) =
@@ -151,12 +163,11 @@ period.
 
 # Examples
 
-```
-ins = AnnuityImmediate(
-    SingleLife(mortality = UltimateMortality([0.5,0.5]),issue_age = 0),
-    FinanceModels.Yield.Constant(0.05),
-    1 # term of policy
-) 
+```jldoctest
+julia> life = SingleLife(UltimateMortality([0.5, 1.0]));
+
+julia> present_value(AnnuityImmediate(life, 0.05))   # 1 at the end of each year while alive
+0.47619047619047616
 ```
 """
 AnnuityImmediate(life, int, term=nothing; certain=0, start_time=0, frequency=1) =

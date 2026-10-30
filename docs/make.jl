@@ -1,5 +1,7 @@
 using Documenter, LifeContingencies
 
+DocMeta.setdocmeta!(LifeContingencies, :DocTestSetup, :(using LifeContingencies, MortalityTables); recursive=true)
+
 makedocs(;
     modules=[LifeContingencies],
     format=Documenter.HTML(;

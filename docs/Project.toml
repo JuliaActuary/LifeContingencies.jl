@@ -1,3 +1,4 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 LifeContingencies = "c8f0d631-89cd-4a1f-93d0-7542c3692561"
+MortalityTables = "4780e19d-04b9-53dc-86c2-9e9aa59b5a12"

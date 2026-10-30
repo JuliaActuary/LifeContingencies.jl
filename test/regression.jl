@@ -224,8 +224,31 @@ end
         @test_throws DomainError present_value(AnnuityDue(gompertz, 0.0))
     end
 
+    @testset "broadcasting" begin
+        lc = LifeContingency(life5, 0.05)
+        @test survival.(life5, 0:2) == [survival(life5, t) for t in 0:2]
+        @test survival.(Insurance(lc), 0:2) == [survival(Insurance(lc), t) for t in 0:2]
+        @test survival.(lc, 0:2) == [survival(lc, t) for t in 0:2]
+        @test present_value.(Insurance(lc), [0, 1]) == [present_value(Insurance(lc), t) for t in [0, 1]]
+    end
+
+    @testset "commutation functions" begin
+        lc = LifeContingency(life5, 0.05)
+        @test LifeContingencies.D === APV
+        # the sums are empty past the last year of the table
+        @test LifeContingencies.N(lc, omega(lc)) == 0
+        @test LifeContingencies.M(lc, omega(lc)) == 0
+        @test LifeContingencies.N(lc, 0) ≈ sum(APV(lc, t) for t in 0:omega(lc)-1)
+        gompertz = LifeContingency(SingleLife(MortalityTables.Gompertz(a=0.0002, b=0.13), issue_age=40), 0.05)
+        @test_throws DomainError LifeContingencies.N(gompertz, 0)
+        # a law that ends at 60.5 years covers 60 whole years
+        bounded = LifeContingency(SingleLife(MortalityTables.Wittstein(m=100.5), issue_age=40), 0.05)
+        @test LifeContingencies.N(bounded, 0) ≈ sum(APV(bounded, t) for t in 0:59)
+        @test LifeContingencies.M(bounded, 0) ≈ present_value(Insurance(bounded, 60))
+    end
+
     @testset "exports" begin
-        # `insurance`, `annuity_due` and `annuity_immediate` are exported but never defined
-        @test_broken all(name -> isdefined(LifeContingencies, name), names(LifeContingencies))
+        # every exported name is defined
+        @test all(name -> isdefined(LifeContingencies, name), names(LifeContingencies))
     end
 end

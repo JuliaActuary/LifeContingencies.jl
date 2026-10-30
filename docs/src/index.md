@@ -5,196 +5,159 @@
 ![](https://github.com/JuliaActuary/LifeContingencies.jl/workflows/CI/badge.svg)
 [![codecov](https://codecov.io/gh/JuliaActuary/LifeContingencies.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaActuary/LifeContingencies.jl)
 
-LifeContingencies is a package enabling actuarial life contingent calculations.
+LifeContingencies is a package for actuarial life-contingent calculations: survival, life
+insurance and annuity values, net premiums and reserves, for single and joint lives.
 
 ## Features
 
-- Integration with other JuliaActuary packages such as [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl)
-- Fast calculations, with some parts utilizing parallel processing power automatically
-- Use functions that look more like the math you are used to (e.g. `A`, `ä`) with [Unicode support](https://docs.julialang.org/en/v1/manual/unicode-input/index.html)
-- All of the power, speed, convenience, tooling, and ecosystem of Julia
-- Flexible and modular modeling approach
+- Mortality from [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl):
+  rate vectors, select and ultimate tables, and parametric laws such as Gompertz.
+- Interest as a single rate, or any yield curve that
+  [FinanceCore.jl](https://github.com/JuliaActuary/FinanceCore.jl) can discount with, such as
+  those from [FinanceModels.jl](https://github.com/JuliaActuary/FinanceModels.jl).
+- Single lives, and joint lives (`LastSurvivor` and `FirstToDie`), each with a status at issue.
+- Products:
+  - life insurance
+  - annuities due and immediate, with terms, deferral, guaranteed periods and payment
+    frequency
+- Valuation:
+  - net premiums
+  - net premium reserves, from a known state if you like
+- Actuarial notation shorthand (`A`, `ä`, `V`, …) and commutation functions.
+- An experimental [multi-state engine](ltc.md) for products such as long-term care.
 
-## Package Overview
+## Getting started
 
-- Leverages [MortalityTables.jl](https://github.com/JuliaActuary/MortalityTables.jl) for
-the mortality calculations
-- Contains common insurance calculations such as:
-  - `Insurance(life,yield)`: Whole life
-  - `Insurance(life,yield,n)`: Term life for `n` years
-  - `ä(life,yield)`: `present_value` of life-contingent annuity
-  - `ä(life,yield,n)`: `present_value` of life-contingent annuity due for `n` years
-- Contains various commutation functions such as `D(x)`,`M(x)`,`C(x)`, etc.
-- `SingleLife` and `JointLife` capable
-- Interest rate mechanics via [`Yields.jl`](https://github.com/JuliaActuary/Yields.jl)
-- More documentation available by clicking the DOCS badges at the top of this README
+Values for a 30-year-old male nonsmoker on the 2001 VBT select and ultimate table, at a flat
+5% rate:
 
-## Examples
-
-### Basic Functions
-
-Calculate various items for a 30-year-old male nonsmoker using 2015 VBT base table and a 5% interest rate
-
-```julia
-
-using LifeContingencies
-using MortalityTables
-using Yields
-import LifeContingencies: V, ä     # pull the shortform notation into scope
-
-# load mortality rates from MortalityTables.jl
-vbt2001 = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
-
-issue_age = 30
-life = SingleLife(                 # The life underlying the risk
-    mort = vbt2001.select[issue_age],    # -- Mortality rates
-)
-
-yield = Yields.Constant(0.05)      # Using a flat 5% interest rate
-
-lc = LifeContingency(life, yield)  # LifeContingency joins the risk with interest
-
-
-ins = Insurance(lc)                # Whole Life insurance
-ins = Insurance(life, yield)       # alternate way to construct
-```
-
-With the above life contingent data, we can calculate vectors of relevant information:
-
-```julia
-cashflows(ins)                     # A vector of the unit cashflows
-timepoints(ins)                    # The timepoints associated with the cashflows
-survival(ins)                      # The survival vector
-survival(ins,time)                 # The survivorship through `time`
-benefit(ins)                       # The unit benefit vector
-probability(ins)                   # The probability of benefit payment
-present_value(ins)                 # the present value of the insurance benefits from time zero
-present_value(ins,time)            # the present value of the insurance benefits from `time`
-```
-
-Some of the above will return lazy results. For example, `cashflows(ins)` will return a `Generator` which can be efficiently used in most places you'd use a vector of cashflows (e.g. `pv(...)` or `sum(...)`) but has the advantage of being non-allocating (less memory used, faster computations). To get a computed vector instead of the generator, simply call `collect(...)` on the result: `collect(cashflows(ins))`.
-
-Or calculate summary scalars:
-
-```julia
-present_value(ins)                 # The actuarial present value
-premium_net(lc)                    # Net whole life premium 
-V(lc,5)                            # Net premium reserve for whole life insurance at time 5
-```
-
-Other types of life contingent benefits:
-
-```julia
-Insurance(lc,10)                 # 10 year term insurance
-AnnuityImmediate(lc)               # Whole life annuity due
-AnnuityDue(lc)                     # Whole life annuity due
-ä(lc)                              # Shortform notation
-ä(lc, 5)                           # 5 year annuity due
-ä(lc, 5, certain=5,frequency=4)    # 5 year annuity due, with 5 year certain payable 4x per year
-...                                # and more!
-```
-
-#### Constructing Lives
-
-```julia
-SingleLife(vbt2001.select[50])                 # no keywords, just a mortality vector
-SingleLife(vbt2001.select[50],issue_age = 60)  # select at 50, but now 60
-SingleLife(vbt2001.select,issue_age = 50)      # use issue_age to pick the right select vector
-SingleLife(mortality=vbt2001.select,issue_age = 50) # mort can also be a keyword
-
-```
-
-### Net Premium for Term Policy with Stochastic rates
-Use a stochastic interest rate calculation to price a term policy:
-
-```julia
+```@example basics
 using LifeContingencies, MortalityTables
-using Distributions
 
 vbt2001 = MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB")
-
-# use an interest rate that's normally distirbuted
-μ = 0.05
-σ = 0.01
-
-years = 100
-int =   Yields.Forward(rand(Normal(μ,σ), years))
-
-life = SingleLife(mortality = vbt2001.select[30], issue_age = 30)
-
-term = 10
-LifeContingencies.A(lc, term) # around 0.055
+life = SingleLife(vbt2001.select[30])   # select rates for issue age 30
+lc = LifeContingency(life, 0.05)        # a flat 5% rate; a FinanceModels yield curve also works
+ins = Insurance(lc)                     # whole life insurance
+present_value(ins)
 ```
 
-#### Extending example to use autocorrelated interest rates
+Each insurance can also be inspected year by year. Here are the first three policy years'
+timepoints, benefit probabilities, cash flows, survival and discount factors:
 
-You can use autocorrelated interest rates - substitute the following in the prior example
-using the ability to self reference:
+```@example basics
+timepoints(ins)[1:3], probability(ins)[1:3], cashflows(ins)[1:3], survival(ins)[1:3], discount(ins)[1:3]
+```
 
-```julia
-σ = 0.01
-initial_rate = 0.05
-vec = fill(initial_rate, years)
+The net annual premium for whole life, and the net premium reserve at the end of year 5:
 
-for i in 2:length(vec)
-    vec[i] = rand(Normal(vec[i-1], σ))
+```@example basics
+premium_net(lc), reserve_premium_net(lc, 5)
+```
+
+Other products:
+
+```@example basics
+[
+    "10-year term insurance" => present_value(Insurance(lc, 10)),
+    "life annuity due" => present_value(AnnuityDue(lc)),
+    "life annuity immediate" => present_value(AnnuityImmediate(lc)),
+    "10-year annuity due, quarterly, 5 years certain" => present_value(AnnuityDue(lc, 10; certain=5, frequency=4)),
+    "life annuity due deferred 35 years" => present_value(AnnuityDue(lc; start_time=35)),
+]
+```
+
+`present_value(ins, t)` values the payments after time `t` as of time `t`.
+
+## Constructing lives
+
+```@example basics
+SingleLife(vbt2001.select[50]).issue_age,             # the issue age comes from the select row
+SingleLife(vbt2001.select, issue_age=50).issue_age,   # the same, picking the row by issue age
+SingleLife(vbt2001.ultimate, issue_age=60).issue_age  # ultimate rates from age 60
+```
+
+A life can also use a parametric mortality law, or start out dead, which is useful in joint
+lives with known statuses:
+
+```@example basics
+gompertz = SingleLife(MortalityTables.Gompertz(a=0.0002, b=0.13), issue_age=40)
+dead = SingleLife(vbt2001.select[30]; alive=false)
+survival(gompertz, 30), survival(dead, 1)
+```
+
+## When the mortality assumption runs out
+
+A whole-life contract needs mortality rates that reach extinction, a rate of 1. The 2001 VBT
+does. The 2015 VBT relative-risk tables stop at age 120 with a rate of 0.5, so a whole-life
+insurance on them is undefined:
+
+```@example basics
+vbt2015 = MortalityTables.table("2015 VBT Male Non-Smoker RR100 ANB")
+life2015 = SingleLife(vbt2015.ultimate, issue_age=60)
+try
+    present_value(Insurance(life2015, 0.05))
+catch err
+    err
 end
-
-int = Yields.Forward(vec)
 ```
 
-### Premium comparison across Mortality Tables
+Insurance to the end of the table makes the truncation explicit:
 
-Compare the cost of annual premium, whole life insurance between multiple tables visually:
+```@example basics
+present_value(Insurance(life2015, 0.05, omega(life2015)))
+```
 
-```julia
-using LifeContingencies, MortalityTables, Plots
+Parametric mortality never reaches extinction, so lifetime products on it need a term too.
 
+## Stochastic interest rates
+
+Each scenario can carry its own rate. Here is the average net premium for 10-year term
+insurance over normally distributed level rates:
+
+```@example basics
+import Random
+Random.seed!(2026)
+scenarios = 0.05 .+ 0.01 .* randn(1_000)
+premiums = [premium_net(LifeContingency(life, rate), 10) for rate in scenarios]
+sum(premiums) / length(premiums)
+```
+
+A yield curve from FinanceModels.jl can stand in for the rate to model a term structure.
+
+## Premiums across mortality tables
+
+The net annual premium for whole life insurance by issue age, on two tables:
+
+```@example basics
 tables = [
     MortalityTables.table("1980 CET - Male Nonsmoker, ANB"),
     MortalityTables.table("2001 VBT Residual Standard Select and Ultimate - Male Nonsmoker, ANB"),
-    MortalityTables.table("2015 VBT Male Non-Smoker RR100 ANB"),
-    ]
-
-issue_ages = 30:90
-int = Yields.Constant(0.05)
-
-whole_life_costs = map(tables) do t
-    map(issue_ages) do ia
-        lc = LifeContingency(SingleLife(mortality = t.ultimate, issue_age = ia), int)
-        premium_net(lc)
-
-    end
-end
-
-plt = plot(ylabel="Annual Premium per unit", xlabel="Issue Age",
-           legend=:topleft, legendfontsize=8,size=(800,600))
-
-for (i,t) in enumerate(tables)
-    plot!(plt,issue_ages,whole_life_costs[i], label="$(t.metadata.name)")
-end
-
-display(plt)
-```
-![Comparison of three different mortality tables' effect on insurance cost](https://user-images.githubusercontent.com/711879/85190836-cb539800-b281-11ea-96b0-e3f3eab59449.png)
-
-
-### Joint Life
-
-```julia
-m1 = MortalityTables.table("1986-92 CIA – Male Smoker, ANB")
-m2 = MortalityTables.table("1986-92 CIA – Female Nonsmoker, ANB")
-l1 = SingleLife(mortality = m1.ultimate, issue_age = 40)
-l2 = SingleLife(mortality = m2.ultimate, issue_age = 37)
-
-jl = JointLife(lives=(l1, l2), contingency=LastSurvivor(), joint_assumption=Frasier())
-
-
-Insurance(jl,Yields.Constant(0.05))      # whole life insurance
-...                                      # similar functions as shown in the first example above
+]
+issue_ages = 30:10:80
+[t.metadata.name => [round(premium_net(LifeContingency(SingleLife(t.ultimate, issue_age=age), 0.05)), digits=5) for age in issue_ages] for t in tables]
 ```
 
-## Commutation and Unexported Function shorthand
+## Joint lives
+
+```@example basics
+cia_male = MortalityTables.table("1986-92 CIA – Male Smoker, ANB")
+cia_female = MortalityTables.table("1986-92 CIA – Female Nonsmoker, ANB")
+lives = (SingleLife(cia_male.ultimate, issue_age=40), SingleLife(cia_female.ultimate, issue_age=37))
+last_survivor = LifeContingency(JointLife(lives=lives), 0.05)
+first_to_die = LifeContingency(JointLife(lives=lives, contingency=FirstToDie()), 0.05)
+present_value(Insurance(last_survivor)), present_value(AnnuityDue(first_to_die))
+```
+
+A reserve conditions on the contract being in force. Pass `state` to value it from a known
+state instead:
+
+```@example basics
+reserve_premium_net(last_survivor, 10),                          # in force: either or both alive
+reserve_premium_net(last_survivor, 10; state=(:alive, :alive)),  # both alive
+reserve_premium_net(last_survivor, 10; state=(:dead, :alive))    # only the second life alive
+```
+
+## Commutation and unexported function shorthand
 
 Because it's so common to use certain variables in your own code, LifeContingencies avoids exporting certain variables/functions so that it doesn't collide with your own usage. For example, you may find yourself doing something like:
 
@@ -204,11 +167,11 @@ b = ...
 result = b - a
 ```
 
-If you imported `using LifeContingencies` and the package exported `a` (`annuity_immediate`) then you could have problems if you tried to do the above. To avoid this, we only export long-form functions like `annuity_immediate`. To utilize the shorthand, you can include them into your code's scope like so:
+If you imported `using LifeContingencies` and the package exported `a` (an annuity immediate's present value), the above could break. So the package exports only the long forms, such as `present_value(AnnuityImmediate(...))`. To use the shorthand, bring it into your code's scope like so:
 
 ```julia
 using LifeContingencies # brings all the default functions into your scope
-using LifeContingencies: a, ä # also brings the short-form annuity functions into scope
+using LifeContingencies: a, ä # also brings the short-form annuity functions into scope
 ```
 
 **Or** you can do the following:
@@ -216,7 +179,7 @@ using LifeContingencies: a, ä # also brings the short-form annuity functions i
 ```julia
 using LifeContingencies # brings all the default functions into your scope
 ... # later on in the code
-LifeContingencies.ä(...) # utilize the unexported function with the module name
+LifeContingencies.ä(...) # utilize the unexported function with the module name
 ```
 
 For more on module scoping, see the [Julia Manual section](https://docs.julialang.org/en/latest/manual/modules/#Summary-of-module-usage-1).
@@ -227,7 +190,7 @@ For more on module scoping, see the [Julia Manual section](https://docs.julialan
 V => reserve_premium_net
 v => discount
 A => present value of Insurance
-ä => present value of AnnuityDue
+ä => present value of AnnuityDue
 a => present value of AnnuityImmediate
 P => premium_net
 ω => omega
@@ -248,13 +211,3 @@ C,
 - Life Insurance Mathematics, Gerber
 - [Actuarial Mathematics and Life-Table Statistics, Slud](http://www2.math.umd.edu/~slud/s470/BookChaps/Chp6.pdf)
 - [Commutation Functions, MacDonald](http://www.macs.hw.ac.uk/~angus/papers/eas_offprints/commfunc.pdf)
-
-```@raw html
-<script>
-    window.goatcounter = {
-        path: function(p) { return location.host + p }
-    }
-</script>
-<script data-goatcounter="https://juliaactuary.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
-```
