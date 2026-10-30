@@ -9,6 +9,7 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Multi-state example (LTC)" => "ltc.md",
         "API Reference" => "api.md",
     ],
     repo=Remotes.GitHub("JuliaActuary", "LifeContingencies.jl"),
