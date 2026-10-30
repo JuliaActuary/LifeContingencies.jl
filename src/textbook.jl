@@ -174,8 +174,11 @@ At `phase=:before`, end-period benefits (including immediate-annuity installment
 settled but beginning-period annuity-due installments remain. `phase=:after` also settles
 due installments. For a net stream with only an annual premium due, these correspond to
 the terminal reserve and initial reserve respectively; they differ from the engine
-phases, which apply before/after every state payment. Annuity valuation times within
-four floating-point ulps of a scheduled installment are snapped to its date in both phases. Pass `state` for a known current status;
+phases, which apply before/after every state payment. In both phases, valuation times
+within `1e-9 / frequency` years of a scheduled payment are snapped to its date (or within
+four floating-point ulps, if larger), capped below half a payment period. Death insurance
+and endowments use annual frequency. This also covers date drift from repeated additions
+in projection loops. Pass `state` for a known current status;
 otherwise the value retains the issue distribution. Dividing by the survivorship
 gives one only when every remaining payment depends on being in force at `time`, as for a
 life annuity outside its guarantee period, or a death benefit valued at the end of a policy

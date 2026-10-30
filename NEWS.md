@@ -114,8 +114,10 @@ raise errors instead of being truncated silently.
 
 ## Fixed
 
-- **Payment-date rounding.** Annuity valuation times within four floating-point ulps of an
-  installment date snap to the grid, so expressions such as `0.1*3` do not drop a payment.
+- **Payment-date rounding.** Product valuation times near scheduled payments snap to the
+  grid within `1e-9 / frequency` years (or four ulps, if larger), below half a payment
+  period. This covers both expressions such as `0.1*3` and dates accumulated in projection
+  loops, with consistent settlement of annuity, insurance and endowment payments.
 - **Input diagnostics.** Invalid age origins and zero premium denominators fail clearly;
   support errors include duration and attained ages. Unbounded `survival(life)` asks for
   explicit finite evaluation dates.

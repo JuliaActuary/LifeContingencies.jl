@@ -300,10 +300,10 @@ end
 
 # State and certain payments at a date; incoming transition payments have already settled.
 function payment_now(contract, t, state)
-    return sum(values(contract)) do c
-        c isa CertainPayment && return sum((a for (date, a) in zip(c.times, c.amounts) if date == t); init=0)
+    return sum(map(values(contract)) do c
+        c isa CertainPayment && return sum((a for (date, a) in zip(c.times, c.amounts) if date == t); init=zero(eltype(c.amounts)))
         return Experimental.state_amount(c, t, state)
-    end
+    end)
 end
 
 function conditional_product_value(ins, time, state, phase)
@@ -317,19 +317,21 @@ function conditional_product_value(ins, time, state, phase)
     return benefit(ins) * v
 end
 
-# Treat a valuation date within four representable steps of an installment as that
-# installment date. The half-period cap prevents snapping across distinct payments.
-valuation_time(::Insurance, time) = time
-function valuation_time(ins::Annuity, time)
+# Projection loops can accumulate more than a few ulps of date drift. Use a small
+# period-based tolerance, retaining four ulps for lower-precision inputs. The
+# half-period cap prevents snapping across distinct payments.
+function valuation_time(ins::Insurance, time)
     dates = timepoints(ins)
-    isempty(dates) && return time
+    T = promote_type(typeof(time), eltype(dates))
+    isempty(dates) && return T(time)
+    frequency = ins isa Annuity ? ins.frequency : 1
     i = searchsortedfirst(dates, time)
     for k in (i-1, i)
         checkbounds(Bool, dates, k) || continue
         date = dates[k]
         distance = abs(time - date)
-        tolerance = 4max(eps(float(time)), eps(float(date)))
-        distance <= tolerance && distance < 0.5 / ins.frequency && return date
+        tolerance = max(1e-9 / frequency, 4max(eps(float(time)), eps(float(date))))
+        distance <= tolerance && distance < 0.5 / frequency && return T(date)
     end
-    return time
+    return T(time)
 end

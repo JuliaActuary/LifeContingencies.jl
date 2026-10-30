@@ -209,6 +209,14 @@ end
     policy = PricedPolicy(Insurance(lc), AnnuityDue(lc))
     @test (@inferred policy_value(policy, 0:75)) isa Vector{Float64}
     @test (@inferred policy_value(policy, 10)) isa Float64
+    @test (@inferred present_value(Insurance(lc), 10.0)) isa Float64
+    for product in (Insurance(lc), Insurance(lc, 20), Endowment(lc, 20)), phase in (:before, :after)
+        @test (@inferred present_value(product, 10.0; phase)) isa Float64
+        @test (@inferred present_value(product, 5.5; phase)) isa Float64
+    end
+    for product in (AnnuityDue(lc), AnnuityImmediate(lc), AnnuityDue(lc; certain=20, frequency=12)), state in (:alive, :dead), phase in (:before, :after)
+        @test (@inferred present_value(product, 10.0; state, phase)) isa Float64
+    end
     @test policy_value(policy, [10]) == [policy_value(policy, 10)]
     offset_times = UltimateMortality([2, 0, 1]; start_age=10)
     @test policy_value(policy, offset_times) == policy_value(policy, [2, 0, 1])
