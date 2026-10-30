@@ -22,7 +22,7 @@
             l2 = SingleLife(mortality=q)
             j = JointLife(lives=(l1, l2))
 
-            ins0 = Insurance(j, 0.0)
+            ins0 = Insurance(j, 0.0, 200)
             survival(j, 1, 2)
             @test 1 - survival(j, 4) / survival(j, 3) ≈ decrement(j, 3, 4)
             @test pv(ins0) ≈ 1.0 atol = 1e-6 # at zero percent discount the benefit should sum to the unit
@@ -60,7 +60,8 @@
             # problem 9.1.f
             @test isapprox(present_value(AnnuityDue(ins, 5)), 4.5437, atol=1e-4)
 
-            @test isapprox(present_value(AnnuityDue(ins)), 4.5437, atol=1e-4)
+            # the rates stop short of 1, so a life annuity is not defined
+            @test_throws DomainError present_value(AnnuityDue(ins))
         end
 
         @testset "CIA tables" begin
