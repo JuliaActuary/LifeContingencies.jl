@@ -11,7 +11,7 @@
 
     @test [timepoints(ins)...] == [1.0, 2.0]
     @test [survival(ins)...] == [1.0, 0.5]
-    @test [discount(ins)...] == [1.0 / 1.05, 1 / 1.05^2]
+    @test [discount(ins)...] ≈ [1.0 / 1.05, 1 / 1.05^2]
     @test benefit(ins) == 1.0
     @test [probability(ins)...] == [0.5, 0.25]
     @test [cashflows(ins)...] == [0.5, 0.25]
@@ -49,7 +49,7 @@
     )
 
     @test [survival(ins)...] == [1.0, 0.5, 0.25]
-    @test [discount(ins)...] == [1.0, 1 / 1.05^1, 1 / 1.05^2]
+    @test [discount(ins)...] ≈ [1.0, 1 / 1.05^1, 1 / 1.05^2]
     @test benefit(ins) == 1.0
     @test [timepoints(ins)...] == [0.0, 1.0, 2.0]
     @test [probability(ins)...] == [1.0, 0.5, 0.25]

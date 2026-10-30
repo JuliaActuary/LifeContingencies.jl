@@ -1,7 +1,6 @@
 module LifeContingencies
 
 using MortalityTables
-using Transducers
 using FinanceCore
 import FinanceCore: present_value, discount
 
@@ -50,7 +49,7 @@ Keyword arguments:
 - `mortality` pass a mortality vector, which is an array of applicable mortality rates indexed by attained age
 - `issue_age` is the assumed issue age for the `SingleLife` and is the basis of many contingency calculations.
 - `alive` Default value is `true`. Useful for joint insurances with different status on the lives insured.
-- `fractional_assump`. Default value is `Uniform()`. This is a `DeathDistribution` from the `MortalityTables.jl` package and is the assumption to use for non-integer ages/times.
+- `fractional_assump`. Default value is `UniformDeaths()`. This is a `DeathDistribution` from the `MortalityTables.jl` package and is the assumption to use for non-integer ages/times.
 
 # Examples
     using MortalityTables
@@ -68,11 +67,11 @@ struct SingleLife{M,D} <: Life
     fractional_assump::D
 end
 
-function SingleLife(; mortality, issue_age=nothing, alive=true, fractional_assump=mt.Uniform())
+function SingleLife(; mortality, issue_age=nothing, alive=true, fractional_assump=mt.UniformDeaths())
     return SingleLife(mortality; issue_age, alive, fractional_assump)
 end
 
-function SingleLife(mortality; issue_age=nothing, alive=true, fractional_assump=mt.Uniform())
+function SingleLife(mortality; issue_age=nothing, alive=true, fractional_assump=mt.UniformDeaths())
     if isnothing(issue_age)
         issue_age = firstindex(mortality)
     end

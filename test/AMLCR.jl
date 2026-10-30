@@ -29,7 +29,7 @@
 
     @test present_value(AnnuityDue(life, int)) > present_value(AnnuityDue(life, int, start_time=5))
 
-    @test present_value(AnnuityDue(life, int, 5, certain=5, start_time=5)) == sum([1 for t = 5:9] .* [1 / 1.05^t for t = 5:9])
+    @test present_value(AnnuityDue(life, int, 5, certain=5, start_time=5)) ≈ sum([1 for t = 5:9] .* [1 / 1.05^t for t = 5:9])
 
     # relation on pg 124
     @test issorted(present_value.([
