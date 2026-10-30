@@ -13,7 +13,7 @@ include("lives.jl")
 export LifeContingency,
     Insurance, AnnuityDue, AnnuityImmediate,
     APV,
-    SingleLife, Frasier, JointLife,
+    SingleLife, Independent, Frasier, JointLife,
     LastSurvivor, FirstToDie,
     survival,
     reserve_premium_net,

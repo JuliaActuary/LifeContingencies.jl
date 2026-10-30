@@ -43,7 +43,7 @@ lc = LifeContingency(SingleLife(vbt.select[30], issue_age=30), 0.05)
 
 cia_male = MortalityTables.table("1986-92 CIA – Male Smoker, ANB")
 cia_female = MortalityTables.table("1986-92 CIA – Female Nonsmoker, ANB")
-joint = JointLife(lives=(SingleLife(cia_male.ultimate, issue_age=40), SingleLife(cia_female.ultimate, issue_age=37)))
+joint = JointLife(lives=(SingleLife(cia_male.ultimate, issue_age=40), SingleLife(cia_female.ultimate, issue_age=37)), contingency=LastSurvivor())
 
 println("Julia ", VERSION, ", MortalityTables ", pkgversion(MortalityTables), ", FinanceCore ", pkgversion(FinanceCore))
 println()

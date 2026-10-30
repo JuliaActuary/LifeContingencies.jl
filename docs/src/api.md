@@ -15,6 +15,7 @@ See [Mortality and lives](mortality-and-lives.md) and [Joint lives](joint-lives.
 SingleLife
 JointLife
 LifeContingency
+Independent
 Frasier
 LastSurvivor
 FirstToDie

@@ -31,8 +31,11 @@ in_force_payment(life, dates) = StatePayment((t, state) -> active(life, state) &
 # Grid times from issue through `dates`, which are sorted and nonnegative.
 from_issue(dates) = !isempty(dates) && iszero(first(dates)) ? dates : [zero(eltype(dates)); dates]
 
-beyond_assumption(t) = DomainError(t,
-    "the contract continues past the end of the mortality assumption at time $t while lives remain in force; supply rates that reach extinction (a rate of 1), or give the contract a shorter term")
+support_ages(life::SingleLife, t) = string(life.issue_age + t)
+support_ages(life::JointLife, t) = join(map(l -> support_ages(l, t), life.lives), ", ")
+
+beyond_assumption(life, t) = DomainError(t,
+    "the contract continues past the end of the mortality assumption at duration $t (attained age(s) $(support_ages(life, t))) while lives remain in force; supply rates that reach extinction (a rate of 1), or give the contract a shorter term or an explicit Endowment maturity")
 
 checked_term(::Nothing) = nothing
 function checked_term(term::Integer)
@@ -86,7 +89,7 @@ function benefit_years(ins::DeathBenefit)
     covered = isinf(horizon) ? ins.term : floor(Int, horizon)
     years = isnothing(ins.term) ? covered : min(ins.term, covered)
     continues = isnothing(ins.term) || ins.term > years
-    continues && !iszero(survival(ins.life, years)) && throw(beyond_assumption(horizon))
+    continues && !iszero(survival(ins.life, years)) && throw(beyond_assumption(ins.life, horizon))
     return years
 end
 
@@ -208,7 +211,7 @@ end
 # Guaranteed installments are a certain payment; the rest are paid while the life is in force.
 function unit_payments(ins::Annuity)
     s = schedule(ins)
-    s.continues && !iszero(survival(ins.life, s.horizon)) && throw(beyond_assumption(s.horizon))
+    s.continues && !iszero(survival(ins.life, s.horizon)) && throw(beyond_assumption(ins.life, s.horizon))
     guaranteed = s.times[1:s.guaranteed]
     contingent = s.times[s.guaranteed+1:end]
     contract = (

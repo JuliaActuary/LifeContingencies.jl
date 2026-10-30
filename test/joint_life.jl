@@ -9,7 +9,7 @@
 
             l1 = SingleLife(mortality=q1, issue_age=82)
             l2 = SingleLife(mortality=q2, issue_age=80)
-            j = JointLife(lives=(l1, l2))
+            j = JointLife(lives=(l1, l2), contingency=LastSurvivor())
 
             @test survival(j, 2) ≈ 0.95733 atol = 1e-5
             @test survival(j, 3) ≈ 0.899399 atol = 1e-5
@@ -20,7 +20,7 @@
 
             l1 = SingleLife(mortality=q)
             l2 = SingleLife(mortality=q)
-            j = JointLife(lives=(l1, l2))
+            j = JointLife(lives=(l1, l2), contingency=LastSurvivor())
 
             ins0 = Insurance(j, 0.0, 200)
             survival(j, 1, 2)

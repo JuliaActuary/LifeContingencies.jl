@@ -55,31 +55,31 @@ end
     @testset "life status" begin
         dead = ultimate_life([0.5, 0.5, 1.0]; alive=false)
         survivor = ultimate_life([0.1, 0.1, 1.0])
-        @test survival(JointLife(lives=(dead, survivor)), 1) ≈ survival(survivor, 1)
+        @test survival(JointLife(lives=(dead, survivor), contingency=LastSurvivor()), 1) ≈ survival(survivor, 1)
         @test present_value(AnnuityDue(dead, 0.0)) ≈ 0.0
         @test survival(dead, 0) == 0
         @test survival(LifeContingency(dead, 0.05), 1) == 0
         # two-time survival is the mortality assumption's, for a life alive at the start
         @test survival(dead, 1, 2) == survival(ultimate_life([0.5, 0.5, 1.0]), 1, 2)
-        @test survival(JointLife(lives=(dead, dead)), 0) == 0
+        @test survival(JointLife(lives=(dead, dead), contingency=LastSurvivor()), 0) == 0
         # conditioning on a contingency that cannot be active is undefined
-        @test_throws DomainError survival(JointLife(lives=(dead, dead)), 0, 1)
+        @test_throws DomainError survival(JointLife(lives=(dead, dead), contingency=LastSurvivor()), 0, 1)
     end
 
     @testset "joint lives" begin
         short = ultimate_life([0.1, 1.0])
         # only independence is implemented; other assumptions must not silently use it
-        @test_throws ArgumentError survival(JointLife(lives=(short, short), joint_assumption=RegressionDependence()), 1)
+        @test_throws ArgumentError survival(JointLife(lives=(short, short), joint_assumption=RegressionDependence(), contingency=LastSurvivor()), 1)
         # joint survival infers a concrete type
-        j = JointLife(lives=(short, ultimate_life([0.2, 1.0])))
+        j = JointLife(lives=(short, ultimate_life([0.2, 1.0])), contingency=LastSurvivor())
         @test isconcretetype(only(Base.return_types(survival, Tuple{typeof(j),Int})))
         # the last-survivor status lasts as long as the longer life
-        unequal = JointLife(lives=(ultimate_life([1.0]), ultimate_life([0.0, 0.0, 1.0])))
+        unequal = JointLife(lives=(ultimate_life([1.0]), ultimate_life([0.0, 0.0, 1.0])), contingency=LastSurvivor())
         @test present_value(Insurance(unequal, 0.0)) ≈ 1.0
         @test omega(unequal) == 3
         @test omega(JointLife(lives=unequal.lives, contingency=FirstToDie())) == 1
         # death cash flows stay finite after both lives are extinct
-        both_extinct = JointLife(lives=(ultimate_life([1.0, 0.5, 1.0]), ultimate_life([1.0, 0.5, 1.0])))
+        both_extinct = JointLife(lives=(ultimate_life([1.0, 0.5, 1.0]), ultimate_life([1.0, 0.5, 1.0])), contingency=LastSurvivor())
         @test collect(cashflows(Insurance(both_extinct, 0.0))) ≈ [1.0, 0.0, 0.0]
         @test all(isfinite, cashflows(Insurance(ultimate_life([1.0, 0.5, 1.0]), 0.0)))
     end
@@ -88,7 +88,7 @@ end
         # aggregate last-survivor conditioning is a mixture of the known-status cases
         single = ultimate_life([0.5, 0.5, 0.5, 1.0])
         p = survival(single, 1, 2)
-        at_least_one_alive = survival(JointLife(lives=(single, single)), 1, 2)
+        at_least_one_alive = survival(JointLife(lives=(single, single), contingency=LastSurvivor()), 1, 2)
         both_known_alive = p + p - p * p
         @test at_least_one_alive ≈ 7 / 12
         @test both_known_alive ≈ 3 / 4
@@ -116,7 +116,7 @@ end
         # joint lives: aggregate conditioning is a mixture of the known statuses, and they differ
         first_life = ultimate_life([0.1, 0.2, 0.3, 0.4, 1.0])
         second_life = ultimate_life([0.2, 0.3, 0.4, 1.0])
-        joint = LifeContingency(JointLife(lives=(first_life, second_life)), 0.05)
+        joint = LifeContingency(JointLife(lives=(first_life, second_life), contingency=LastSurvivor()), 0.05)
         aggregate = reserve_premium_net(joint, 2)
         known = Dict(s => reserve_premium_net(joint, 2; state=s) for s in ((:alive, :alive), (:alive, :dead), (:dead, :alive)))
         @test length(unique(values(known))) == 3
@@ -243,12 +243,33 @@ end
         @test_throws DomainError LifeContingencies.N(gompertz, 0)
         # a law that ends at 60.5 years covers 60 whole years
         bounded = LifeContingency(SingleLife(MortalityTables.Wittstein(m=100.5), issue_age=40), 0.05)
-        @test LifeContingencies.N(bounded, 0) ≈ sum(APV(bounded, t) for t in 0:59)
-        @test LifeContingencies.M(bounded, 0) ≈ present_value(Insurance(bounded, 60))
+        @test_throws DomainError LifeContingencies.N(bounded, 0)
+        @test_throws DomainError LifeContingencies.M(bounded, 0)
     end
 
     @testset "exports" begin
         # every exported name is defined
         @test all(name -> isdefined(LifeContingencies, name), names(LifeContingencies))
     end
+end
+
+struct MissingIntervalCurve end
+FinanceCore.discount(::MissingIntervalCurve, t) = exp(-0.1t^2)
+
+@testset "3.0 API safeguards" begin
+    life = SingleLife(UltimateMortality([0.1, 0.2, 1.0]; start_age=60))
+    lc = LifeContingency(life, 0.05)
+    @test_throws UndefKeywordError JointLife(lives=(life, life))
+    @test JointLife(life, life; contingency=FirstToDie()).contingency isa FirstToDie
+    @test Independent === Frasier
+    @test_throws ArgumentError SingleLife(life.mortality; issue_age=59)
+    @test_throws ArgumentError SingleLife(life.mortality; issue_age=60.5)
+    @test_throws DomainError premium_net(lc, 0)
+    @test_throws DomainError premium_net(LifeContingency(SingleLife(life.mortality; alive=false), 0.05))
+    @test_throws DomainError survival(SingleLife(MortalityTables.Gompertz(a=0.0002, b=0.13); issue_age=40))
+    short = LifeContingency(SingleLife(UltimateMortality([0.1, 0.2]; start_age=60)), 0.05)
+    @test_throws DomainError N(short, 0)
+    @test_throws DomainError M(short, 0)
+    @test_throws MethodError present_value(Insurance(life, MissingIntervalCurve()))
+    @test occursin("62", sprint(showerror, try present_value(Insurance(short)); catch err; err; end))
 end

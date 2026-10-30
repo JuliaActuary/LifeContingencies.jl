@@ -268,17 +268,23 @@ t = UltimateMortality(maleMort)
     @test D(ins, 1) ≈ 0.945723809523809
     @test D(ins, 2) ≈ 0.900286734267574
 
-    @test N(ins, 0) ≈ 20.113017073119200
-    @test N(ins, 1) ≈ 19.113017073119200
-    @test N(ins, 2) ≈ 18.167293263595400
+    @test_throws DomainError N(ins, 0)
+    @test sum(t -> D(ins, t), 0:119) ≈ 20.113017073119200
+    @test_throws DomainError N(ins, 1)
+    @test sum(t -> D(ins, t), 1:119) ≈ 19.113017073119200
+    @test_throws DomainError N(ins, 2)
+    @test sum(t -> D(ins, t), 2:119) ≈ 18.167293263595400
 
     @test C(ins, 0) ≈ 0.006657142857142910
     @test C(ins, 1) ≈ 0.000402608136054441
     @test C(ins, 2) ≈ 0.000258082197156658
 
-    @test M(ins, 0) ≈ 0.0422372822324182
-    @test M(ins, 1) ≈ 0.0355801393752753
-    @test M(ins, 2) ≈ 0.0351775312392208
+    @test_throws DomainError M(ins, 0)
+    @test sum(t -> C(ins, t), 0:119) ≈ 0.0422372822324182
+    @test_throws DomainError M(ins, 1)
+    @test sum(t -> C(ins, t), 1:119) ≈ 0.0355801393752753
+    @test_throws DomainError M(ins, 2)
+    @test sum(t -> C(ins, t), 2:119) ≈ 0.0351775312392208
 
     @test FinanceCore.present_value(Insurance(ins, 120)) ≈ 0.04223728223
     @test FinanceCore.present_value(Insurance(ins, 0)) ≈ 0.0
@@ -291,7 +297,8 @@ t = UltimateMortality(maleMort)
 
     @test FinanceCore.present_value(Insurance(ins, 30)) ≈ 0.0137761089686975
 
-    @test N(ins, 26) ≈ 5.156762988852310
+    @test_throws DomainError N(ins, 26)
+    @test sum(t -> D(ins, t), 26:119) ≈ 5.156762988852310
     @test D(ins, 26) ≈ 0.275358702015970
     @test FinanceCore.present_value(AnnuityDue(ins, 26)) ≈ 14.9562540842669
 

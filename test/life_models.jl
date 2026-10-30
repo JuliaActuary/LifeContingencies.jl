@@ -31,13 +31,13 @@ active_mass(contingency, occupancy) =
         # the dead need no mortality rates, but the living do
         @test collect(transitions(dead, Interval(5, 6), :dead)) == [:alive => 0.0, :dead => 1.0]
         @test_throws DomainError transitions(dead, Interval(5, 6), :alive)
-        joint = JointLife(lives=(dead, SingleLife(UltimateMortality([0.5, 1.0]))))
+        joint = JointLife(lives=(dead, SingleLife(UltimateMortality([0.5, 1.0]))), contingency=LastSurvivor())
         @test LifeContingencies.initial_distribution(joint) == [(:dead, :alive) => 1.0]
     end
 
     @testset "conditioning cases" begin
         single = SingleLife(UltimateMortality([0.5, 0.5, 0.5, 1.0]))
-        joint = JointLife(lives=(single, single))
+        joint = JointLife(lives=(single, single), contingency=LastSurvivor())
         next_year(initial) = active_mass(LastSurvivor(), project((;), joint; grid=1:2, initial).final)
         @test next_year([(:alive, :alive) => 1.0]) ≈ 3 / 4
         @test next_year([(:alive, :dead) => 1.0]) ≈ 1 / 2
@@ -49,7 +49,7 @@ active_mass(contingency, occupancy) =
 
     @testset "inclusion–exclusion from a correlated start" begin
         single = SingleLife(UltimateMortality([0.3, 0.4, 0.5, 1.0]))
-        joint = JointLife(lives=(single, single))
+        joint = JointLife(lives=(single, single), contingency=LastSurvivor())
         at_one = project((;), joint; grid=0:1, initial=LifeContingencies.initial_distribution(joint)).final
         # conditioning on at least one alive makes the two statuses dependent
         correlated = condition(at_one, statuses -> LifeContingencies.active(LastSurvivor(), statuses))
@@ -74,7 +74,7 @@ active_mass(contingency, occupancy) =
 
     @testset "unsupported joint assumptions" begin
         single = SingleLife(UltimateMortality([0.5, 1.0]))
-        joint = JointLife(lives=(single, single), joint_assumption=UnsupportedDependence())
+        joint = JointLife(lives=(single, single), joint_assumption=UnsupportedDependence(), contingency=LastSurvivor())
         @test_throws ArgumentError transitions(joint, Interval(0, 1), (:alive, :alive))
     end
 end
