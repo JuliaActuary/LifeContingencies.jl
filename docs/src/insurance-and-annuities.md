@@ -142,3 +142,35 @@ empty_insurance = Insurance(lc, 0)
 
 A term ending past mortality support is allowed only where extinction supplies the needed
 continuation. See [Mortality support](@ref mortality-support).
+
+## Explicit maturity: endowment insurance
+
+An incomplete mortality table can support a contract that pays on survival to an explicit
+maturity. `Endowment(lc, n)` pays on death during `n` years or on survival to year `n`.
+The positive integer `n` is a contractual assumption, not a value inferred from table support.
+
+```@example products
+short_lc = LifeContingency(SingleLife(UltimateMortality([0.1, 0.2]; start_age=60)), 0.05)
+e = Endowment(short_lc, 2)
+@assert present_value(e) ≈ present_value(Insurance(short_lc, 2)) + APV(short_lc, 2)
+@assert present_value(e, 2; state=:alive) == 0  # maturity benefit has settled
+(time = collect(timepoints(e)), expected_amount = cashflows(e), pv = present_value(e))
+```
+
+## Known current statuses and payment phases
+
+`present_value(product, t; state=...)` values from the supplied current status. For an
+annuity, `:dead` retains only the remaining guarantees. It never divides unconditional
+guarantees by survival. Joint statuses follow the order of the two lives.
+
+At `phase=:before` (the default), end-period payments at `t` have settled and due installments
+remain outstanding. `phase=:after` also settles due installments. Conditional insurance
+and endowment values require integer anniversaries; an alive/dead state alone cannot
+identify incurred-but-unpaid claims between annual settlements.
+
+```@example products
+g = AnnuityDue(lc, 3; certain=2)
+@assert present_value(g, 1; state=:dead) ≈ 1
+@assert present_value(g, 1; state=:dead, phase=:after) == 0
+(alive_value = present_value(g, 1; state=:alive), beneficiary_value = present_value(g, 1; state=:dead))
+```

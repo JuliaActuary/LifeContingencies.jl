@@ -85,7 +85,9 @@ See [Mortality support](@ref mortality-support).
 
 ## Future PVs and reserves
 
-`present_value(ins, s)` still excludes payments at `s` and retains the issue distribution.
+`present_value(ins, s)` now includes annuity-due installments at `s`; end-period payments
+have settled. Pass `phase=:after` for the old strict-future cutoff. It retains the issue
+distribution unless `state` is supplied.
 It now discounts using `discount(curve, s, t)`. Results change on non-flat curves where the
 old shifted-time discount factors differed. It remains an unconditional tail, not a
 conditional reserve.
@@ -143,3 +145,11 @@ For the experimental engine, import its interfaces
 explicitly, and expect possible changes in minor releases. Start with
 [Building multi-state models](multi-state-models.md), rather than extending the old product
 hierarchy's death-benefit defaults.
+
+### Additional 3.0 conventions
+
+- Every `JointLife` call must specify `contingency=FirstToDie()` or `contingency=LastSurvivor()`.
+- `Independent()` names the independence assumption; `Frasier` remains an alias.
+- `N` and `M` now reject incomplete mortality and uncovered partial terminal years.
+- `Endowment(lc, n)` expresses explicit maturity without changing mortality rates.
+- `present_value(product, t; state=...)` values known statuses, including dead annuitants with guarantees.

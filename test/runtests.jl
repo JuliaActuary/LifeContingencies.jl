@@ -14,4 +14,5 @@ using MortalityTables
     include("life_models.jl")
     include("ltc.jl")
     include("regression.jl")
+    include("product_values.jl")
 end

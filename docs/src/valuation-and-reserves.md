@@ -8,7 +8,7 @@ value to year five does not itself establish that the insured is alive at year f
 | Operation | Included payments | Information about status |
 |---|---|---|
 | `present_value(ins)` | All scheduled payments, including issue | Original statuses at issue |
-| `present_value(ins, s)` | Payments strictly **after** `s`, discounted to `s` | Original statuses at issue; no new conditioning |
+| `present_value(ins, s)` | Outstanding payments at the selected phase, discounted to `s` | Original statuses at issue; no new conditioning |
 | `reserve_premium_net(lc, s)` | Future death benefits less premiums, including the premium at `s` | Contract in force at `s`, or an explicit `state` |
 
 The reserve convenience function is for **whole-life insurance with annual net premiums**.
@@ -27,8 +27,9 @@ is ``v(s,t)=v(t)/v(s)``. Then
 \operatorname{Tail}_s = \sum_{t>s}v(s,t)\bar c_t.
 ```
 
-The latter is `present_value(ins, s)`. Its expected cash flows remain unconditional on any
-new information at `s`.
+The latter is the strict-future value, `present_value(ins, s; phase=:after)`.
+The default `phase=:before` also includes annuity-due installments at `s`.
+Expected cash flows remain unconditional unless `state` is supplied.
 
 ```@example values
 using LifeContingencies, MortalityTables
@@ -41,6 +42,8 @@ ins = Insurance(lc)
 @assert present_value(ins, 1) == 0.5
 (issue_pv = present_value(ins), year_one_tail = present_value(ins, 1))
 ```
+
+Use `present_value(ins, 1; state=:alive)` for the known-alive value directly.
 
 Only half the original lives reach year one. For this death benefit, at a year-end valuation
 date, dividing the tail by survival gives the value conditional on being alive then:
@@ -56,12 +59,13 @@ force at `s`. A guaranteed annuity may pay after death; its unconditional tail c
 general be converted to a conditional value by dividing by survival.
 
 The cutoff also matters at issue: a due annuity has a payment at time zero, so its one-argument
-PV includes a payment that `present_value(annuity, 0)` excludes.
+PV equals `present_value(annuity, 0)`; `phase=:after` excludes the initial payment.
 
 ```@example values
 annuity = AnnuityDue(lc)
-@assert present_value(annuity) - present_value(annuity, 0) == 1.0
-(including_issue_payment = present_value(annuity), after_issue_payment = present_value(annuity, 0))
+@assert present_value(annuity) == present_value(annuity, 0)
+@assert present_value(annuity) - present_value(annuity, 0; phase=:after) == 1.0
+(including_issue_payment = present_value(annuity), after_issue_payment = present_value(annuity, 0; phase=:after))
 ```
 
 ## Net premiums
